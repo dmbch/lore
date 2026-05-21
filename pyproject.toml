@@ -39,7 +39,7 @@ dev = [
     "ruff>=0.15",
     "pyright>=1.1.400",
     "testcontainers[postgres]>=4",
-    "python-semantic-release>=9",
+    "python-semantic-release>=10.5.3",
     "pytest-asyncio>=0.25",
 ]
 
