@@ -24,7 +24,7 @@ dependencies = [
     "httpx[socks]",
     "instructor[litellm]>=1.7",
     "aiosqlite>=0.21",
-    "pydantic>=2.10,<3",
+    "pydantic>=2.13.4,<3",
     "fastmcp>=3",
 ]
 
