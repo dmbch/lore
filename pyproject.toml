@@ -38,7 +38,7 @@ dev = [
     "hypothesis>=6.150",
     "ruff>=0.15",
     "pyright>=1.1.400",
-    "testcontainers[postgres]>=4",
+    "testcontainers[postgres]>=4.14.2",
     "python-semantic-release>=9",
     "pytest-asyncio>=0.25",
 ]
