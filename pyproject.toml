@@ -10,7 +10,7 @@ requires-python = ">=3.14"
 license = "MIT"
 dependencies = [
     "sqlite-vec>=0.1.6",
-    "psycopg[binary]>=3.2",
+    "psycopg[binary]>=3.3.4",
     "psycopg-pool>=3.2",
     "pgvector>=0.3",
     "structlog>=25",
