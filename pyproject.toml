@@ -10,13 +10,13 @@ requires-python = ">=3.14"
 license = "MIT"
 dependencies = [
     "sqlite-vec>=0.1.6",
-    "psycopg[binary]>=3.2",
+    "psycopg[binary]>=3.3.4",
     "psycopg-pool>=3.2",
     "pgvector>=0.3",
     "structlog>=25",
     "opentelemetry-api>=1.24",
     "opentelemetry-sdk>=1.24",
-    "opentelemetry-distro>=0.62b0",
+    "opentelemetry-distro>=0.63b1",
     "opentelemetry-exporter-otlp>=1.24",
     "opentelemetry-instrumentation-psycopg>=0.62b0",
     "litellm>=1.82.3",
@@ -24,7 +24,7 @@ dependencies = [
     "httpx[socks]",
     "instructor[litellm]>=1.7",
     "aiosqlite>=0.21",
-    "pydantic>=2.10,<3",
+    "pydantic>=2.13.4,<3",
     "fastmcp>=3",
 ]
 
@@ -38,8 +38,8 @@ dev = [
     "hypothesis>=6.150",
     "ruff>=0.15",
     "pyright>=1.1.400",
-    "testcontainers[postgres]>=4",
-    "python-semantic-release>=9",
+    "testcontainers[postgres]>=4.14.2",
+    "python-semantic-release>=10.5.3",
     "pytest-asyncio>=0.25",
 ]
 
