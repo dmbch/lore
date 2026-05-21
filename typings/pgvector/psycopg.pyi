@@ -1,0 +1,6 @@
+from typing import Any
+
+import psycopg
+
+def register_vector(context: psycopg.Connection[Any]) -> None: ...
+async def register_vector_async(context: psycopg.AsyncConnection[Any]) -> None: ...

@@ -1,0 +1,22 @@
+[decay]
+attestation = "30d"
+trust = "90d"
+
+[embedding]
+model = "test/embedding-model"
+
+[fast]
+model = "test/fast-model"
+
+[reasoning]
+model = "test/reasoning-model"
+
+[limits]
+question = 2048
+hypothesis = 4096
+context = 8192
+reasoning = 8192
+answer = 16384
+
+[retrieval]
+max_keywords = 20

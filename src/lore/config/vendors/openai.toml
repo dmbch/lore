@@ -1,0 +1,14 @@
+api_key = "OPENAI_API_KEY"
+
+[embedding]
+model = "text-embedding-3-small"
+num_retries = 2
+
+[fast]
+model = "gpt-4.1-mini"
+num_retries = 2
+
+[reasoning]
+model = "o4-mini"
+reasoning_effort = "high"
+num_retries = 2

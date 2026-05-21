@@ -1,0 +1,12 @@
+[decay]
+attestation = "30d"
+trust = "90d"
+
+[embedding]
+dimensions = 1024
+
+[fast]
+model = "test/fast-model"
+
+[reasoning]
+model = "test/reasoning-model"

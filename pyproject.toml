@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lore"
+version = "0.1.0"
+description = "Shared knowledge engine for centaur teams"
+requires-python = ">=3.14"
+license = "MIT"
+dependencies = [
+    "sqlite-vec>=0.1.6",
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
+    "pgvector>=0.3",
+    "structlog>=25",
+    "opentelemetry-api>=1.24",
+    "opentelemetry-sdk>=1.24",
+    "opentelemetry-distro>=0.62b0",
+    "opentelemetry-exporter-otlp>=1.24",
+    "opentelemetry-instrumentation-psycopg>=0.62b0",
+    "litellm>=1.82.3",
+    # SOCKS extra so HTTPS_PROXY=socks5://... works under the Claude sandbox (no direct import).
+    "httpx[socks]",
+    "instructor[litellm]>=1.7",
+    "aiosqlite>=0.21",
+    "pydantic>=2.10,<3",
+    "fastmcp>=3",
+]
+
+[project.scripts]
+lore = "lore.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9",
+    "pytest-cov>=7",
+    "hypothesis>=6.150",
+    "ruff>=0.15",
+    "pyright>=1.1.400",
+    "testcontainers[postgres]>=4",
+    "python-semantic-release>=9",
+    "pytest-asyncio>=0.25",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+exclude = [".claude/worktrees", "references"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+include = ["src", "tests"]
+stubPath = "typings"
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=lore --cov-report=term-missing --cov-config=pyproject.toml -m 'not e2e'"
+asyncio_mode = "auto"
+markers = ["e2e: end-to-end tests requiring real LLM and database"]
+
+[tool.coverage.run]
+source = ["lore"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true

@@ -1,0 +1,41 @@
+[server]
+name = "Lore"
+auth_required = false
+
+[decay]
+attestation = "90d"
+trust = "90d"
+
+[trust]
+maturity = 1.0
+threshold = 1e-3
+
+[retrieval]
+proximity = 0.5
+authority = 0.5
+limit = 10
+fan_out = 2
+max_keywords = 10
+
+[limits]
+question = 1024
+hypothesis = 3072
+context = 4096
+reasoning = 4096
+answer = 8192
+
+[postgres]
+min_size = 1
+max_size = 20
+getconn_timeout = 10.0
+max_waiting = 50
+fulltext_config = "english"
+
+[sqlite]
+fulltext_config = "porter unicode61"
+
+[prompts]
+scribe = "bundled:prompts/scribe.md"
+consult = "bundled:prompts/consult.md"
+interpreter = "bundled:prompts/interpreter.md"
+archivist = "bundled:prompts/archivist.md"

@@ -1,0 +1,14 @@
+api_key = "AWS_BEARER_TOKEN_BEDROCK"
+
+[embedding]
+model = "bedrock/amazon.titan-embed-text-v2:0"
+num_retries = 2
+
+[fast]
+model = "bedrock/amazon.nova-2-lite-v1:0"
+num_retries = 2
+
+[reasoning]
+model = "bedrock/amazon.nova-2-pro-preview-20251202-v1:0"
+reasoning_effort = "high"
+num_retries = 2

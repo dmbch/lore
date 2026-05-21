@@ -1,0 +1,14 @@
+[decay]
+attestation = "30d"
+trust = "90d"
+
+[embedding]
+model = "test/embedding-model"
+
+[fast]
+model = "test/fast-model"
+temperature = 0.3
+max_tokens = 4096
+
+[reasoning]
+model = "test/reasoning-model"

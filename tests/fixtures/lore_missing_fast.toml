@@ -1,0 +1,9 @@
+[decay]
+attestation = "30d"
+trust = "90d"
+
+[embedding]
+model = "test/embedding-model"
+
+[reasoning]
+model = "test/reasoning-model"

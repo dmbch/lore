@@ -1,0 +1,3 @@
+[embedding]
+model = "gemini/text-embedding-004"
+dimensions = 1024

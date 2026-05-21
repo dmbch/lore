@@ -1,0 +1,18 @@
+[decay]
+attestation = "90d"
+trust = "90d"
+
+[retrieval]
+proximity = 0.7
+authority = 0.3
+limit = 20
+fan_out = 3
+
+[embedding]
+model = "test/embed"
+
+[fast]
+model = "test/fast"
+
+[reasoning]
+model = "test/reasoning"

@@ -1,0 +1,6 @@
+[decay]
+attestation = "90d"
+trust = "90d"
+
+[fast]
+model = "custom/my-fast-model"

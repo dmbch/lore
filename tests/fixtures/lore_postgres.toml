@@ -1,0 +1,18 @@
+[decay]
+attestation = "30d"
+trust = "90d"
+
+[embedding]
+model = "test/embedding-model"
+
+[fast]
+model = "test/fast-model"
+
+[reasoning]
+model = "test/reasoning-model"
+
+[postgres]
+min_size = 2
+max_size = 50
+getconn_timeout = 5.0
+max_waiting = 100

@@ -1,0 +1,553 @@
+"""Tests for HypothesisRepository Protocol behavior."""
+
+import math
+from collections.abc import Awaitable, Callable
+
+import pytest
+
+from lore.domain import StorageError
+from lore.repositories.protocols import HypothesisRepository
+
+# Must match the dimension used by session-scoped migrations in conftest.
+_VECTOR_DIM: int = 1024
+
+
+def _embedding(seed: int) -> list[float]:
+    """Create a deterministic embedding with direction varying by seed.
+
+    Cosine distance measures angle, not magnitude. Uniform vectors all
+    point in the same direction. So we vary direction across dimensions.
+    """
+    return [math.sin(seed + i * 0.1) for i in range(_VECTOR_DIM)]
+
+
+class TestStore:
+    """store() persists a hypothesis with its embedding and returns the record."""
+
+    async def test_store_returns_record_with_generated_id(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        record = await hypothesis_repo.store(
+            content="test claim", embedding=_embedding(1), created_at=1000
+        )
+        assert record.id  # non-empty UUID
+        assert record.content == "test claim"
+        assert record.created_at == 1000
+
+    async def test_store_and_find_by_id(self, hypothesis_repo: HypothesisRepository) -> None:
+        record = await hypothesis_repo.store(
+            content="test claim", embedding=_embedding(1), created_at=1000
+        )
+        found = await hypothesis_repo.find_by_id(record.id)
+        assert found == record
+
+    async def test_store_same_content_creates_distinct_records(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        first = await hypothesis_repo.store(
+            content="same claim", embedding=_embedding(1), created_at=1000
+        )
+        second = await hypothesis_repo.store(
+            content="same claim", embedding=_embedding(2), created_at=2000
+        )
+        assert first.id != second.id
+
+    async def test_store_rolls_back_on_vec_insert_failure(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """Atomicity: neither table is modified if the vec insert fails."""
+        wrong_dim = [1.0] * 10  # wrong dimension — backend rejects it
+        with pytest.raises(StorageError):
+            await hypothesis_repo.store(content="test claim", embedding=wrong_dim, created_at=1000)
+
+        # A successful store after the failure must be the only record.
+        # Verifies both vector and relational tables are clean — a leaked
+        # relational row from the failed store would be an orphan (no vector
+        # entry) invisible to search but visible to find_by_id.
+        good = await hypothesis_repo.store(
+            content="good claim", embedding=_embedding(1), created_at=2000
+        )
+        results = await hypothesis_repo.search(
+            embedding=_embedding(1),
+            query="good claim",
+            weights=(1.0, 0.0),
+            limit=10,
+            fan_out=2,
+        )
+        assert len(results) == 1
+        assert results[0].id == good.id
+
+
+class TestStoreEmbeddingValidation:
+    """store() rejects embeddings with no direction or non-finite components.
+
+    Zero-magnitude vectors have undefined cosine direction (pgvector returns
+    NaN, which COALESCE does not catch). NaN or infinite components corrupt
+    similarity math. Both fail input validation before any database round-trip.
+    """
+
+    async def test_store_rejects_zero_magnitude_embedding(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        with pytest.raises(ValueError, match="non-zero magnitude"):
+            await hypothesis_repo.store(
+                content="all-zero embedding", embedding=[0.0] * _VECTOR_DIM, created_at=1000
+            )
+
+    async def test_store_rejects_nan_component_embedding(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        bad = _embedding(seed=1)
+        bad[0] = math.nan
+        with pytest.raises(ValueError, match="finite"):
+            await hypothesis_repo.store(content="nan component", embedding=bad, created_at=1000)
+
+    async def test_store_rejects_infinite_component_embedding(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        bad = _embedding(seed=1)
+        bad[0] = math.inf
+        with pytest.raises(ValueError, match="finite"):
+            await hypothesis_repo.store(content="inf component", embedding=bad, created_at=1000)
+
+
+class TestFindById:
+    """find_by_id() retrieves by ID or returns None."""
+
+    async def test_find_by_id_missing_returns_none(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        assert await hypothesis_repo.find_by_id("00000000-0000-0000-0000-000000000000") is None
+
+
+class TestSearch:
+    """search() returns hypotheses with composite scores from two-lane retrieval."""
+
+    async def test_search_empty_query_degrades_gracefully(
+        self,
+        hypothesis_repo: HypothesisRepository,
+    ) -> None:
+        """Empty query string degrades gracefully — results still returned via proximity."""
+        await hypothesis_repo.store(
+            content="redis cache invalidation strategy",
+            embedding=_embedding(seed=5),
+            created_at=1000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=5),
+            query="",
+            weights=(1.0, 0.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        assert len(results) > 0
+
+    async def test_search_whitespace_only_query_degrades_gracefully(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """Whitespace-only query is treated as empty — authority=0.0, no error."""
+        await hypothesis_repo.store(
+            content="redis cache invalidation strategy",
+            embedding=_embedding(seed=5),
+            created_at=1000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=5),
+            query="   \t  ",
+            weights=(1.0, 0.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        assert len(results) > 0
+
+    async def test_search_empty_table_returns_empty(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        embedding = _embedding(seed=1)
+        results = await hypothesis_repo.search(
+            embedding=embedding,
+            query="any query",
+            weights=(0.5, 0.5),
+            limit=10,
+            fan_out=2,
+        )
+        assert results == []
+
+    async def test_search_finds_hypothesis_matching_both_lanes(
+        self,
+        hypothesis_repo: HypothesisRepository,
+    ) -> None:
+        # Arrange: store two hypotheses with distinct content and embeddings
+        h1 = await hypothesis_repo.store(
+            content="gRPC migration reduced latency by forty percent",
+            embedding=_embedding(seed=1),
+            created_at=1000,
+        )
+        await hypothesis_repo.store(
+            content="kafka consumer group rebalancing causes timeouts",
+            embedding=_embedding(seed=2),
+            created_at=2000,
+        )
+
+        # Act: search with embedding close to h1 and query matching h1
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=1),
+            query="gRPC migration latency",
+            weights=(0.5, 0.5),
+            limit=10,
+            fan_out=2,
+        )
+
+        # Assert: h1 ranks first — multi-lane convergence outscores single-lane presence
+        assert len(results) >= 2
+        assert results[0].id == h1.id
+
+    async def test_search_vector_only_candidates(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """A hypothesis found by embedding proximity but not FTS still appears."""
+        await hypothesis_repo.store(
+            content="alpha beta gamma",
+            embedding=_embedding(seed=42),
+            created_at=1000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=42),
+            query="completely unrelated terms",
+            weights=(1.0, 0.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        assert len(results) == 1
+        assert results[0].content == "alpha beta gamma"
+
+    async def test_search_weights_configurable(
+        self,
+        hypothesis_repo: HypothesisRepository,
+    ) -> None:
+        """Same data, two searches with different weights produce different ranking."""
+        h1 = await hypothesis_repo.store(
+            content="kubernetes deployment orchestration",
+            embedding=_embedding(seed=1),
+            created_at=1000,
+        )
+        await hypothesis_repo.store(
+            content="general purpose notes",
+            embedding=_embedding(seed=2),
+            created_at=2000,
+        )
+
+        # Authority-only search — h1 should rank first (FTS match on content)
+        authority_results = await hypothesis_repo.search(
+            embedding=_embedding(seed=50),
+            query="kubernetes deployment",
+            weights=(0.0, 1.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        # Proximity-only search — seed=50 is closer to seed=2 than seed=1
+        proximity_results = await hypothesis_repo.search(
+            embedding=_embedding(seed=2),
+            query="kubernetes deployment",
+            weights=(1.0, 0.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        # Assert: both searches return results
+        assert len(authority_results) >= 1
+        assert len(proximity_results) >= 1
+
+        # Authority finds h1 first (FTS match), proximity finds h2 first (closer embedding)
+        assert authority_results[0].id == h1.id
+
+    async def test_search_fts_only_candidates(self, hypothesis_repo: HypothesisRepository) -> None:
+        """A hypothesis found by FTS keyword match ranks first when authority is the sole signal."""
+        await hypothesis_repo.store(
+            content="PostgreSQL migration failed on Tuesday",
+            embedding=_embedding(seed=1),
+            created_at=1000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=999),
+            query="PostgreSQL migration",
+            weights=(0.0, 1.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        assert len(results) >= 1
+        assert results[0].content == "PostgreSQL migration failed on Tuesday"
+
+    async def test_search_respects_limit(self, hypothesis_repo: HypothesisRepository) -> None:
+        """Store 5 hypotheses, search with limit=2, get exactly 2 results."""
+        for seed in range(1, 6):
+            await hypothesis_repo.store(
+                content=f"hypothesis number {seed} about distinct topic {seed}",
+                embedding=_embedding(seed=seed),
+                created_at=1000 * seed,
+            )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=1),
+            query="hypothesis",
+            weights=(0.5, 0.5),
+            limit=2,
+            fan_out=2,
+        )
+
+        assert len(results) == 2
+
+    async def test_search_proximity_and_authority_both_contribute(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """A hypothesis reachable via both proximity and authority is found."""
+        await hypothesis_repo.store(
+            content="PostgreSQL vacuum analysis performance",
+            embedding=_embedding(seed=10),
+            created_at=1000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=10),
+            query="PostgreSQL vacuum",
+            weights=(0.5, 0.5),
+            limit=10,
+            fan_out=2,
+        )
+
+        assert len(results) >= 1
+        matched = [r for r in results if "vacuum" in r.content]
+        assert len(matched) == 1
+
+    async def test_search_returns_hypothesis_results_with_scores(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """Search results carry per-lane and composite retrieval scores."""
+        await hypothesis_repo.store(
+            content="gRPC migration reduced latency",
+            embedding=_embedding(seed=1),
+            created_at=1000,
+        )
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=1),
+            query="gRPC migration latency",
+            weights=(0.5, 0.5),
+            limit=10,
+            fan_out=2,
+        )
+        assert len(results) >= 1
+        r = results[0]
+        assert 0.0 <= r.score <= 1.0
+        # Cosine proximity is in [-1, 1]; randomized embeddings can land
+        # anywhere within the range.
+        assert -1.0 <= r.proximity <= 1.0
+
+    async def test_search_proximity_only_has_positive_score(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """A hypothesis found only by proximity still carries a positive composite score."""
+        await hypothesis_repo.store(
+            content="alpha beta gamma",
+            embedding=_embedding(seed=42),
+            created_at=1000,
+        )
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=42),
+            query="completely unrelated terms",
+            weights=(1.0, 0.0),
+            limit=10,
+            fan_out=2,
+        )
+        assert len(results) == 1
+        assert results[0].score > 0.0
+
+    async def test_search_rrf_rank_determines_score(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """RRF scores reflect rank position: rank #1 scores higher than rank #2."""
+        await hypothesis_repo.store(
+            content="closest hypothesis to the query embedding",
+            embedding=_embedding(seed=10),
+            created_at=1000,
+        )
+        await hypothesis_repo.store(
+            content="farther hypothesis from the query embedding",
+            embedding=_embedding(seed=99),
+            created_at=2000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=10),
+            query="",
+            weights=(1.0, 0.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        assert len(results) == 2
+        assert results[0].content == "closest hypothesis to the query embedding"
+        assert results[1].content == "farther hypothesis from the query embedding"
+
+    async def test_search_fan_out_controls_candidate_pool_size(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """``fan_out`` sets the per-lane LIMIT inside each subquery.
+
+        With ``limit=1, fan_out=1`` each lane fetches its top-1 row only.
+        Hypothesis C — proximity rank 2, authority rank 2 — never enters
+        either lane, so it cannot win.
+
+        With ``limit=1, fan_out=3`` each lane fetches its top-3. C now
+        appears in both lanes (rank 2 in each), and its cross-lane
+        composite ``2 × 0.5/62`` overtakes the single-lane single-rank
+        winners F1 and B (each ``0.5/61``).
+        """
+        # Embeddings sized for SCHEMA_DIM=1024 (must match conftest schema).
+        # The query direction is e1; rows are placed at decreasing
+        # alignments with it so proximity ranks are deterministic across
+        # backends.
+        dim = _VECTOR_DIM
+        q_emb = [1.0] + [0.0] * (dim - 1)
+        f1_emb = [1.0] + [0.0] * (dim - 1)  # cos = 1.0 → prox rank 1
+        c_emb = [1.0, 0.1] + [0.0] * (dim - 2)  # cos ≈ 0.995 → prox rank 2
+        f2_emb = [1.0, 0.2] + [0.0] * (dim - 2)  # cos ≈ 0.981 → prox rank 3
+        b_emb = [0.01, 1.0] + [0.0] * (dim - 2)  # cos ≈ 0.01 → prox rank ≥ 4
+
+        # FTS: only B and C carry the rare keyword. B repeats it twice and
+        # C once — both BM25 (SQLite) and ts_rank (Postgres) reward higher
+        # term frequency, so B is unambiguously auth rank 1 and C auth rank 2.
+        await hypothesis_repo.store(content="filler one alpha", embedding=f1_emb, created_at=1000)
+        c = await hypothesis_repo.store(
+            content="rarewidget charlie content", embedding=c_emb, created_at=1001
+        )
+        await hypothesis_repo.store(content="filler two delta", embedding=f2_emb, created_at=1002)
+        await hypothesis_repo.store(
+            content="rarewidget rarewidget bravo bravo", embedding=b_emb, created_at=1003
+        )
+
+        narrow = await hypothesis_repo.search(
+            embedding=q_emb,
+            query="rarewidget",
+            weights=(0.5, 0.5),
+            limit=1,
+            fan_out=1,
+        )
+        wide = await hypothesis_repo.search(
+            embedding=q_emb,
+            query="rarewidget",
+            weights=(0.5, 0.5),
+            limit=1,
+            fan_out=3,
+        )
+
+        narrow_ids = {r.id for r in narrow}
+        wide_ids = {r.id for r in wide}
+
+        # The discriminator: C is the cross-lane winner that surfaces only
+        # when fan_out widens both lanes' subqueries to include rank-2 rows.
+        assert c.id not in narrow_ids, (
+            f"fan_out=1 should not surface C (prox/auth rank 2); got {narrow_ids}"
+        )
+        assert c.id in wide_ids, (
+            f"fan_out=3 should surface C as the cross-lane top-1; got {wide_ids}"
+        )
+
+    @pytest.mark.parametrize("bad_limit", [0, -1])
+    async def test_search_invalid_limit_raises(
+        self, hypothesis_repo: HypothesisRepository, bad_limit: int
+    ) -> None:
+        """Zero and negative limits are rejected with ValueError."""
+        with pytest.raises(ValueError, match="limit must be >= 1"):
+            await hypothesis_repo.search(
+                embedding=_embedding(seed=1),
+                query="any",
+                weights=(0.5, 0.5),
+                limit=bad_limit,
+                fan_out=2,
+            )
+
+    @pytest.mark.parametrize("bad_fan_out", [0, -1])
+    async def test_search_invalid_fan_out_raises(
+        self, hypothesis_repo: HypothesisRepository, bad_fan_out: int
+    ) -> None:
+        """Zero and negative fan_out values are rejected with ValueError."""
+        with pytest.raises(ValueError, match="fan_out must be >= 1"):
+            await hypothesis_repo.search(
+                embedding=_embedding(seed=1),
+                query="any",
+                weights=(0.5, 0.5),
+                limit=5,
+                fan_out=bad_fan_out,
+            )
+
+    async def test_search_weights_must_sum_to_one(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """Weights that don't sum to 1.0 are rejected with ValueError."""
+        with pytest.raises(ValueError, match="weights must sum to 1.0"):
+            await hypothesis_repo.search(
+                embedding=_embedding(seed=1),
+                query="any",
+                weights=(1.0, 1.0),
+                limit=5,
+                fan_out=2,
+            )
+
+    async def test_search_negative_weight_raises(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """Negative weights are rejected — they would invert a lane's ranking signal."""
+        with pytest.raises(ValueError, match="weights must be non-negative"):
+            await hypothesis_repo.search(
+                embedding=_embedding(seed=1),
+                query="any",
+                weights=(-0.5, 1.5),
+                limit=5,
+                fan_out=2,
+            )
+
+
+class TestStorageError:
+    """All methods raise StorageError when the connection is unavailable."""
+
+    async def test_store_raises(
+        self,
+        sabotage_connection: Callable[[], Awaitable[None]],
+        hypothesis_repo: HypothesisRepository,
+    ) -> None:
+        await sabotage_connection()
+        with pytest.raises(StorageError):
+            await hypothesis_repo.store(content="claim", embedding=_embedding(1), created_at=1000)
+
+    async def test_find_by_id_raises(
+        self,
+        sabotage_connection: Callable[[], Awaitable[None]],
+        hypothesis_repo: HypothesisRepository,
+    ) -> None:
+        await sabotage_connection()
+        with pytest.raises(StorageError):
+            await hypothesis_repo.find_by_id("00000000-0000-0000-0000-000000000000")
+
+    async def test_search_raises(
+        self,
+        sabotage_connection: Callable[[], Awaitable[None]],
+        hypothesis_repo: HypothesisRepository,
+    ) -> None:
+        await sabotage_connection()
+        with pytest.raises(StorageError):
+            await hypothesis_repo.search(
+                embedding=_embedding(0),
+                query="any query",
+                weights=(0.5, 0.5),
+                limit=5,
+                fan_out=2,
+            )

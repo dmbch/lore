@@ -1,0 +1,15 @@
+[decay]
+attestation = "30d"
+trust = "45d"
+
+[embedding]
+model = "test/embedding-model"
+
+[fast]
+model = "test/fast-model"
+
+[reasoning]
+model = "test/reasoning-model"
+
+[trust]
+maturity = 3

@@ -1,0 +1,19 @@
+api_key = "GEMINI_API_KEY"
+
+[embedding]
+model = "gemini/gemini-embedding-001"
+num_retries = 2
+
+[embedding.task_type]
+document = "RETRIEVAL_DOCUMENT"
+question = "QUESTION_ANSWERING"
+verification = "FACT_VERIFICATION"
+
+[fast]
+model = "gemini/gemini-flash-lite-latest"
+num_retries = 2
+
+[reasoning]
+model = "gemini/gemini-flash-latest"
+reasoning_effort = "high"
+num_retries = 2

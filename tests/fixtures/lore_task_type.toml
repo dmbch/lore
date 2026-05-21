@@ -1,0 +1,17 @@
+[decay]
+attestation = "30d"
+trust = "90d"
+
+[embedding]
+model = "test/embedding-model"
+
+[embedding.task_type]
+document = "RETRIEVAL_DOCUMENT"
+question = "QUESTION_ANSWERING"
+verification = "FACT_VERIFICATION"
+
+[fast]
+model = "test/fast-model"
+
+[reasoning]
+model = "test/reasoning-model"
