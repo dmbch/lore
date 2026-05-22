@@ -95,6 +95,7 @@ def create_server(
     auth = _build_auth(settings)
     server: FastMCP[Orchestrator] = FastMCP(
         name=settings.server.name,
+        version=settings.version,
         instructions=instructions,
         lifespan=lifespan,
         auth=auth,

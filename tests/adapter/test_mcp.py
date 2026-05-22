@@ -65,6 +65,22 @@ def test_server_scribe_prompt_becomes_instructions(
     assert server.instructions == expected
 
 
+def test_server_version_defaults_to_dev_marker(
+    server: FastMCP[Orchestrator],
+) -> None:
+    """The settings default (a source build) surfaces as serverInfo's dev marker."""
+    assert server.version == "0.0.0+dev"
+
+
+def test_server_reports_configured_version(settings: LoreSettings) -> None:
+    """create_server surfaces settings.version as serverInfo.version."""
+    versioned = create_server(
+        settings=settings.model_copy(update={"version": "1.2.3"}),
+        system=_noop_system(),
+    )
+    assert versioned.version == "1.2.3"
+
+
 @pytest.fixture()
 def mock_orchestrator() -> AsyncMock:
     """An AsyncMock standing in for Orchestrator.consult."""

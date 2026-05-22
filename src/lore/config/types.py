@@ -285,6 +285,11 @@ class LoreSettings(BaseModel):
 
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
+    # serverInfo.version. Never empty: FastMCP falls back to fastmcp.__version__
+    # on a falsy value, leaking the framework version to clients. The loader fills
+    # this from LORE_VERSION (baked into published images); source builds keep the
+    # dev marker.
+    version: str = "0.0.0+dev"
     dsn: str
     oidc: OidcConfig | None
     base_url: str | None = None
