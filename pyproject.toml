@@ -34,7 +34,7 @@ lore = "lore.__main__:main"
 [dependency-groups]
 dev = [
     "pytest>=9",
-    "pytest-cov>=7",
+    "pytest-cov>=7.1.0",
     "hypothesis>=6.150",
     "ruff>=0.15",
     "pyright>=1.1.400",
