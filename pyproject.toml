@@ -4,7 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lore"
-version = "0.1.0"
+# Placeholder only — hatchling needs it for build validity; nothing consumes it.
+# The git tag is the authoritative version (see [tool.semantic_release]).
+version = "0.0.0"
 description = "Shared knowledge engine for centaur teams"
 requires-python = ">=3.14"
 license = "MIT"
@@ -71,3 +73,7 @@ source = ["lore"]
 [tool.coverage.report]
 fail_under = 100
 show_missing = true
+
+[tool.semantic_release]
+allow_zero_version = true     # stay in 0.x; first release is v0.1.0, not 1.0.0
+major_on_zero      = false    # a feat on 0.x bumps the minor, not to 1.0.0
