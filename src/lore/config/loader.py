@@ -171,7 +171,7 @@ def load_settings(
     3. Deep merge vendor over bundled → proto-config
     4. Discover user ``lore.toml`` → deep merge user over proto-config
     5. Resolve ``bundled:`` prompt references to concrete paths
-    6. Add DSN + OIDC from env
+    6. Add DSN, OIDC, and version from env
     7. ``model_validate`` the final config into ``LoreSettings``
 
     Settings-time INFO logs (transport mode) emit through the module-level
@@ -205,4 +205,8 @@ def load_settings(
     config["dsn"] = dsn
     config["oidc"] = oidc
     config["base_url"] = base_url
+    # An empty or unset LORE_VERSION (source builds; the Dockerfile's empty ARG
+    # default) leaves the dev marker on LoreSettings.version.
+    if version := os.environ.get("LORE_VERSION"):
+        config["version"] = version
     return LoreSettings.model_validate(config)

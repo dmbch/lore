@@ -62,6 +62,32 @@ def test_settings_empty_dsn_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Version — LORE_VERSION baked into published images; dev marker otherwise
+# ---------------------------------------------------------------------------
+
+
+def test_lore_version_env_sets_version() -> None:
+    env = {**_BASE_ENV, "LORE_VERSION": "1.2.3"}
+    with patch.dict(os.environ, env, clear=True):
+        s = load_settings(toml_path=_TOML_PATH)
+        assert s.version == "1.2.3"
+
+
+def test_lore_version_unset_keeps_dev_marker() -> None:
+    with patch.dict(os.environ, _BASE_ENV, clear=True):
+        s = load_settings(toml_path=_TOML_PATH)
+        assert s.version == "0.0.0+dev"
+
+
+def test_lore_version_empty_keeps_dev_marker() -> None:
+    """Source builds inherit the Dockerfile's empty ARG default (LORE_VERSION="")."""
+    env = {**_BASE_ENV, "LORE_VERSION": ""}
+    with patch.dict(os.environ, env, clear=True):
+        s = load_settings(toml_path=_TOML_PATH)
+        assert s.version == "0.0.0+dev"
+
+
+# ---------------------------------------------------------------------------
 # BASE_URL / OIDC_URL pairing — must be both or neither
 # ---------------------------------------------------------------------------
 
