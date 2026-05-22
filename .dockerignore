@@ -1,0 +1,18 @@
+# Build-context excludes — lean image, reproducible wheel.
+# Patterns without `**` are top-level only and `*` does not cross `/`, so
+# `*.md` drops root docs (README, IDEA, PLAN, …) while keeping the bundled
+# src/lore/prompts/*.md that the wheel needs.
+.git
+.github
+.claude
+.venv
+tests
+references
+docs
+deploy
+dist
+build
+*.md
+docker-compose.yml
+**/__pycache__
+**/*.pyc
