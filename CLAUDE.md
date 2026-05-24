@@ -41,7 +41,7 @@ uv run pyright                                       # strict type checking, zer
 uv run ruff check . && uv run ruff format --check .  # lint + format, read-only
 ```
 
-Conventional Commits, no scope. Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`.
+Conventional Commits, scope optional. Types: the canonical set (`build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`), enforced by `cz check` (see `[tool.commitizen]`). Enable the local hook once: `git config core.hooksPath .githooks`.
 
 ## Code style
 

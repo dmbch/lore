@@ -1,0 +1,14 @@
+name: Commitizen
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  commitizen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: astral-sh/setup-uv@v7
+        with: { enable-cache: true }
+      - run: uv sync --only-group dev
+      - run: uv run --no-sync cz check --rev-range ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}

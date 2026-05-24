@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/dmbch/lore/actions/workflows/ci.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/ci.yml)
 [![Release](https://github.com/dmbch/lore/actions/workflows/release.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/release.yml)
-[![Commitlint](https://github.com/dmbch/lore/actions/workflows/commitlint.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/commitlint.yml)
+[![Commitizen](https://github.com/dmbch/lore/actions/workflows/commitizen.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/commitizen.yml)
 
 Lore is a shared archive for teams that think for a living. It connects centaurs (a human and a frontier model, working together) into a herd that shares its memory. Contribution is a byproduct of working, never a separate task. The commons grows with use.
 

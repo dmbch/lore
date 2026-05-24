@@ -1,0 +1,4 @@
+#!/bin/sh
+# Lint the commit message against [tool.commitizen] — the same check CI runs.
+# Enable once per clone: git config core.hooksPath .githooks
+exec uv run cz check --commit-msg-file "$1"
