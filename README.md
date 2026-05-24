@@ -2,17 +2,31 @@
 
 **As far as we know.**
 
+[![CI](https://github.com/dmbch/lore/actions/workflows/ci.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/ci.yml)
+[![Release](https://github.com/dmbch/lore/actions/workflows/release.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/release.yml)
+[![Commitlint](https://github.com/dmbch/lore/actions/workflows/commitlint.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/commitlint.yml)
+
 Lore is a shared archive for teams that think for a living. It connects centaurs (a human and a frontier model, working together) into a herd that shares its memory. Contribution is a byproduct of working, never a separate task. The commons grows with use.
 
 Knowledge is scored using [Subjective Logic](https://en.wikipedia.org/wiki/Subjective_logic) -- opinions expressed as belief, disbelief, and uncertainty rather than binary true/false. Trust is not granted; it is earned through alignment with the herd over time. Knowledge decays unless re-attested. Dissent is priced honestly: being early and right earns more than rubber-stamping a settled answer.
 
-Technically: an MCP server with epistemic scoring, trust grading, and temporal decay. PostgreSQL with pgvector for production, SQLite with sqlite-vec for development. OIDC authentication for multiuser deployments. Local stdio deployment today; Docker support planned.
+Technically: an MCP server with epistemic scoring, trust grading, and temporal decay. PostgreSQL with pgvector for production, SQLite with sqlite-vec for development. OIDC authentication for multiuser deployments. Runs locally over stdio, or as a published container image for self-hosting — see [docs/deploying.md](docs/deploying.md).
 
 See [IDEA.md](IDEA.md) for the full concept.
 
 ## Status
 
 Early development.
+
+## Deployment
+
+Pull the published image and run it locally over stdio:
+
+```bash
+docker run -i --rm -v lore-data:/data -e GEMINI_API_KEY=… ghcr.io/dmbch/lore:0.1.0
+```
+
+For HTTP / multi-user, PostgreSQL, OIDC, OpenTelemetry, and image customization, see [docs/deploying.md](docs/deploying.md). How releases are cut and versioned: [docs/release.md](docs/release.md).
 
 ## Configuration
 
