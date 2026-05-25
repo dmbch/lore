@@ -2,15 +2,13 @@
 
 **As far as we know.**
 
-[![CI](https://github.com/dmbch/lore/actions/workflows/ci.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/ci.yml)
-[![Release](https://github.com/dmbch/lore/actions/workflows/release.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/release.yml)
-[![Commitizen](https://github.com/dmbch/lore/actions/workflows/commitizen.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/commitizen.yml)
+[![Latest release](https://img.shields.io/github/v/release/dmbch/lore)](https://github.com/dmbch/lore/releases)
 
-Lore is a shared archive for teams that think for a living. It connects centaurs (a human and a frontier model, working together) into a herd that shares its memory. Contribution is a byproduct of working, never a separate task. The commons grows with use.
+Lore is a shared archive for teams that think for a living. It connects [centaurs](https://en.wikipedia.org/wiki/Advanced_chess) (a human and a frontier model working together) into a herd that shares its memory. Contribution is a byproduct of working, never a separate task; the archive grows as the herd uses it.
 
-Knowledge is scored using [Subjective Logic](https://en.wikipedia.org/wiki/Subjective_logic) -- opinions expressed as belief, disbelief, and uncertainty rather than binary true/false. Trust is not granted; it is earned through alignment with the herd over time. Knowledge decays unless re-attested. Dissent is priced honestly: being early and right earns more than rubber-stamping a settled answer.
+Knowledge is scored with [Subjective Logic](https://en.wikipedia.org/wiki/Subjective_logic): opinions carry belief, disbelief, and uncertainty, not a binary true/false. Trust is earned, not granted; it accrues by aligning with where the herd lands over time. Evidence decays unless re-attested, so stale claims fade on their own. Being early and right counts for more than agreeing with a settled answer.
 
-Technically: an MCP server with epistemic scoring, trust grading, and temporal decay. PostgreSQL with pgvector for production, SQLite with sqlite-vec for development. OIDC authentication for multiuser deployments. Runs locally over stdio, or as a published container image for self-hosting — see [docs/deploying.md](docs/deploying.md).
+Technically: an MCP server with epistemic scoring, trust grading, and temporal decay. PostgreSQL with pgvector for production, SQLite with sqlite-vec for local development. OIDC authentication for multi-user deployments. Run it locally over stdio, or deploy the published container image.
 
 See [IDEA.md](IDEA.md) for the full concept.
 
@@ -20,17 +18,109 @@ Early development.
 
 ## Deployment
 
-Pull the published image and run it locally over stdio:
+Lore ships as one batteries-included image: both backends are present (SQLite + sqlite-vec, PostgreSQL + pgvector), and you choose at runtime via `DATABASE_URL`. Images are published to the GitHub Container Registry as `ghcr.io/dmbch/lore`. Each release publishes `:X.Y.Z`, a `:X.Y` minor track that rolls forward, and `:latest`. The examples below use `:latest`; pin `:X.Y.Z` (or the `:X.Y` track) for production.
+
+The image runs as non-root (UID 1000, user `lore`), keeps state under `/data`, exposes port 8000 for the HTTP transport, and shuts down cleanly on `SIGTERM`. OpenTelemetry is opt-in, with exporters defaulting to `none`; see [Telemetry](#telemetry-optional) to ship traces and metrics.
+
+### Local, single user (stdio)
+
+The default transport is stdio: one user, one process, one machine. SQLite lives at `/data/lore.db`, so a single volume persists everything.
 
 ```bash
-docker run -i --rm -v lore-data:/data -e GEMINI_API_KEY=… ghcr.io/dmbch/lore:0.1.0
+docker run -i --rm \
+  -v lore-data:/data \
+  -e GEMINI_API_KEY="$GEMINI_API_KEY" \
+  ghcr.io/dmbch/lore:latest
 ```
 
-For HTTP / multi-user, PostgreSQL, OIDC, OpenTelemetry, and image customization, see [docs/deploying.md](docs/deploying.md). How releases are cut and versioned: [docs/release.md](docs/release.md).
+`-i` keeps stdin open for the stdio transport; point your MCP client (Claude Desktop, the MCP Inspector, …) at that `docker run` command. A vendor API key must be present at startup so Lore can resolve its embedding model; no network call is made at boot. To run from source instead, see [Development](#development).
+
+### HTTP, multi-user
+
+Switch transports with `FASTMCP_TRANSPORT=http`. The image doesn't set `FASTMCP_HOST`, so FastMCP binds loopback (`127.0.0.1`), unreachable from outside the container. To accept external traffic, set `FASTMCP_HOST=0.0.0.0` and publish the port.
+
+```bash
+docker run --rm \
+  -v lore-data:/data \
+  -e GEMINI_API_KEY="$GEMINI_API_KEY" \
+  -e FASTMCP_TRANSPORT=http \
+  -e FASTMCP_HOST=0.0.0.0 \
+  -e FASTMCP_PORT=8000 \
+  -p 8000:8000 \
+  ghcr.io/dmbch/lore:latest
+```
+
+The HTTP transport adds two operator endpoints alongside the MCP path: `GET /health` (liveness) and `GET /ready` (readiness, which confirms a working database connection). Wire them to your load balancer or orchestrator probes.
+
+Running HTTP with no authentication anywhere is not a supported topology. Either terminate auth at an upstream proxy, or enable OIDC in Lore (below) and set `auth_required = true` in `lore.toml` so startup refuses the open path.
+
+### PostgreSQL
+
+For production, bring your own PostgreSQL with the `pgvector` extension and point `DATABASE_URL` at it; the backend is selected from the DSN scheme.
+
+```bash
+docker run --rm \
+  -e DATABASE_URL="postgresql://user:pass@db.internal:5432/lore" \
+  -e GEMINI_API_KEY="$GEMINI_API_KEY" \
+  -e FASTMCP_TRANSPORT=http -e FASTMCP_HOST=0.0.0.0 \
+  -p 8000:8000 \
+  ghcr.io/dmbch/lore:latest
+```
+
+Migrations run at startup. The bootstrap health check refuses to start on an embedding-model or full-text-config mismatch, so a misconfigured vector space fails fast instead of degrading silently.
+
+### OIDC authentication
+
+For HTTP multi-user with Lore terminating auth itself, set both `OIDC_URL` (the discovery URL with embedded client credentials) and `BASE_URL`.
+
+```bash
+docker run --rm \
+  -e DATABASE_URL="postgresql://…" \
+  -e OIDC_URL="oidc://client_id:secret@auth.example.com/realms/lore" \
+  -e BASE_URL="https://lore.example.com" \
+  -e GEMINI_API_KEY="$GEMINI_API_KEY" \
+  -e FASTMCP_TRANSPORT=http -e FASTMCP_HOST=0.0.0.0 \
+  -p 8000:8000 \
+  ghcr.io/dmbch/lore:latest
+```
+
+Oracle identity comes from the IdP `sub` claim. Without `OIDC_URL`, every request runs as the synthetic `_local` identity, correct for stdio and for HTTP behind a proxy that authenticates upstream.
+
+### Configuration file
+
+Behavioral config is TOML, discovered from `./lore.toml` then `/etc/lore.toml` (first found wins). Since `WORKDIR` is `/data`, the simplest path is to drop `lore.toml` into the data volume; otherwise bind-mount a single file:
+
+```bash
+docker run … \
+  --mount type=bind,src="$PWD/lore.toml",dst=/etc/lore.toml,ro \
+  ghcr.io/dmbch/lore:latest
+```
+
+Use `--mount`, not `-v`, for a single file: if the source path is missing, `-v` silently creates a directory there and your config vanishes. The field reference is under [Configuration](#configuration).
+
+### Custom image
+
+To bake in your own `lore.toml` or prompt templates, build a child image from the published one and point `[prompts]` at the copied files.
+
+```dockerfile
+FROM ghcr.io/dmbch/lore:0.1.0
+COPY lore.toml /etc/lore.toml
+COPY prompts/ /opt/lore-prompts/
+```
+
+```toml
+# lore.toml
+[prompts]
+archivist = "/opt/lore-prompts/archivist.md"
+```
+
+Pin the base image rather than `:latest` so the derived artifact is reproducible, with your configuration baked into a versioned image instead of mounted at runtime.
 
 ## Configuration
 
-### Environment Variables
+Configuration has two disjoint sources. Secrets and deployment topology come from environment variables; behavioral config comes from `lore.toml`, discovered from `./lore.toml` then `/etc/lore.toml` (first found wins). Every TOML field has a bundled default, so you override only what you change.
+
+### Environment variables
 
 | Variable | Purpose |
 |----------|---------|
@@ -41,21 +131,20 @@ For HTTP / multi-user, PostgreSQL, OIDC, OpenTelemetry, and image customization,
 | `FASTMCP_PORT` | Server port (default 8000, managed by FastMCP) |
 | `FASTMCP_HOST` | Server host (default 127.0.0.1, managed by FastMCP) |
 
-The `FASTMCP_HOST` default of `127.0.0.1` is loopback-only — the right shape for stdio and for HTTP behind a same-host proxy. Container deployments that need to accept traffic from outside the container must set `FASTMCP_HOST=0.0.0.0`.
+`FASTMCP_HOST` defaults to `127.0.0.1` (loopback only), the right shape for stdio and for HTTP behind a same-host proxy. Container deployments that accept traffic from outside the container must set `FASTMCP_HOST=0.0.0.0`.
 
-OpenTelemetry shipping is opt-in via `opentelemetry-instrument`; see [Telemetry (optional)](#telemetry-optional) below for the env-var surface.
+### Vendor API keys
 
-### Vendor API Keys
+Lore auto-detects the LLM vendor from API keys in the environment; first lexical match wins (Bedrock before Gemini, Gemini before OpenAI). Any model string [LiteLLM](https://docs.litellm.ai/docs/providers) supports works, and TOML overrides are per-role, so you can mix vendors.
 
-Lore auto-detects which LLM vendor to use from API keys in the environment. First lexical match wins (Bedrock is checked before Gemini, Gemini before OpenAI). TOML overrides are per-role -- you can mix vendors. Any model string supported by [LiteLLM](https://docs.litellm.ai/docs/providers) works.
-
-| Vendor | Required env var(s) |
-|--------|---------------------|
+| Vendor | Required env var |
+|--------|------------------|
 | Gemini | `GEMINI_API_KEY` |
 | OpenAI | `OPENAI_API_KEY` |
 | Bedrock | `AWS_BEARER_TOKEN_BEDROCK` (long-term Bedrock API key) |
 
-Vendor defaults per model role:
+<details>
+<summary>Vendor model defaults per role</summary>
 
 | Vendor | Embedding | Fast | Reasoning |
 |--------|-----------|------|-----------|
@@ -63,9 +152,142 @@ Vendor defaults per model role:
 | OpenAI | `text-embedding-3-small` | `gpt-4.1-mini` | `o4-mini` |
 | Bedrock | `titan-embed-text-v2:0` | `nova-2-lite-v1:0` | `nova-2-pro-preview-20251202-v1:0` |
 
+</details>
+
+### Behavioral config (`lore.toml`)
+
+<details>
+<summary>Model roles — <code>[embedding]</code>, <code>[fast]</code>, <code>[reasoning]</code></summary>
+
+**`[embedding]`**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `model` | string | vendor default | LiteLLM model string for embeddings |
+| `dimensions` | int or omit | resolved from LiteLLM model info | Output vector size. Override for Matryoshka truncation |
+| `task_type.document` | string or omit | vendor default | Task type for document embedding |
+| `task_type.question` | string or omit | vendor default | Task type for question embedding |
+| `task_type.verification` | string or omit | vendor default | Task type for verification embedding |
+
+**`[fast]`** — the Interpreter (fast, cheap)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `model` | string | vendor default | LiteLLM model string |
+| `temperature` | float or omit | — | Sampling temperature |
+| `max_tokens` | int or omit | — | Max output tokens |
+| `reasoning_effort` | string or omit | vendor default | Reasoning effort level |
+
+**`[reasoning]`** — the Archivist (slow, careful)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `model` | string | vendor default | LiteLLM model string |
+| `temperature` | float or omit | — | Sampling temperature |
+| `max_tokens` | int or omit | — | Max output tokens |
+| `reasoning_effort` | string or omit | vendor default | Reasoning effort level |
+
+</details>
+
+<details>
+<summary>Epistemics — <code>[decay]</code>, <code>[trust]</code>, <code>[retrieval]</code></summary>
+
+**`[decay]`**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `attestation` | duration | `"90d"` | How fast knowledge ages. Duration string: `"1y"`, `"3M"`, `"90d"`, `"24h"`, `"60m"`, `"3600s"` |
+| `trust` | duration | `"90d"` | How fast oracle track records age. Independent of attestation decay |
+
+**`[trust]`**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `maturity` | float | `1.0` | Half-saturation constant K for oracle diversity. Higher means more oracles needed before the trust discount lifts. K = 0 disables the maturity safeguard |
+| `threshold` | float > 0 | `1e-3` | Epistemic-significance floor for the consolidated transfer attestation. Fused magnitudes below this skip the transfer row |
+
+**`[retrieval]`**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `proximity` | float [0, 1] | `0.5` | Weight for the vector cosine similarity lane |
+| `authority` | float [0, 1] | `0.5` | Weight for the full-text search lane |
+| `limit` | int | `10` | Final result count after scoring |
+| `fan_out` | int | `2` | Multiplier for per-lane candidate fetch (limit x fan_out) |
+| `max_keywords` | int | `10` | Max keywords for the authority lane query |
+
+</details>
+
+<details>
+<summary>Storage backends — <code>[postgres]</code>, <code>[sqlite]</code></summary>
+
+Only the section matching your `DATABASE_URL` backend applies.
+
+**`[postgres]`** — connection pool tuning for the production backend
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `min_size` | int | `1` | Minimum pooled connections |
+| `max_size` | int | `20` | Maximum pooled connections (must be >= `min_size`) |
+| `getconn_timeout` | float | `10.0` | Seconds a caller waits for a free connection before timing out |
+| `max_waiting` | int | `50` | Max callers queued for a connection (0 = unbounded) |
+| `fulltext_config` | string | `"english"` | Postgres text-search config for the authority lane (`german`, `french`, `simple`, …) |
+
+**`[sqlite]`** — full-text tokenizer for the development backend
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `fulltext_config` | string | `"porter unicode61"` | FTS5 `tokenize=` spec. Use `"unicode61"` (no stemming) for non-English deployments |
+
+Changing `fulltext_config` on an existing database requires rebuilding the FTS index; the bootstrap health check refuses to start on mismatch.
+
+</details>
+
+<details>
+<summary>Server, limits, prompts — <code>[server]</code>, <code>[limits]</code>, <code>[prompts]</code></summary>
+
+**`[server]`**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | `"Lore"` | Server identity for the MCP adapter |
+| `auth_required` | bool | `false` | Refuse HTTP startup when no `OIDC_URL` is set — fail-fast for the open-path mistake |
+
+**`[limits]`** — character limits for pipeline payloads; all values > 0
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `question` | int | `1024` | Max characters for the question field |
+| `hypothesis` | int | `3072` | Max characters for the hypothesis field |
+| `context` | int | `4096` | Max characters for the context field |
+| `reasoning` | int | `4096` | Max characters for the reasoning field |
+| `answer` | int | `8192` | Max characters for the Archivist's answer |
+
+**`[prompts]`** — template paths; bundled defaults unless overridden
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `scribe` | path | bundled | Scribe system prompt |
+| `consult` | path | bundled | Consult tool description |
+| `interpreter` | path | bundled | Interpreter system prompt |
+| `archivist` | path | bundled | Archivist system prompt |
+
+</details>
+
 ### Telemetry (optional)
 
-Lore uses the OpenTelemetry Python SDK, but ships no telemetry by default. Bare `uv run lore` records into the OTel API proxies — no spans, no metrics, zero overhead. To ship spans, metrics, and logs to a collector, launch via the auto-config wrapper instead: `uv run opentelemetry-instrument lore`. The wrapper installs SDK providers configured from `OTEL_*` environment variables, picks up any installed `opentelemetry-instrumentation-*` packages (psycopg, FastMCP, etc.), and ships through whichever exporter the env vars name.
+Lore uses the OpenTelemetry Python SDK but ships nothing by default. Bare `lore` records into the OTel API proxies: no spans, no metrics, zero overhead. To export, launch through the auto-config wrapper `opentelemetry-instrument`, which installs SDK providers from `OTEL_*` variables and picks up any installed `opentelemetry-instrumentation-*` packages. The container entrypoint already wraps Lore this way, with every exporter defaulting to `none`; set the standard variables to ship:
+
+```bash
+docker run … \
+  -e OTEL_TRACES_EXPORTER=otlp \
+  -e OTEL_METRICS_EXPORTER=otlp \
+  -e OTEL_EXPORTER_OTLP_ENDPOINT="http://collector:4317" \
+  ghcr.io/dmbch/lore:latest
+```
+
+<details>
+<summary>OpenTelemetry environment variables</summary>
 
 | Variable | Purpose |
 |----------|---------|
@@ -76,13 +298,15 @@ Lore uses the OpenTelemetry Python SDK, but ships no telemetry by default. Bare 
 | `OTEL_RESOURCE_ATTRIBUTES` | Comma-separated `k=v` pairs for collector-side tagging |
 | `OTEL_TRACES_EXPORTER` | `otlp` (default), `console`, or `none` |
 | `OTEL_METRICS_EXPORTER` | `otlp` (default), `console`, or `none` |
-| `OTEL_SDK_DISABLED` | `true` disables the entire SDK; alternative off-switch |
+| `OTEL_SDK_DISABLED` | `true` disables the entire SDK |
 
 See the [OTel Python SDK environment variables reference](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/) for the full surface.
 
-#### Redacting sensitive attributes
+</details>
 
-Lore emits `oracle_id` (the IdP `sub` claim) on spans and structured logs without transformation. Operators who need it redacted before it reaches a third-party APM configure the OTel collector's `attributes` processor at the export boundary -- the standard OTel pattern, not an application concern:
+#### Redacting `oracle_id`
+
+Lore emits `oracle_id` (the IdP `sub` claim) on spans and structured logs without transformation. To redact it before it reaches a third-party APM, configure the OTel collector's `attributes` processor at the export boundary:
 
 ```yaml
 processors:
@@ -94,98 +318,12 @@ processors:
 
 The ledger and provenance tables always store the raw value; redaction applies only to telemetry export.
 
-### TOML
-
-Behavioral config lives in `lore.toml` (discovered from `./lore.toml` then `/etc/lore.toml`; first found wins). All fields have bundled defaults -- a deployer only needs to override what they want to change.
-
-#### `[server]`
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | `"Lore"` | Server identity for the MCP adapter |
-
-#### `[embedding]`
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `model` | string | vendor default | [LiteLLM model string](https://docs.litellm.ai/docs/providers) for embeddings |
-| `dimensions` | int or omit | resolved from LiteLLM model info | Output vector size. Override for Matryoshka truncation |
-| `task_type.document` | string or omit | vendor default | Vendor-specific task type for document embedding |
-| `task_type.question` | string or omit | vendor default | Vendor-specific task type for question embedding |
-| `task_type.verification` | string or omit | vendor default | Vendor-specific task type for verification embedding |
-
-#### `[fast]`
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `model` | string | vendor default | LiteLLM model string for the Interpreter (fast, cheap) |
-| `temperature` | float or omit | -- | Sampling temperature |
-| `max_tokens` | int or omit | -- | Max output tokens |
-| `reasoning_effort` | string or omit | vendor default | Reasoning effort level |
-
-#### `[reasoning]`
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `model` | string | vendor default | LiteLLM model string for the Archivist (slow, careful) |
-| `temperature` | float or omit | -- | Sampling temperature |
-| `max_tokens` | int or omit | -- | Max output tokens |
-| `reasoning_effort` | string or omit | vendor default | Reasoning effort level |
-
-#### `[decay]`
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `attestation` | duration | `"90d"` | How fast knowledge ages. Duration string: `"1y"`, `"3M"`, `"90d"`, `"24h"`, `"60m"`, `"3600s"` |
-| `trust` | duration | `"90d"` | How fast oracle track records age. Independent of attestation decay |
-
-#### `[trust]`
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `maturity` | float | `1.0` | Half-saturation constant K for oracle diversity. Higher = more oracles needed before the trust discount lifts. K = 0 disables the maturity safeguard |
-| `threshold` | float > 0 | `1e-3` | Epistemic-significance floor for the consolidated transfer attestation. Fused magnitudes below this value skip the transfer row — the algebra has nothing meaningful to carry over |
-
-#### `[retrieval]`
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `proximity` | float [0, 1] | `0.5` | Weight for vector cosine similarity lane |
-| `authority` | float [0, 1] | `0.5` | Weight for full-text search lane |
-| `limit` | int | `10` | Final result count after scoring |
-| `fan_out` | int | `2` | Multiplier for per-lane candidate fetch (limit x fan_out) |
-| `max_keywords` | int | `10` | Max keywords for the authority lane query |
-
-#### `[limits]`
-
-Character limits for pipeline payloads. All values must be > 0.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `question` | int | `1024` | Max characters for the question field |
-| `hypothesis` | int | `3072` | Max characters for the hypothesis field |
-| `context` | int | `4096` | Max characters for the context field |
-| `reasoning` | int | `4096` | Max characters for the reasoning field |
-| `answer` | int | `8192` | Max characters for the Archivist's answer |
-
-#### `[prompts]`
-
-Prompt template paths. Bundled defaults are used unless overridden.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `scribe` | path | bundled | Scribe system prompt |
-| `consult` | path | bundled | Consult tool description |
-| `interpreter` | path | bundled | Interpreter system prompt |
-| `archivist` | path | bundled | Archivist system prompt |
-
-
 ## Development
 
 ### Prerequisites
 
 - Python 3.14+
-- [uv](https://docs.astral.sh/uv/) (package manager)
+- [uv](https://docs.astral.sh/uv/)
 
 ### Setup
 
@@ -193,22 +331,22 @@ Prompt template paths. Bundled defaults are used unless overridden.
 uv sync
 ```
 
-### Quality Checks
+### Quality checks
 
 ```bash
 uv run pytest                # tests
 uv run ruff check .          # lint
-uv run ruff format --check . # format (read-only check)
+uv run ruff format --check . # format (read-only)
 uv run pyright               # type check
 ```
 
-### Running locally
+### Running from source
 
 ```bash
 DATABASE_URL=sqlite:////tmp/lore-dev.db uv run lore
 ```
 
-Bare `uv run lore` records into no-op OTel providers — zero telemetry overhead. To ship spans, metrics, and logs to a collector, launch through the OTel auto-config wrapper:
+Bare `uv run lore` records into no-op OTel providers. To ship traces, metrics, and logs to a collector, launch through the auto-config wrapper:
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889 \
@@ -216,13 +354,13 @@ DATABASE_URL=sqlite:////tmp/lore-dev.db \
 uv run opentelemetry-instrument lore
 ```
 
-To step through tool calls interactively, wrap with the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) (requires Node.js):
+To step through tool calls, wrap the command with the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) (needs Node.js):
 
 ```bash
 DATABASE_URL=sqlite:////tmp/lore-dev.db npx @modelcontextprotocol/inspector uv run lore
 ```
 
-For local OTLP traces, logs, and metrics, the [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone) runs as a single container (requires Docker):
+For local OTLP traces, logs, and metrics, the [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone) runs as a single container:
 
 ```bash
 docker run -d --rm \
@@ -232,23 +370,21 @@ docker run -d --rm \
   mcr.microsoft.com/dotnet/aspire-dashboard:latest
 ```
 
-Then launch Lore through the `opentelemetry-instrument` wrapper with `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889` set (see the wrapped form above — setting the endpoint without the wrapper is a no-op). Open http://localhost:18888. Stop with `docker stop lore-aspire-dashboard`.
+Launch Lore through `opentelemetry-instrument` with `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889`, then open http://localhost:18888. Stop with `docker stop lore-aspire-dashboard`.
 
 ### Workflow
 
-This project is developed as a centaur: a human programmer and Claude Code working in close collaboration. The workflow is documented in [CLAUDE.md](CLAUDE.md) and enforced through Claude Code skills and commands.
+Lore is developed as a centaur: a human programmer and Claude Code in close collaboration. The workflow lives in [CLAUDE.md](CLAUDE.md), enforced through Claude Code skills and commands. Non-trivial work follows brainstorm, `/plan`, `/build` (TDD), `/review`.
 
-Non-trivial work follows: brainstorm, `/plan`, `/build` (TDD), `/review`.
-
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (no scope).
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (no scope). Releases are cut automatically from those commits by `.github/workflows/release.yml`: the version is computed from commit history, and the same checks that gate every PR — plus end-to-end and container smoke tests — must pass against the released commit before anything ships.
 
 ### Architecture
 
-Five layers, hexagonal style. See [docs/architecture.md](docs/architecture.md).
+Five layers, hexagonal. See [docs/architecture.md](docs/architecture.md) for the design and [docs/logic.md](docs/logic.md) for the Subjective Logic formalism.
 
 ## Contributing
 
-MIT licensed. Open source, but this project does not currently solicit or accept pull requests. Issues are welcome.
+MIT licensed. Open source, but this project doesn't currently solicit or accept pull requests. Issues are welcome.
 
 This is an experiment: open source in the age of AI.
 
