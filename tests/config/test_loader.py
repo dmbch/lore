@@ -323,18 +323,24 @@ def test_oidc_url_encoded_password() -> None:
     assert result.client_id == "cid"
 
 
-def test_oidc_url_with_query_string_preserves_query() -> None:
-    url = "oidc://cid:sec@auth.example.com/.well-known/openid-configuration?foo=bar"
+def test_parse_oidc_url_discovery_url_excludes_query_and_fragment() -> None:
+    url = "oidc://id:secret@host/path?foo=bar#frag"
     result = parse_oidc_url(url)
-    assert result.discovery_url == (
-        "https://auth.example.com/.well-known/openid-configuration?foo=bar"
-    )
+    assert result.discovery_url == "https://host/path"
 
 
-def test_oidc_url_with_fragment_preserves_fragment() -> None:
-    url = "oidc://cid:sec@auth.example.com/path#frag"
+def test_parse_oidc_url_extracts_query_into_extra_authorize_params() -> None:
+    """OIDC_URL query becomes upstream authorize params — verbatim, no denylist."""
+    url = "oidc://id:secret@host/path?hd=example.com&prompt=consent"
     result = parse_oidc_url(url)
-    assert result.discovery_url == "https://auth.example.com/path#frag"
+    assert result.extra_authorize_params == {"hd": "example.com", "prompt": "consent"}
+
+
+def test_parse_oidc_url_keeps_blank_query_values() -> None:
+    """`?prompt=` reaches the IdP as an empty value, not dropped silently at parse time."""
+    url = "oidc://id:secret@host/path?prompt="
+    result = parse_oidc_url(url)
+    assert result.extra_authorize_params == {"prompt": ""}
 
 
 def test_oidc_url_missing_credentials() -> None:

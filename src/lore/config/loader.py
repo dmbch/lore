@@ -9,7 +9,7 @@ import os
 import tomllib
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import unquote, urlparse, urlunsplit
+from urllib.parse import parse_qs, unquote, urlparse, urlunsplit
 
 import structlog
 from pydantic import SecretStr
@@ -36,11 +36,15 @@ def parse_oidc_url(url: str) -> OidcConfig:
     host = parsed.hostname
     if parsed.port:
         host = f"{host}:{parsed.port}"
-    discovery_url = urlunsplit(("https", host, parsed.path, parsed.query, parsed.fragment))
+    discovery_url = urlunsplit(("https", host, parsed.path, "", ""))
+    # keep_blank_values=True so `?prompt=` reaches the IdP and fails loudly there,
+    # rather than being silently dropped at parse time with no diagnostic.
+    extra = {k: v[0] for k, v in parse_qs(parsed.query, keep_blank_values=True).items()}
     return OidcConfig(
         discovery_url=discovery_url,
         client_id=unquote(parsed.username),
         client_secret=SecretStr(unquote(parsed.password)),
+        extra_authorize_params=extra,
     )
 
 
