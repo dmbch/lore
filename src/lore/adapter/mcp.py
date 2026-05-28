@@ -4,6 +4,8 @@ Thin adapter layer. Translates MCP protocol into orchestrator calls.
 No domain logic — parse, validate input shape, delegate.
 """
 
+import importlib.resources
+from base64 import b64encode
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Annotated, cast
@@ -14,6 +16,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.auth.oidc_proxy import OIDCProxy
 from fastmcp.server.dependencies import get_access_token
+from mcp.types import Icon
 from opentelemetry import trace as otel_trace
 from pydantic import Field, ValidationError
 from starlette.requests import Request
@@ -54,6 +57,12 @@ _PARAM_DESCRIPTIONS = {
         " Required when hypothesis is present; omit when the user has no view."
     ),
 }
+
+
+def _bundled_logo() -> str:
+    """Encode the bundled Lore logo as a data URI for the OIDC consent screen."""
+    data = importlib.resources.files("lore.adapter.assets").joinpath("logo.png").read_bytes()
+    return "data:image/png;base64," + b64encode(data).decode("ascii")
 
 
 def _build_auth(settings: LoreSettings) -> OIDCProxy | None:
@@ -102,6 +111,7 @@ def create_server(
         name=settings.server.name,
         version=settings.version,
         instructions=instructions,
+        icons=[Icon(src=settings.server.icon_url or _bundled_logo())],
         lifespan=lifespan,
         auth=auth,
     )
