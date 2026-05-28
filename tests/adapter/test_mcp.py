@@ -311,8 +311,13 @@ def test_build_auth_returns_none_without_base_url(settings: LoreSettings) -> Non
     assert _build_auth(oidc_settings) is None
 
 
-def test_build_auth_constructs_oidc_proxy(settings: LoreSettings) -> None:
-    """With OIDC config and base_url, constructs OIDCProxy."""
+def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -> None:
+    """OidcConfig + base_url flow into OIDCProxy as the four core construction kwargs.
+
+    Asserts kwargs individually so future kwarg additions don't drift this test
+    structurally. Per-kwarg tests below cover the trust-grading additions
+    (`required_scopes`, `verify_id_token`, `extra_authorize_params`).
+    """
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
     from lore.config.types import OidcConfig
 
@@ -328,13 +333,79 @@ def test_build_auth_constructs_oidc_proxy(settings: LoreSettings) -> None:
     )
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
         result = _build_auth(oidc_settings)
-    mock_proxy.assert_called_once_with(
-        config_url="https://auth.example.com/.well-known/openid-configuration",
-        client_id="test-client",
-        client_secret="test-secret",
-        base_url="https://lore.example.com",
-    )
+    kwargs = mock_proxy.call_args.kwargs
+    assert kwargs["config_url"] == "https://auth.example.com/.well-known/openid-configuration"
+    assert kwargs["client_id"] == "test-client"
+    assert kwargs["client_secret"] == "test-secret"
+    assert kwargs["base_url"] == "https://lore.example.com"
     assert result is mock_proxy.return_value
+
+
+def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None:
+    """openid is hardcoded at the OIDCProxy boundary — the minimum OIDC guarantees an id_token."""
+    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.config.types import OidcConfig
+
+    oidc_settings = settings.model_copy(
+        update={
+            "oidc": OidcConfig(
+                discovery_url="https://auth.example.com/.well-known/openid-configuration",
+                client_id="test-client",
+                client_secret=SecretStr("test-secret"),
+            ),
+            "base_url": "https://lore.example.com",
+        }
+    )
+    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+        _build_auth(oidc_settings)
+    assert mock_proxy.call_args.kwargs["required_scopes"] == ["openid"]
+
+
+@pytest.mark.parametrize("verify", [True, False])
+def test_build_auth_forwards_verify_id_token_from_settings(
+    settings: LoreSettings, verify: bool
+) -> None:
+    """settings.server.verify_id_token flows through to OIDCProxy verbatim."""
+    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.config.types import OidcConfig
+
+    oidc_settings = settings.model_copy(
+        update={
+            "oidc": OidcConfig(
+                discovery_url="https://auth.example.com/.well-known/openid-configuration",
+                client_id="test-client",
+                client_secret=SecretStr("test-secret"),
+            ),
+            "base_url": "https://lore.example.com",
+            "server": settings.server.model_copy(update={"verify_id_token": verify}),
+        }
+    )
+    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+        _build_auth(oidc_settings)
+    assert mock_proxy.call_args.kwargs["verify_id_token"] is verify
+
+
+def test_build_auth_forwards_extra_authorize_params_from_settings(
+    settings: LoreSettings,
+) -> None:
+    """Non-empty extra_authorize_params flows through verbatim (e.g. Google's hd=)."""
+    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.config.types import OidcConfig
+
+    oidc_settings = settings.model_copy(
+        update={
+            "oidc": OidcConfig(
+                discovery_url="https://auth.example.com/.well-known/openid-configuration",
+                client_id="test-client",
+                client_secret=SecretStr("test-secret"),
+                extra_authorize_params={"hd": "example.com"},
+            ),
+            "base_url": "https://lore.example.com",
+        }
+    )
+    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+        _build_auth(oidc_settings)
+    assert mock_proxy.call_args.kwargs["extra_authorize_params"] == {"hd": "example.com"}
 
 
 async def test_server_lifespan_delegates_to_system_cm(
