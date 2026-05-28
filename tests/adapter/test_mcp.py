@@ -49,6 +49,19 @@ def server(settings: LoreSettings) -> FastMCP[Orchestrator]:
     return create_server(settings=settings, system=_noop_system())
 
 
+def test_bundled_logo_returns_png_data_uri() -> None:
+    """_bundled_logo() encodes the packaged Lore mark as a data URI."""
+    import base64
+
+    from lore.adapter.mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
+
+    uri = _bundled_logo()
+    assert uri.startswith("data:image/png;base64,")
+    payload = uri.removeprefix("data:image/png;base64,")
+    decoded = base64.b64decode(payload)
+    assert decoded[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic
+
+
 async def test_server_registers_tool_with_configured_name(
     server: FastMCP[Orchestrator],
 ) -> None:
@@ -79,6 +92,33 @@ def test_server_reports_configured_version(settings: LoreSettings) -> None:
         system=_noop_system(),
     )
     assert versioned.version == "1.2.3"
+
+
+def test_create_server_uses_configured_icon_url(settings: LoreSettings) -> None:
+    """When server.icon_url is set, the FastMCP server's icons list carries it."""
+    configured = settings.model_copy(
+        update={
+            "server": settings.server.model_copy(
+                update={"icon_url": "https://example.com/lore.png"}
+            )
+        }
+    )
+    server = create_server(settings=configured, system=_noop_system())
+    assert server.icons is not None
+    assert len(server.icons) == 1
+    assert server.icons[0].src == "https://example.com/lore.png"
+
+
+def test_create_server_falls_back_to_bundled_logo(settings: LoreSettings) -> None:
+    """When server.icon_url is unset, the bundled logo bytes round-trip through icons[0]."""
+    from lore.adapter.mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
+
+    # settings has icon_url=None by default (fixture uses base TOML).
+    assert settings.server.icon_url is None  # sanity-check the fixture state
+    server = create_server(settings=settings, system=_noop_system())
+    assert server.icons is not None
+    assert len(server.icons) == 1
+    assert server.icons[0].src == _bundled_logo()
 
 
 @pytest.fixture()
