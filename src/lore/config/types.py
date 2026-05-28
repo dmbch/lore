@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, SecretStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
 _DURATION_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([yMdhms]?)$")
 _UNITS: dict[str, int] = {
@@ -47,6 +47,7 @@ class OidcConfig(BaseModel):
     discovery_url: str
     client_id: str
     client_secret: SecretStr
+    extra_authorize_params: dict[str, str] = Field(default_factory=dict)
 
 
 class TaskTypeConfig(BaseModel):
@@ -265,6 +266,8 @@ class ServerConfig(BaseModel):
 
     name: str = "Lore"
     auth_required: bool = False
+    icon_url: str | None = None
+    verify_id_token: bool = True
 
 
 class PromptsConfig(BaseModel):

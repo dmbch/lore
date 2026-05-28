@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from lore.config import PostgresConfig, PromptsConfig, load_settings
 from lore.config.loader import (
@@ -17,6 +17,7 @@ from lore.config.loader import (
 from lore.config.types import (
     DecayConfig,
     LimitsConfig,
+    OidcConfig,
     RetrievalConfig,
     ServerConfig,
     SqliteConfig,
@@ -258,6 +259,16 @@ def test_server_config_auth_required_defaults_to_false() -> None:
     assert sc.auth_required is False
 
 
+def test_server_config_icon_url_defaults_to_none() -> None:
+    sc = ServerConfig()
+    assert sc.icon_url is None
+
+
+def test_server_config_verify_id_token_defaults_to_true() -> None:
+    sc = ServerConfig()
+    assert sc.verify_id_token is True
+
+
 def test_server_config_auth_required_round_trips_from_toml(tmp_path: Path) -> None:
     toml_file = tmp_path / "auth.toml"
     toml_file.write_text(
@@ -267,6 +278,20 @@ def test_server_config_auth_required_round_trips_from_toml(tmp_path: Path) -> No
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=toml_file)
         assert s.server.auth_required is True
+
+
+# ---------------------------------------------------------------------------
+# OidcConfig
+# ---------------------------------------------------------------------------
+
+
+def test_oidc_config_extra_authorize_params_defaults_to_empty() -> None:
+    oc = OidcConfig(
+        discovery_url="https://auth.example.com/.well-known/openid-configuration",
+        client_id="cid",
+        client_secret=SecretStr("sec"),
+    )
+    assert oc.extra_authorize_params == {}
 
 
 # ---------------------------------------------------------------------------
