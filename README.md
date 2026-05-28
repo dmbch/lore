@@ -86,6 +86,8 @@ docker run --rm \
 
 Oracle identity comes from the IdP `sub` claim. Without `OIDC_URL`, every request runs as the synthetic `_local` identity, correct for stdio and for HTTP behind a proxy that authenticates upstream.
 
+Query parameters on `OIDC_URL` (e.g. `?hd=example.com`) are forwarded verbatim to the upstream authorize endpoint.
+
 ### Configuration file
 
 Behavioral config is TOML, discovered from `./lore.toml` then `/etc/lore.toml` (first found wins). Since `WORKDIR` is `/data`, the simplest path is to drop `lore.toml` into the data volume; otherwise bind-mount a single file:
@@ -252,6 +254,8 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 |-------|------|---------|-------------|
 | `name` | string | `"Lore"` | Server identity for the MCP adapter |
 | `auth_required` | bool | `false` | Refuse HTTP startup when no `OIDC_URL` is set — fail-fast for the open-path mistake |
+| `icon_url` | string or omit | bundled logo | Logo URL shown on the OIDC consent screen |
+| `verify_id_token` | bool | `true` | Verify the OIDC id_token signature |
 
 **`[limits]`** — character limits for pipeline payloads; all values > 0
 
