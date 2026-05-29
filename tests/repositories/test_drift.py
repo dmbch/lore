@@ -14,7 +14,7 @@ structural test, not a behavioral test of the async Protocol layer.
 import re
 import sqlite3
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, ClassVar
 
 import psycopg
 import pytest
@@ -429,7 +429,7 @@ class TestSchemaDrift:
     # - hypotheses_embedding_hnsw: pgvector HNSW index on the embedding
     #   column. sqlite-vec has no index analogue and brute-forces
     #   proximity queries.
-    _PG_ONLY_INDEXES: set[str] = {"idx_hypotheses_fulltext", "hypotheses_embedding_hnsw"}
+    _PG_ONLY_INDEXES: ClassVar[set[str]] = {"idx_hypotheses_fulltext", "hypotheses_embedding_hnsw"}
 
     @pytest.mark.parametrize("table", _RELATIONAL_TABLES)
     def test_same_indexes(
