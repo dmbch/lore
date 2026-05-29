@@ -48,6 +48,7 @@ from lore.repositories.sqlite.attestations import SqliteAttestationsRepository
 from lore.repositories.sqlite.hypotheses import SqliteHypothesisRepository
 from lore.repositories.sqlite.pool import SqlitePool
 from lore.repositories.sqlite.requests import SqliteRequestRepository
+from tests.repositories._orchestrator_fixtures import make_settings as _make_settings
 
 # Test PostgresConfig — defaults from PLAN.md locked positions, used wherever
 # a repository test instantiates the pool.
@@ -76,8 +77,6 @@ def make_settings(
     embedding_model: str = "test/embedding-model",
 ) -> LoreSettings:
     """Minimal LoreSettings for tests that exercise the factory."""
-    from tests.repositories._orchestrator_fixtures import make_settings as _make_settings
-
     return _make_settings(
         dsn=dsn, embedding_model=embedding_model, postgres=postgres, sqlite=sqlite
     )
