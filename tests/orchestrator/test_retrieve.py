@@ -15,6 +15,7 @@ psycopg version dropping its internal lock cannot regress the system.
 
 import asyncio
 import importlib.resources
+import itertools
 import time
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
@@ -249,7 +250,7 @@ def _make_orchestrator(
 def _windows_overlap(windows: Sequence[tuple[float, float]]) -> bool:
     """True iff any pair of windows overlaps in time."""
     sorted_windows = sorted(windows)
-    for (_, prev_exit), (next_entry, _) in zip(sorted_windows, sorted_windows[1:], strict=False):
+    for (_, prev_exit), (next_entry, _) in itertools.pairwise(sorted_windows):
         if next_entry < prev_exit:
             return True
     return False
