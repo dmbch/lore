@@ -9,6 +9,7 @@ logic, not schema application. Smoke tests use real databases.
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import psycopg
@@ -62,7 +63,7 @@ class TestRunMigrationsRouting:
 class TestRunMigrationsSqliteBackend:
     """run_migrations applies schema with sqlite-vec loaded."""
 
-    _EXPECTED_TABLES = {
+    _EXPECTED_TABLES: ClassVar[set[str]] = {
         "hypotheses",
         "attestations",
         "requests",
@@ -166,7 +167,7 @@ def pg_migrations_dsn(pg_dsn_session: str) -> Iterator[str]:
 class TestRunMigrationsPostgresBackend:
     """run_migrations applies schema to PostgreSQL."""
 
-    _EXPECTED_TABLES = {
+    _EXPECTED_TABLES: ClassVar[set[str]] = {
         "hypotheses",
         "attestations",
         "requests",
