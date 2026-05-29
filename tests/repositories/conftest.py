@@ -339,11 +339,17 @@ async def append_attestation(
     defaults to zero — the "fresh hypothesis" boundary — so trust-scan
     fixtures that care about the value must pass it explicitly.
 
-    Hardcoded for callers that don't care: ``correlation_id`` (the default
-    correlation ID), ``timestamp = 1000``, ``t_oracle = 0.5``,
-    ``c_oracle_raw = 0.5``. Tests that need to vary any of those four
-    fields construct an ``AttestationRecord`` explicitly and call
-    ``repo.append(record)`` directly.
+    Hardcoded inside the helper: ``correlation_id``, ``timestamp = 1000``,
+    ``t_oracle = 0.5``, ``c_oracle_raw = 0.5``. ``timestamp`` and
+    ``c_oracle_raw`` are commonly varied — trust-scan tests are windowed
+    over time and aligned against raw confidence — and those callers
+    construct an ``AttestationRecord`` explicitly and call
+    ``repo.append(record)`` directly. See ``test_oracle_trust.py`` for the
+    pattern. The helper stays minimal so persistence tests (the majority,
+    which only care about *that* a row landed) read as one line; trust
+    tests pay verbosity in exchange for spelling out every field they
+    control. The split keeps the helper under PLR0913 and out of the way
+    of the math that the trust tests are actually about.
     """
     # Qualified access through ``records.generate_id`` so the monkeypatch in
     # ``test_two_backend_parity._force_fixed_id`` (which patches
