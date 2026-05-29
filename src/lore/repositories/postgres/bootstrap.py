@@ -122,7 +122,8 @@ def check_health(
                 (embedding_model,),
             ).fetchone()
         except psycopg.errors.UndefinedTable as e:
-            raise StorageError("run_migrations() must be called before check_health()") from e
+            msg = "run_migrations() must be called before check_health()"
+            raise StorageError(msg) from e
         if row is not None and row[0] != embedding_model:
             msg = (
                 f"Embedding model mismatch: database has {row[0]!r},"

@@ -45,7 +45,8 @@ def configure(*, toml_path: Path | None = None) -> LoreSettings:
     configure_telemetry()
     settings = load_settings(toml_path=toml_path)
     if settings.server.auth_required and settings.oidc is None:
-        raise ValueError("[server] auth_required = true requires OIDC_URL")
+        msg = "[server] auth_required = true requires OIDC_URL"
+        raise ValueError(msg)
     return settings
 
 

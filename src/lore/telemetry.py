@@ -30,7 +30,7 @@ _configured = False
 
 
 @contextmanager
-def start_span(name: str, **context: str | int | float | bool) -> Generator[otel_trace.Span]:
+def start_span(name: str, **context: str | float | bool) -> Generator[otel_trace.Span]:
     """Open a span and bind `context` to both span attributes and structlog contextvars."""
     with otel_trace.get_tracer("lore").start_as_current_span(name) as span:
         for k, v in context.items():

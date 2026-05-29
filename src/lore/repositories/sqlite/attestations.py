@@ -178,4 +178,5 @@ class SqliteAttestationsRepository:
         except ValidationError as e:
             # Source is the database — bounds violation in a stored row
             # surfaces as a storage-layer error, not an inference failure.
-            raise StorageError(f"malformed attestation row: {e}") from e
+            msg = f"malformed attestation row: {e}"
+            raise StorageError(msg) from e

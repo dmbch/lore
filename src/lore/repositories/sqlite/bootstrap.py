@@ -136,7 +136,8 @@ def check_health(
                 (embedding_model,),
             ).fetchone()
         except sqlite3.OperationalError as e:
-            raise StorageError("run_migrations() must be called before check_health()") from e
+            msg = "run_migrations() must be called before check_health()"
+            raise StorageError(msg) from e
         # No explicit COMMIT needed — _connect uses isolation_level=None
         # (autocommit), so the upsert commits immediately.
         if row is not None and row[0] != embedding_model:
