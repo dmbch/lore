@@ -368,3 +368,41 @@ class AttestationComputed(NamedTuple):
     c_oracle_raw: float
     c_oracle_discounted: float
     c_herd: float
+
+
+class WriteContext(BaseModel):
+    """Write-path coordinates for the Recorder.
+
+    The four fields are produced side-by-side at the start of the write
+    path (orchestrator.py around the record() call) and threaded verbatim
+    through every attestation. Bundling them keeps record() and Recorder
+    under PLR0913 without a suppression.
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    oracle_id: str
+    correlation_id: str
+    confidence: float
+    t_now: int
+
+    @field_validator("oracle_id", "correlation_id")
+    @classmethod
+    def _validate_non_empty(cls, v: str, info: ValidationInfo) -> str:
+        if not v:
+            msg = f"{info.field_name} must be non-empty"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("confidence")
+    @classmethod
+    def _validate_confidence(cls, v: float, info: ValidationInfo) -> float:
+        return _check_confidence(value=v, field_name=info.field_name)
+
+    @field_validator("t_now")
+    @classmethod
+    def _validate_t_now(cls, v: int) -> int:
+        if v < 0:
+            msg = f"t_now must be >= 0, got {v}"
+            raise ValueError(msg)
+        return v

@@ -18,11 +18,23 @@ import pytest
 import structlog
 
 from lore.config import LoreSettings
-from lore.domain import TRANSFER_ORACLE, ArchivistOutput, Resolution, TrustSignal
+from lore.domain import (
+    TRANSFER_ORACLE,
+    ArchivistOutput,
+    Resolution,
+    TrustSignal,
+    WriteContext,
+)
 from lore.math import MathService
 from lore.math.opinion import EPSILON
 from lore.orchestrator.record import Recorder
-from lore.repositories import AttestationRecord, HypothesisRecord, HypothesisResult
+from lore.repositories import (
+    AttestationRecord,
+    HypothesisRecord,
+    HypothesisResult,
+    Repositories,
+    RequestRecord,
+)
 from tests.orchestrator.conftest import make_settings
 
 
@@ -78,6 +90,13 @@ class _StubAttestations:
         self, *, oracle_id: str, t_now: int, trust_half_life: float
     ) -> list[TrustSignal]:
         raise NotImplementedError
+
+
+class _NoopRequests:
+    """Repositories bundle requires a requests repo; the Recorder never touches it."""
+
+    async def store(self, record: RequestRecord) -> None:
+        del record
 
 
 # Fixed identifiers used across tests.
@@ -138,18 +157,21 @@ def _make_recorder(
     attestations = _StubAttestations()
     math_service = MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0)
     attestation_map = {_CONTRADICTED_ID: [_attestation_with_c_herd(c_herd_of_contradicted)]}
+    repos = Repositories(hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests())
+    context = WriteContext(
+        oracle_id=oracle_id,
+        correlation_id=_CORRELATION_ID,
+        confidence=0.7,
+        t_now=_T_NOW,
+    )
     recorder = Recorder(
-        hypotheses=hypotheses,
-        attestations=attestations,
+        repos=repos,
         math=math_service,
         reasoned=_archivist_output(resolution),
         attestation_map=attestation_map,
         novel_embeddings={_NOVEL_CONTENT: [0.1, 0.2, 0.3]},
-        oracle_id=oracle_id,
-        correlation_id=_CORRELATION_ID,
-        confidence=0.7,
+        context=context,
         t_oracle=0.5,
-        t_now=_T_NOW,
         settings=_settings_with_threshold(threshold),
     )
     return recorder, attestations
@@ -310,20 +332,25 @@ class TestComputeTransferBalancedContradictionsSkipsTransfer:
 
         hypotheses = _StubHypotheses()
         attestations = _StubAttestations()
+        repos = Repositories(
+            hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests()
+        )
+        context = WriteContext(
+            oracle_id="oracle-1",
+            correlation_id=_CORRELATION_ID,
+            confidence=0.7,
+            t_now=_T_NOW,
+        )
         recorder = Recorder(
-            hypotheses=hypotheses,
-            attestations=attestations,
+            repos=repos,
             math=MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0),
             reasoned=_archivist_output(
                 Resolution(contributes=_NOVEL_CONTENT, contradicts=[h_a, h_b])
             ),
             attestation_map=attestation_map,
             novel_embeddings={_NOVEL_CONTENT: [0.1, 0.2, 0.3]},
-            oracle_id="oracle-1",
-            correlation_id=_CORRELATION_ID,
-            confidence=0.7,
+            context=context,
             t_oracle=0.5,
-            t_now=_T_NOW,
             settings=_settings_with_threshold(),
         )
 
@@ -449,19 +476,24 @@ class TestRecorderPassesDistinctOracleCountToAppend:
 
         hypotheses = _StubHypotheses()
         attestations = _StubAttestations()
+        repos = Repositories(
+            hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests()
+        )
+        context = WriteContext(
+            oracle_id="oracle-1",
+            correlation_id=_CORRELATION_ID,
+            confidence=0.7,
+            t_now=_T_NOW,
+        )
         math_service = MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0)
         recorder = Recorder(
-            hypotheses=hypotheses,
-            attestations=attestations,
+            repos=repos,
             math=math_service,
             reasoned=_archivist_output(Resolution(corroborates=existing_id)),
             attestation_map={existing_id: existing},
             novel_embeddings={},
-            oracle_id="oracle-1",
-            correlation_id=_CORRELATION_ID,
-            confidence=0.7,
+            context=context,
             t_oracle=0.5,
-            t_now=_T_NOW,
             settings=_settings_with_threshold(),
         )
 
@@ -478,19 +510,24 @@ class TestRecorderPassesDistinctOracleCountToAppend:
 
         hypotheses = _StubHypotheses()
         attestations = _StubAttestations()
+        repos = Repositories(
+            hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests()
+        )
+        context = WriteContext(
+            oracle_id="oracle-1",
+            correlation_id=_CORRELATION_ID,
+            confidence=0.7,
+            t_now=_T_NOW,
+        )
         math_service = MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0)
         recorder = Recorder(
-            hypotheses=hypotheses,
-            attestations=attestations,
+            repos=repos,
             math=math_service,
             reasoned=_archivist_output(Resolution(corroborates=existing_id)),
             attestation_map={existing_id: []},
             novel_embeddings={},
-            oracle_id="oracle-1",
-            correlation_id=_CORRELATION_ID,
-            confidence=0.7,
+            context=context,
             t_oracle=0.5,
-            t_now=_T_NOW,
             settings=_settings_with_threshold(),
         )
 

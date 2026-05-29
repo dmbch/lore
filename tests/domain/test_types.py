@@ -13,6 +13,7 @@ from lore.domain.types import (
     Resolution,
     SearchResult,
     TrustSignal,
+    WriteContext,
 )
 
 
@@ -606,3 +607,64 @@ class TestArchivistOutputDisjointNovels:
             ],
         )
         assert len(o.resolutions) == 2
+
+
+# --- Record stage / write path ---
+
+
+def _valid_context(**overrides: object) -> WriteContext:
+    defaults: dict[str, object] = {
+        "oracle_id": "oracle-1",
+        "correlation_id": "corr-1",
+        "confidence": 0.7,
+        "t_now": 2_000_000_000,
+    }
+    defaults.update(overrides)
+    return WriteContext(**defaults)  # pyright: ignore[reportArgumentType]
+
+
+class TestWriteContextValidation:
+    """WriteContext bundles the four write-path coordinates with boundary checks."""
+
+    def test_accepts_valid_data(self) -> None:
+        c = _valid_context()
+        assert c.oracle_id == "oracle-1"
+        assert c.correlation_id == "corr-1"
+        assert c.confidence == 0.7
+        assert c.t_now == 2_000_000_000
+
+    def test_accepts_boundary_confidence_values(self) -> None:
+        assert _valid_context(confidence=-1.0).confidence == -1.0
+        assert _valid_context(confidence=1.0).confidence == 1.0
+
+    def test_accepts_zero_t_now(self) -> None:
+        assert _valid_context(t_now=0).t_now == 0
+
+    def test_rejects_empty_oracle_id(self) -> None:
+        with pytest.raises(ValueError, match="oracle_id"):
+            _valid_context(oracle_id="")
+
+    def test_rejects_empty_correlation_id(self) -> None:
+        with pytest.raises(ValueError, match="correlation_id"):
+            _valid_context(correlation_id="")
+
+    def test_rejects_confidence_out_of_range(self) -> None:
+        with pytest.raises(ValueError, match="confidence"):
+            _valid_context(confidence=1.5)
+
+    def test_rejects_nan_confidence(self) -> None:
+        with pytest.raises(ValueError, match="confidence"):
+            _valid_context(confidence=float("nan"))
+
+    def test_rejects_negative_t_now(self) -> None:
+        with pytest.raises(ValueError, match="t_now"):
+            _valid_context(t_now=-1)
+
+
+class TestWriteContextImmutability:
+    """Frozen Pydantic model — mutation raises ValidationError."""
+
+    def test_is_frozen(self) -> None:
+        c = _valid_context()
+        with pytest.raises(ValidationError, match="frozen"):
+            c.oracle_id = "other"  # pyright: ignore[reportAttributeAccessIssue]
