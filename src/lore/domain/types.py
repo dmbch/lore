@@ -371,13 +371,7 @@ class AttestationComputed(NamedTuple):
 
 
 class WriteContext(BaseModel):
-    """Write-path coordinates for the Recorder.
-
-    The four fields are produced side-by-side at the start of the write
-    path (orchestrator.py around the record() call) and threaded verbatim
-    through every attestation. Bundling them keeps record() and Recorder
-    under PLR0913 without a suppression.
-    """
+    """Per-consult write coordinates threaded verbatim through every attestation."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
