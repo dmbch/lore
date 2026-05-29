@@ -18,6 +18,6 @@ async def aembedding(
     *,
     model: str,
     input: list[str],
-    **kwargs: Any,
+    **kwargs: Any,  # noqa: ANN401 - vendor stub mirrors LiteLLM's open kwarg surface
 ) -> EmbeddingResponse: ...
 def get_model_info(model: str) -> Mapping[str, Any]: ...

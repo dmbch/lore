@@ -16,7 +16,10 @@ from lore.providers.protocols import TaskTypeKey
 
 
 async def _call_litellm_embedding(
-    *, model: str, input: list[str], **extra: Any
+    *,
+    model: str,
+    input: list[str],
+    **extra: Any,  # noqa: ANN401 - LiteLLM kwarg passthrough
 ) -> EmbeddingResponse:
     """Typed-boundary wrapper over ``litellm.aembedding``.
 
