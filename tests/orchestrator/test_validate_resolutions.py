@@ -135,7 +135,7 @@ class _NoopAttestations:
     async def find_by_hypotheses(
         self, hypothesis_ids: Sequence[str]
     ) -> dict[str, list[AttestationRecord]]:
-        return dict.fromkeys(hypothesis_ids, [])
+        return {h: [] for h in hypothesis_ids}
 
     async def fetch_trust_alignments(
         self,
