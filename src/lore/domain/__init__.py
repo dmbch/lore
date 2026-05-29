@@ -27,6 +27,7 @@ from lore.domain.types import (
     Resolution,
     SearchResult,
     TrustSignal,
+    WriteContext,
 )
 
 __all__ = [
@@ -50,4 +51,5 @@ __all__ = [
     "SearchResult",
     "StorageError",
     "TrustSignal",
+    "WriteContext",
 ]

@@ -16,6 +16,7 @@ from lore.domain import (
     AttestationComputed,
     EvidenceInput,
     Resolution,
+    WriteContext,
 )
 from lore.math import MathService
 from lore.repositories import AttestationRecord, Repositories
@@ -24,7 +25,6 @@ from lore.telemetry import start_span
 
 if TYPE_CHECKING:
     from lore.config import LoreSettings
-    from lore.repositories import AttestationsRepository, HypothesisRepository
 
 log = structlog.get_logger(__name__)
 
@@ -35,10 +35,7 @@ async def record(
     math: MathService,
     reasoned: ArchivistOutput,
     novel_embeddings: dict[str, list[float]],
-    oracle_id: str,
-    correlation_id: str,
-    confidence: float,
-    t_now: int,
+    context: WriteContext,
     settings: LoreSettings,
 ) -> None:
     """Trust scan, attestation refetch, and writes — all inside the caller's
@@ -48,28 +45,24 @@ async def record(
     target_ids = _resolution_target_ids(reasoned.resolutions)
     with start_span("lore.record"):
         alignments = await repos.attestations.fetch_trust_alignments(
-            oracle_id=oracle_id,
-            t_now=t_now,
+            oracle_id=context.oracle_id,
+            t_now=context.t_now,
             trust_half_life=settings.decay.trust,
         )
-        t_oracle = math.compute_oracle_trust(rows=alignments, t_now=t_now)
+        t_oracle = math.compute_oracle_trust(rows=alignments, t_now=context.t_now)
 
         attestation_map = (
             await repos.attestations.find_by_hypotheses(list(target_ids)) if target_ids else {}
         )
 
         recorder = Recorder(
-            hypotheses=repos.hypotheses,
-            attestations=repos.attestations,
+            repos=repos,
             math=math,
             reasoned=reasoned,
             attestation_map=attestation_map,
             novel_embeddings=novel_embeddings,
-            oracle_id=oracle_id,
-            correlation_id=correlation_id,
-            confidence=confidence,
+            context=context,
             t_oracle=t_oracle,
-            t_now=t_now,
             settings=settings,
         )
 
@@ -137,40 +130,32 @@ class Recorder:
     def __init__(
         self,
         *,
-        hypotheses: HypothesisRepository,
-        attestations: AttestationsRepository,
+        repos: Repositories,
         math: MathService,
         reasoned: ArchivistOutput,
         attestation_map: dict[str, list[AttestationRecord]],
         novel_embeddings: dict[str, list[float]],
-        oracle_id: str,
-        correlation_id: str,
-        confidence: float,
+        context: WriteContext,
         t_oracle: float,
-        t_now: int,
         settings: LoreSettings,
     ) -> None:
         # _transfer is reserved for _compute_transfer (full credibility, no
         # discount). Accepting it as the principal oracle_id would bypass
         # trust discounting at the one site it lives. The adapter rejects
         # IdP-claimed _* values; this is the domain-layer enforcement.
-        if oracle_id == TRANSFER_ORACLE:
+        if context.oracle_id == TRANSFER_ORACLE:
             msg = (
-                f"Recorder.oracle_id must not equal {TRANSFER_ORACLE!r} —"
+                f"Recorder.context.oracle_id must not equal {TRANSFER_ORACLE!r} —"
                 " that synthetic is reserved for _compute_transfer"
             )
             raise ValueError(msg)
-        self._hypotheses = hypotheses
-        self._attestations = attestations
+        self._repos = repos
         self._math = math
         self._reasoned = reasoned
         self._attestation_map = attestation_map
         self._novel_embeddings = novel_embeddings
-        self._oracle_id = oracle_id
-        self._correlation_id = correlation_id
-        self._confidence = confidence
+        self._context = context
         self._t_oracle = t_oracle
-        self._t_now = t_now
         self._settings = settings
 
     async def dispatch(self) -> None:
@@ -189,9 +174,9 @@ class Recorder:
     async def _corroborate(self, corroborates: str, *, contradicts: list[str]) -> None:
         """Positive attestation on the paraphrased hypothesis; negatives on contradicted."""
         log.info("resolution.paraphrase", corroborates=corroborates, contradicts=contradicts)
-        await self._attest_existing(hypothesis_id=corroborates, confidence=self._confidence)
+        await self._attest_existing(hypothesis_id=corroborates, confidence=self._context.confidence)
         for h_id in contradicts:
-            await self._attest_existing(hypothesis_id=h_id, confidence=-self._confidence)
+            await self._attest_existing(hypothesis_id=h_id, confidence=-self._context.confidence)
 
     async def _contribute(self, contributes: str, *, contradicts: list[str]) -> None:
         """Store novel; consolidated transfer (against pre-contradiction state);
@@ -206,10 +191,10 @@ class Recorder:
 
         transfer = self._compute_transfer(contradicts)
 
-        record = await self._hypotheses.store(
+        record = await self._repos.hypotheses.store(
             content=contributes,
             embedding=self._novel_embeddings[contributes],
-            created_at=self._t_now,
+            created_at=self._context.t_now,
         )
 
         transfer_evidence: list[EvidenceInput] = []
@@ -224,13 +209,13 @@ class Recorder:
                 t_oracle=1.0,
                 n_oracle_prior=0,
             )
-            await self._attestations.append(
+            await self._repos.attestations.append(
                 AttestationRecord(
                     id=generate_id(),
                     hypothesis_id=record.id,
                     oracle_id=TRANSFER_ORACLE,
-                    correlation_id=self._correlation_id,
-                    timestamp=self._t_now,
+                    correlation_id=self._context.correlation_id,
+                    timestamp=self._context.t_now,
                     t_oracle=1.0,
                     c_oracle_raw=transfer,
                     c_oracle_discounted=transfer,
@@ -239,20 +224,20 @@ class Recorder:
                 )
             )
             transfer_evidence.append(
-                EvidenceInput(c_oracle_discounted=transfer, timestamp=self._t_now)
+                EvidenceInput(c_oracle_discounted=transfer, timestamp=self._context.t_now)
             )
 
         computed = self._math.prepare_attestation(
-            confidence=self._confidence,
+            confidence=self._context.confidence,
             existing=transfer_evidence,
-            t_now=self._t_now,
+            t_now=self._context.t_now,
             t_oracle=self._t_oracle,
             n_oracle_prior=0,
         )
         await self._record_attestation(hypothesis_id=record.id, computed=computed, n_oracle_prior=0)
 
         for h_id in contradicts:
-            await self._attest_existing(hypothesis_id=h_id, confidence=-self._confidence)
+            await self._attest_existing(hypothesis_id=h_id, confidence=-self._context.confidence)
 
     def _compute_transfer(self, contradicts: list[str]) -> float | None:
         """Consolidated transfer scalar from the latest c_herd per contradicted
@@ -269,7 +254,9 @@ class Recorder:
             )
         if not evidence_pieces:
             return None
-        fused = self._math.compute_confidence(attestations=evidence_pieces, t_now=self._t_now)
+        fused = self._math.compute_confidence(
+            attestations=evidence_pieces, t_now=self._context.t_now
+        )
         c_transfer = -fused
         if abs(c_transfer) < self._settings.trust.threshold:
             log.debug(
@@ -288,11 +275,11 @@ class Recorder:
         # truth. The semantics ("distinct oracles other than self") live here;
         # changing this helper changes the meaning for *new* rows only, so any
         # change must consider that historical rows preserve the old semantics.
-        n_oracle_prior = _count_distinct_oracles(records=existing, exclude=self._oracle_id)
+        n_oracle_prior = _count_distinct_oracles(records=existing, exclude=self._context.oracle_id)
         computed = self._math.prepare_attestation(
             confidence=confidence,
             existing=_to_evidence(existing),
-            t_now=self._t_now,
+            t_now=self._context.t_now,
             t_oracle=self._t_oracle,
             n_oracle_prior=n_oracle_prior,
         )
@@ -312,20 +299,20 @@ class Recorder:
         log.debug(
             "recorder.attestation",
             hypothesis_id=hypothesis_id,
-            oracle_id=self._oracle_id,
+            oracle_id=self._context.oracle_id,
             c_oracle_raw=computed.c_oracle_raw,
             c_oracle_discounted=computed.c_oracle_discounted,
             c_herd=computed.c_herd,
             t_oracle=computed.t_oracle,
             n_oracle_prior=n_oracle_prior,
         )
-        await self._attestations.append(
+        await self._repos.attestations.append(
             AttestationRecord(
                 id=generate_id(),
                 hypothesis_id=hypothesis_id,
-                oracle_id=self._oracle_id,
-                correlation_id=self._correlation_id,
-                timestamp=self._t_now,
+                oracle_id=self._context.oracle_id,
+                correlation_id=self._context.correlation_id,
+                timestamp=self._context.t_now,
                 t_oracle=computed.t_oracle,
                 c_oracle_raw=computed.c_oracle_raw,
                 c_oracle_discounted=computed.c_oracle_discounted,

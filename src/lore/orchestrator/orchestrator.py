@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from lore.domain import ConsultLoreRequest, ConsultLoreResponse, RetryableTransactionError
+from lore.domain import (
+    ConsultLoreRequest,
+    ConsultLoreResponse,
+    RetryableTransactionError,
+    WriteContext,
+)
 from lore.math import MathService
 from lore.repositories import RepositoryPool, RequestRecord
 from lore.telemetry import start_span
@@ -162,6 +167,12 @@ class Orchestrator:
                     ]
                     novel_embeddings = await embed_novels(session=session, novels=novels)
 
+                    context = WriteContext(
+                        oracle_id=oracle_id,
+                        correlation_id=correlation_id,
+                        confidence=request.confidence,
+                        t_now=t_now,
+                    )
                     for attempt in range(RECORD_MAX_ATTEMPTS):
                         try:
                             async with self._pool.transaction() as repos:
@@ -170,10 +181,7 @@ class Orchestrator:
                                     math=self._math,
                                     reasoned=reasoned,
                                     novel_embeddings=novel_embeddings,
-                                    oracle_id=oracle_id,
-                                    correlation_id=correlation_id,
-                                    confidence=request.confidence,
-                                    t_now=t_now,
+                                    context=context,
                                     settings=self._settings,
                                 )
                             break
