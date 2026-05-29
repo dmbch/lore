@@ -52,7 +52,17 @@ target-version = "py314"
 exclude = [".claude/worktrees", "references"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C90", "FBT", "PLR0913", "RUF"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+[tool.ruff.lint.per-file-ignores]
+"src/lore/math/**" = ["RUF002", "RUF003"]   # canonical unicode math notation
+"tests/math/**"    = ["RUF002", "RUF003"]   # math test docstrings mirror the notation
 
 [tool.pyright]
 include = ["src", "tests"]
