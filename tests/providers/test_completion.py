@@ -2,7 +2,6 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import openai
@@ -25,7 +24,7 @@ class _DummyResponse(BaseModel):
 class _CompletionHarness:
     """Pre-wired CompletionProvider with accessible mocks."""
 
-    def __init__(self, mock_instructor: Any, mock_create: AsyncMock) -> None:
+    def __init__(self, mock_instructor: MagicMock, mock_create: AsyncMock) -> None:
         self.mock_instructor = mock_instructor
         self.mock_create = mock_create
 
