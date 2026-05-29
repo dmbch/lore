@@ -50,9 +50,9 @@ def _connect(dsn: str) -> sqlite3.Connection:
         )
         raise ValueError(msg)
     conn = sqlite3.connect(path, isolation_level=None)
-    conn.enable_load_extension(True)
+    conn.enable_load_extension(True)  # noqa: FBT003 - positional-only sqlite3 API
     conn.load_extension(sqlite_vec.loadable_path())
-    conn.enable_load_extension(False)
+    conn.enable_load_extension(False)  # noqa: FBT003 - positional-only sqlite3 API
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
 

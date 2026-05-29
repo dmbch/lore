@@ -34,9 +34,9 @@ async def connect(path: str) -> aiosqlite.Connection:
     try:
         await conn.execute("PRAGMA journal_mode=WAL")
         await conn.execute("PRAGMA foreign_keys=ON")
-        await conn.enable_load_extension(True)
+        await conn.enable_load_extension(True)  # noqa: FBT003 - positional-only sqlite3 API
         await conn.load_extension(sqlite_vec.loadable_path())
-        await conn.enable_load_extension(False)
+        await conn.enable_load_extension(False)  # noqa: FBT003 - positional-only sqlite3 API
     except sqlite3.Error, OSError:
         await conn.close()
         raise
