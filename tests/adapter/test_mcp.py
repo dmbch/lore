@@ -403,7 +403,7 @@ def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None
 
 @pytest.mark.parametrize("verify", [True, False])
 def test_build_auth_forwards_verify_id_token_from_settings(
-    settings: LoreSettings, verify: bool
+    settings: LoreSettings, *, verify: bool
 ) -> None:
     """settings.server.verify_id_token flows through to OIDCProxy verbatim."""
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]

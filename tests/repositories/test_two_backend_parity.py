@@ -395,6 +395,7 @@ class TestFTSBehavioralParity:
     )
     async def test_fts_recall_parity_verified(
         self,
+        *,
         backend: BackendFixture,
         stored: str,
         query: str,
