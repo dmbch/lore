@@ -58,19 +58,8 @@ class _FailingAttestationsRepo:
     def __init__(self, inner: AttestationsRepository) -> None:
         self._inner = inner
 
-    async def append(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
+    async def append(self, record: AttestationRecord) -> None:
+        del record
         msg = "attestations.append failing inside transaction"
         raise RuntimeError(msg)
 

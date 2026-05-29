@@ -19,6 +19,7 @@ from lore.domain import (
 )
 from lore.math import MathService
 from lore.repositories import AttestationRecord, Repositories
+from lore.repositories.records import generate_id
 from lore.telemetry import start_span
 
 if TYPE_CHECKING:
@@ -224,15 +225,18 @@ class Recorder:
                 n_oracle_prior=0,
             )
             await self._attestations.append(
-                hypothesis_id=record.id,
-                oracle_id=TRANSFER_ORACLE,
-                correlation_id=self._correlation_id,
-                timestamp=self._t_now,
-                t_oracle=1.0,
-                c_oracle_raw=transfer,
-                c_oracle_discounted=transfer,
-                c_herd=transfer,
-                n_oracle_prior=0,
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=record.id,
+                    oracle_id=TRANSFER_ORACLE,
+                    correlation_id=self._correlation_id,
+                    timestamp=self._t_now,
+                    t_oracle=1.0,
+                    c_oracle_raw=transfer,
+                    c_oracle_discounted=transfer,
+                    c_herd=transfer,
+                    n_oracle_prior=0,
+                )
             )
             transfer_evidence.append(
                 EvidenceInput(c_oracle_discounted=transfer, timestamp=self._t_now)
@@ -316,13 +320,16 @@ class Recorder:
             n_oracle_prior=n_oracle_prior,
         )
         await self._attestations.append(
-            hypothesis_id=hypothesis_id,
-            oracle_id=self._oracle_id,
-            correlation_id=self._correlation_id,
-            timestamp=self._t_now,
-            t_oracle=computed.t_oracle,
-            c_oracle_raw=computed.c_oracle_raw,
-            c_oracle_discounted=computed.c_oracle_discounted,
-            c_herd=computed.c_herd,
-            n_oracle_prior=n_oracle_prior,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=hypothesis_id,
+                oracle_id=self._oracle_id,
+                correlation_id=self._correlation_id,
+                timestamp=self._t_now,
+                t_oracle=computed.t_oracle,
+                c_oracle_raw=computed.c_oracle_raw,
+                c_oracle_discounted=computed.c_oracle_discounted,
+                c_herd=computed.c_herd,
+                n_oracle_prior=n_oracle_prior,
+            )
         )

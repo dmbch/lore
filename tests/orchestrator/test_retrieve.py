@@ -121,30 +121,8 @@ class _OverlapTrackingHypotheses:
 
 
 class _NoopAttestations:
-    async def append(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
-        del (
-            hypothesis_id,
-            oracle_id,
-            correlation_id,
-            timestamp,
-            t_oracle,
-            c_oracle_raw,
-            c_oracle_discounted,
-            c_herd,
-            n_oracle_prior,
-        )
+    async def append(self, record: AttestationRecord) -> None:
+        del record
         raise NotImplementedError
 
     async def find_by_hypothesis(self, hypothesis_id: str) -> list[AttestationRecord]:

@@ -6,11 +6,13 @@ from collections.abc import Awaitable, Callable
 import pytest
 
 from lore.domain import IntegrityViolation, StorageError
+from lore.repositories import AttestationRecord
 from lore.repositories.protocols import (
     AttestationsRepository,
     HypothesisRepository,
     RequestRepository,
 )
+from lore.repositories.records import generate_id
 from tests.repositories.conftest import seed_hypothesis, seed_request
 
 
@@ -27,15 +29,18 @@ class TestAppend:
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=1000,
-            t_oracle=0.5,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.4,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
         )
         found = await attestations_repo.find_by_hypothesis(h_id)
         assert len(found) == 1
@@ -50,15 +55,18 @@ class TestAppend:
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=1000,
-            t_oracle=0.5,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.4,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
         )
         found = await attestations_repo.find_by_hypothesis(h_id)
         assert len(found) == 1
@@ -80,26 +88,32 @@ class TestAppend:
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=1000,
-            t_oracle=0.5,
-            c_oracle_raw=0.3,
-            c_oracle_discounted=0.15,
-            c_herd=0.3,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.3,
+                c_oracle_discounted=0.15,
+                c_herd=0.3,
+                n_oracle_prior=0,
+            )
         )
         await attestations_repo.append(
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=2000,
-            t_oracle=0.5,
-            c_oracle_raw=0.7,
-            c_oracle_discounted=0.35,
-            c_herd=0.5,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=2000,
+                t_oracle=0.5,
+                c_oracle_raw=0.7,
+                c_oracle_discounted=0.35,
+                c_herd=0.5,
+                n_oracle_prior=0,
+            )
         )
         found = await attestations_repo.find_by_hypothesis(h_id)
         assert len(found) == 2
@@ -112,15 +126,18 @@ class TestAppend:
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         with pytest.raises(IntegrityViolation):
             await attestations_repo.append(
-                hypothesis_id="00000000-0000-0000-0000-000000000001",
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=1000,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id="00000000-0000-0000-0000-000000000001",
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=1000,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
 
@@ -142,15 +159,18 @@ class TestNOraclePriorRoundTrip:
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=1000,
-            t_oracle=0.5,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.4,
-            n_oracle_prior=3,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=3,
+            )
         )
         found = await attestations_repo.find_by_hypothesis(h_id)
         assert len(found) == 1
@@ -166,15 +186,18 @@ class TestNOraclePriorRoundTrip:
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=1000,
-            t_oracle=0.5,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.4,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
         )
         found = await attestations_repo.find_by_hypothesis(h_id)
         assert len(found) == 1
@@ -195,15 +218,18 @@ class TestFindByHypothesis:
         # Insert out of order
         for ts in (3000, 1000, 2000):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=ts,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=ts,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
         found = await attestations_repo.find_by_hypothesis(h_id)
         timestamps = [r.timestamp for r in found]
@@ -230,26 +256,32 @@ class TestFindByHypotheses:
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c02")
         await attestations_repo.append(
-            hypothesis_id=h1,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=1000,
-            t_oracle=0.5,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.4,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h1,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
         )
         await attestations_repo.append(
-            hypothesis_id=h2,
-            oracle_id="sub:oracle-2",
-            correlation_id="00000000-0000-0000-0000-000000000c02",
-            timestamp=2000,
-            t_oracle=0.6,
-            c_oracle_raw=0.7,
-            c_oracle_discounted=0.42,
-            c_herd=0.6,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h2,
+                oracle_id="sub:oracle-2",
+                correlation_id="00000000-0000-0000-0000-000000000c02",
+                timestamp=2000,
+                t_oracle=0.6,
+                c_oracle_raw=0.7,
+                c_oracle_discounted=0.42,
+                c_herd=0.6,
+                n_oracle_prior=0,
+            )
         )
         result = await attestations_repo.find_by_hypotheses([h1, h2])
         assert len(result[h1]) == 1
@@ -267,15 +299,18 @@ class TestFindByHypotheses:
         missing = "00000000-0000-0000-0000-000000000000"
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
-            hypothesis_id=h1,
-            oracle_id="sub:oracle-1",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=1000,
-            t_oracle=0.5,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.4,
-            n_oracle_prior=0,
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h1,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
         )
         result = await attestations_repo.find_by_hypotheses([h1, missing])
         assert len(result[h1]) == 1
@@ -298,15 +333,18 @@ class TestFindByHypotheses:
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         for ts in (3000, 1000, 2000):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=ts,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=ts,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
         result = await attestations_repo.find_by_hypotheses([h_id])
         timestamps = [r.timestamp for r in result[h_id]]
@@ -324,15 +362,18 @@ class TestStorageError:
         await sabotage_connection()
         with pytest.raises(StorageError):
             await attestations_repo.append(
-                hypothesis_id="00000000-0000-0000-0000-000000000001",
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=1000,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id="00000000-0000-0000-0000-000000000001",
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=1000,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
     async def test_find_by_hypothesis_raises(
@@ -383,17 +424,23 @@ class TestCheckConstraints:
     ) -> None:
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        # The out-of-bounds value violates AttestationRecord validation, so
+        # build the record via ``model_construct`` to exercise the DB CHECK
+        # constraint directly.
         with pytest.raises(StorageError):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=1000,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=1.5,  # out of [-1, 1]
-                n_oracle_prior=0,
+                AttestationRecord.model_construct(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=1000,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=1.5,  # out of [-1, 1]
+                    n_oracle_prior=0,
+                )
             )
 
     async def test_append_with_c_oracle_raw_below_minus_one_raises_storage_error(
@@ -406,15 +453,18 @@ class TestCheckConstraints:
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         with pytest.raises(StorageError):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=1000,
-                t_oracle=0.5,
-                c_oracle_raw=-1.5,  # out of [-1, 1]
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord.model_construct(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=1000,
+                    t_oracle=0.5,
+                    c_oracle_raw=-1.5,  # out of [-1, 1]
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
     async def test_append_with_c_oracle_discounted_above_one_raises_storage_error(
@@ -427,15 +477,18 @@ class TestCheckConstraints:
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         with pytest.raises(StorageError):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=1000,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=1.1,  # out of [-1, 1]
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord.model_construct(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=1000,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=1.1,  # out of [-1, 1]
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
     async def test_append_with_t_oracle_negative_raises_storage_error(
@@ -449,15 +502,18 @@ class TestCheckConstraints:
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         with pytest.raises(StorageError):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=1000,
-                t_oracle=-0.1,  # out of [0, 1]
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord.model_construct(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=1000,
+                    t_oracle=-0.1,  # out of [0, 1]
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
     async def test_append_with_t_oracle_above_one_raises_storage_error(
@@ -470,15 +526,18 @@ class TestCheckConstraints:
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         with pytest.raises(StorageError):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-1",
-                correlation_id="00000000-0000-0000-0000-000000000c01",
-                timestamp=1000,
-                t_oracle=1.5,  # out of [0, 1]
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord.model_construct(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=1000,
+                    t_oracle=1.5,  # out of [0, 1]
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
 
@@ -505,17 +564,22 @@ class TestTrustSignalReadValidation:
             timestamp=0,
         )
         # Use a negative timestamp — passes column NOT NULL, has no CHECK,
-        # but TrustSignal._validate_timestamp rejects it.
+        # but TrustSignal._validate_timestamp rejects it. ``model_construct``
+        # bypasses ``AttestationRecord._validate_timestamp`` so the negative
+        # value reaches storage and the read-side validation can be exercised.
         await attestations_repo.append(
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-A",
-            correlation_id="00000000-0000-0000-0000-000000000c01",
-            timestamp=-1,
-            t_oracle=0.5,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.4,
-            n_oracle_prior=0,
+            AttestationRecord.model_construct(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-A",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=-1,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
         )
         with pytest.raises(StorageError):
             await attestations_repo.fetch_trust_alignments(

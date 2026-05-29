@@ -18,6 +18,7 @@ import pytest
 
 from lore.domain import DuplicateRecord, IntegrityViolation, StorageError
 from lore.repositories import AttestationRecord, RepositoryPool
+from lore.repositories.records import generate_id
 from lore.repositories.sqlite.pool import SqlitePool
 from tests.repositories.conftest import (
     NO_DECAY_TRUST_HL,
@@ -131,19 +132,11 @@ class TestUuidCollisionRaisesDuplicateRecord:
         self, backend: BackendFixture, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         h_id = await seed_hypothesis(backend.hypotheses)
-        await seed_request(backend.requests, correlation_id="00000000-0000-0000-0000-00000000c011")
+        await seed_request(backend.requests, correlation_id="00000000-0000-0000-0000-000000000099")
         _force_fixed_id(monkeypatch)
-        await append_attestation(
-            backend.attestations,
-            hypothesis_id=h_id,
-            correlation_id="00000000-0000-0000-0000-00000000c011",
-        )
+        await append_attestation(backend.attestations, hypothesis_id=h_id)
         with pytest.raises(DuplicateRecord):
-            await append_attestation(
-                backend.attestations,
-                hypothesis_id=h_id,
-                correlation_id="00000000-0000-0000-0000-00000000c011",
-            )
+            await append_attestation(backend.attestations, hypothesis_id=h_id)
 
 
 class TestCheckViolationClassification:
@@ -155,12 +148,23 @@ class TestCheckViolationClassification:
         h_id = await seed_hypothesis(backend.hypotheses)
         correlation_id = "00000000-0000-0000-0000-0000000c0c00"
         await seed_request(backend.requests, correlation_id=correlation_id)
+        # c_oracle_raw=2.0 violates AttestationRecord's [-1, 1] validation
+        # before reaching storage — use model_construct to bypass and exercise
+        # the CHECK constraint directly.
         with pytest.raises(IntegrityViolation):
-            await append_attestation(
-                backend.attestations,
-                hypothesis_id=h_id,
-                correlation_id=correlation_id,
-                c_oracle_raw=2.0,
+            await backend.attestations.append(
+                AttestationRecord.model_construct(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id=correlation_id,
+                    timestamp=1000,
+                    t_oracle=0.5,
+                    c_oracle_raw=2.0,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
 
@@ -181,15 +185,23 @@ class TestStorageRejectsNan:
         correlation_id = "00000000-0000-0000-0000-0000000a1a1a"
         await seed_request(backend.requests, correlation_id=correlation_id)
         nan = float("nan")
+        # NaN in any confidence field violates AttestationRecord's finiteness
+        # validation before reaching storage — use model_construct to bypass
+        # and exercise the storage-layer NaN rejection directly.
         with pytest.raises(StorageError):
-            await append_attestation(
-                backend.attestations,
-                hypothesis_id=h_id,
-                correlation_id=correlation_id,
-                t_oracle=nan if column == "t_oracle" else 0.5,
-                c_oracle_raw=nan if column == "c_oracle_raw" else 0.5,
-                c_oracle_discounted=nan if column == "c_oracle_discounted" else 0.25,
-                c_herd=nan if column == "c_herd" else 0.4,
+            await backend.attestations.append(
+                AttestationRecord.model_construct(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id=correlation_id,
+                    timestamp=1000,
+                    t_oracle=nan if column == "t_oracle" else 0.5,
+                    c_oracle_raw=nan if column == "c_oracle_raw" else 0.5,
+                    c_oracle_discounted=nan if column == "c_oracle_discounted" else 0.25,
+                    c_herd=nan if column == "c_herd" else 0.4,
+                    n_oracle_prior=0,
+                )
             )
 
 
@@ -275,30 +287,38 @@ class TestTrustAlignmentsDeterministicOrder:
         await seed_request(backend.requests, correlation_id=correlation_id)
 
         for h_id in hypothesis_ids:
-            await append_attestation(
-                backend.attestations,
-                hypothesis_id=h_id,
-                oracle_id=seed_oracle,
-                correlation_id=correlation_id,
-                timestamp=100,
-                c_oracle_raw=0.1,
-                c_oracle_discounted=0.05,
-                c_herd=0.1,
+            await backend.attestations.append(
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id=seed_oracle,
+                    correlation_id=correlation_id,
+                    timestamp=100,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.1,
+                    c_oracle_discounted=0.05,
+                    c_herd=0.1,
+                    n_oracle_prior=0,
+                )
             )
 
         # The burst: same timestamp, distinct ``c_oracle_raw`` per row so
         # we can see which row landed where in the response.
         distinct_raws = [0.21, 0.22, 0.23, 0.24, 0.25]
         for h_id, raw in zip(hypothesis_ids, distinct_raws, strict=True):
-            await append_attestation(
-                backend.attestations,
-                hypothesis_id=h_id,
-                oracle_id=oracle,
-                correlation_id=correlation_id,
-                timestamp=200,
-                c_oracle_raw=raw,
-                c_oracle_discounted=raw / 2,
-                c_herd=raw,
+            await backend.attestations.append(
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id=oracle,
+                    correlation_id=correlation_id,
+                    timestamp=200,
+                    t_oracle=0.5,
+                    c_oracle_raw=raw,
+                    c_oracle_discounted=raw / 2,
+                    c_herd=raw,
+                    n_oracle_prior=0,
+                )
             )
 
         first = await backend.attestations.fetch_trust_alignments(

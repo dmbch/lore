@@ -13,7 +13,7 @@ from lore.repositories.protocols import (
     HypothesisRepository,
     RequestRepository,
 )
-from lore.repositories.records import RequestRecord
+from lore.repositories.records import AttestationRecord, RequestRecord, generate_id
 from tests.repositories.conftest import BackendFixture, seed_hypothesis
 
 
@@ -143,15 +143,18 @@ class TestAttestationForeignKey:
         h_id = await seed_hypothesis(hypothesis_repo)
         with pytest.raises(StorageError):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-A",
-                correlation_id="unseeded-correlation-id",
-                timestamp=1000,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-A",
+                    correlation_id="unseeded-correlation-id",
+                    timestamp=1000,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
 
     async def test_attestation_fk_allows_multiple_attestations_per_request(
@@ -164,15 +167,18 @@ class TestAttestationForeignKey:
         h_id = await seed_hypothesis(hypothesis_repo)
         for ts in (1000, 2000, 3000):
             await attestations_repo.append(
-                hypothesis_id=h_id,
-                oracle_id="sub:oracle-A",
-                correlation_id="00000000-0000-0000-0000-0000000000fb",
-                timestamp=ts,
-                t_oracle=0.5,
-                c_oracle_raw=0.5,
-                c_oracle_discounted=0.25,
-                c_herd=0.4,
-                n_oracle_prior=0,
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-A",
+                    correlation_id="00000000-0000-0000-0000-0000000000fb",
+                    timestamp=ts,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
             )
         found = await attestations_repo.find_by_hypothesis(h_id)
         assert len(found) == 3

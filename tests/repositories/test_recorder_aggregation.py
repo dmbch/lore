@@ -19,13 +19,15 @@ from lore.domain import (
 )
 from lore.orchestrator import Orchestrator
 from lore.providers import Providers
+from lore.repositories import AttestationRecord
+from lore.repositories.records import generate_id
 from tests.repositories._orchestrator_fixtures import (
     FixedEmbedder,
     StubCompletion,
     make_math,
     make_settings,
 )
-from tests.repositories.conftest import BackendFixture, append_attestation, seed_request
+from tests.repositories.conftest import BackendFixture, seed_request
 
 
 async def test_recorder_passes_full_prior_history_to_prepare_attestation(
@@ -59,22 +61,34 @@ async def test_recorder_passes_full_prior_history_to_prepare_attestation(
     # test is what the Recorder computes from ``c_oracle_discounted`` and
     # ``timestamp``, not what the prior ``c_herd`` fields say.
     await seed_request(backend.requests, correlation_id=prior_a_id, timestamp=1000)
-    await append_attestation(
-        backend.attestations,
-        hypothesis_id=existing.id,
-        oracle_id="oracle-A",
-        correlation_id=prior_a_id,
-        timestamp=1000,
-        c_oracle_discounted=0.3,
+    await backend.attestations.append(
+        AttestationRecord(
+            id=generate_id(),
+            hypothesis_id=existing.id,
+            oracle_id="oracle-A",
+            correlation_id=prior_a_id,
+            timestamp=1000,
+            t_oracle=0.5,
+            c_oracle_raw=0.5,
+            c_oracle_discounted=0.3,
+            c_herd=0.4,
+            n_oracle_prior=0,
+        )
     )
     await seed_request(backend.requests, correlation_id=prior_b_id, timestamp=2000)
-    await append_attestation(
-        backend.attestations,
-        hypothesis_id=existing.id,
-        oracle_id="oracle-B",
-        correlation_id=prior_b_id,
-        timestamp=2000,
-        c_oracle_discounted=-0.2,
+    await backend.attestations.append(
+        AttestationRecord(
+            id=generate_id(),
+            hypothesis_id=existing.id,
+            oracle_id="oracle-B",
+            correlation_id=prior_b_id,
+            timestamp=2000,
+            t_oracle=0.5,
+            c_oracle_raw=0.5,
+            c_oracle_discounted=-0.2,
+            c_herd=0.4,
+            n_oracle_prior=0,
+        )
     )
 
     interpreter = StubCompletion(

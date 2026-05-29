@@ -29,6 +29,7 @@ from testcontainers.postgres import PostgresContainer
 from lore.config import LoreSettings, PostgresConfig
 from lore.config.types import SqliteConfig
 from lore.repositories import (
+    AttestationRecord,
     AttestationsRepository,
     HypothesisRepository,
     Repositories,
@@ -36,6 +37,7 @@ from lore.repositories import (
     RequestRecord,
     RequestRepository,
     connect,
+    records,
     run_migrations,
 )
 from lore.repositories.postgres.attestations import PostgresAttestationsRepository
@@ -325,10 +327,6 @@ async def append_attestation(
     *,
     hypothesis_id: str,
     oracle_id: str = "sub:oracle-1",
-    correlation_id: str = "00000000-0000-0000-0000-000000000099",
-    timestamp: int = 1000,
-    t_oracle: float = 0.5,
-    c_oracle_raw: float = 0.5,
     c_oracle_discounted: float = 0.25,
     c_herd: float = 0.4,
     n_oracle_prior: int = 0,
@@ -340,15 +338,27 @@ async def append_attestation(
     Repository tests verify persistence, not algebra. ``n_oracle_prior``
     defaults to zero — the "fresh hypothesis" boundary — so trust-scan
     fixtures that care about the value must pass it explicitly.
+
+    Hardcoded for callers that don't care: ``correlation_id`` (the default
+    correlation ID), ``timestamp = 1000``, ``t_oracle = 0.5``,
+    ``c_oracle_raw = 0.5``. Tests that need to vary any of those four
+    fields construct an ``AttestationRecord`` explicitly and call
+    ``repo.append(record)`` directly.
     """
+    # Qualified access through ``records.generate_id`` so the monkeypatch in
+    # ``test_two_backend_parity._force_fixed_id`` (which patches
+    # ``lore.repositories.records.generate_id``) reaches this call site.
     await repo.append(
-        hypothesis_id=hypothesis_id,
-        oracle_id=oracle_id,
-        correlation_id=correlation_id,
-        timestamp=timestamp,
-        t_oracle=t_oracle,
-        c_oracle_raw=c_oracle_raw,
-        c_oracle_discounted=c_oracle_discounted,
-        c_herd=c_herd,
-        n_oracle_prior=n_oracle_prior,
+        AttestationRecord(
+            id=records.generate_id(),
+            hypothesis_id=hypothesis_id,
+            oracle_id=oracle_id,
+            correlation_id="00000000-0000-0000-0000-000000000099",
+            timestamp=1000,
+            t_oracle=0.5,
+            c_oracle_raw=0.5,
+            c_oracle_discounted=c_oracle_discounted,
+            c_herd=c_herd,
+            n_oracle_prior=n_oracle_prior,
+        )
     )

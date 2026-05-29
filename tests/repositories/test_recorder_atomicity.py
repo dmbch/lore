@@ -37,6 +37,7 @@ from lore.repositories import (
     Repositories,
     RepositoryPool,
 )
+from lore.repositories.records import generate_id
 from tests.repositories._orchestrator_fixtures import (
     FixedEmbedder,
     StubCompletion,
@@ -45,7 +46,6 @@ from tests.repositories._orchestrator_fixtures import (
 )
 from tests.repositories.conftest import (
     BackendFixture,
-    append_attestation,
     seed_request,
 )
 
@@ -64,32 +64,10 @@ class _FailingOnSecondCallAttestationsRepo:
         self._inner = inner
         self.calls = 0
 
-    async def append(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
+    async def append(self, record: AttestationRecord) -> None:
         self.calls += 1
         if self.calls == 1:
-            await self._inner.append(
-                hypothesis_id=hypothesis_id,
-                oracle_id=oracle_id,
-                correlation_id=correlation_id,
-                timestamp=timestamp,
-                t_oracle=t_oracle,
-                c_oracle_raw=c_oracle_raw,
-                c_oracle_discounted=c_oracle_discounted,
-                c_herd=c_herd,
-                n_oracle_prior=n_oracle_prior,
-            )
+            await self._inner.append(record)
             return
         msg = "attestations.append failing on second call"
         raise StorageError(msg)
@@ -184,10 +162,19 @@ async def test_recorder_failure_rolls_back_attestations(
         content="an existing claim", embedding=[0.1] * 1024, created_at=0
     )
     await seed_request(backend.requests, correlation_id=prior_correlation_id)
-    await append_attestation(
-        backend.attestations,
-        hypothesis_id=existing.id,
-        correlation_id=prior_correlation_id,
+    await backend.attestations.append(
+        AttestationRecord(
+            id=generate_id(),
+            hypothesis_id=existing.id,
+            oracle_id="sub:oracle-1",
+            correlation_id=prior_correlation_id,
+            timestamp=1000,
+            t_oracle=0.5,
+            c_oracle_raw=0.5,
+            c_oracle_discounted=0.25,
+            c_herd=0.4,
+            n_oracle_prior=0,
+        )
     )
 
     interpreter = StubCompletion(

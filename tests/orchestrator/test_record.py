@@ -57,65 +57,14 @@ class _StubHypotheses:
         raise NotImplementedError
 
 
-class _AppendCall:
-    """Recorded call to ``append``."""
-
-    def __init__(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
-        self.hypothesis_id = hypothesis_id
-        self.oracle_id = oracle_id
-        self.correlation_id = correlation_id
-        self.timestamp = timestamp
-        self.t_oracle = t_oracle
-        self.c_oracle_raw = c_oracle_raw
-        self.c_oracle_discounted = c_oracle_discounted
-        self.c_herd = c_herd
-        self.n_oracle_prior = n_oracle_prior
-
-
 class _StubAttestations:
     """In-memory append sink. ``find_*`` methods unused by the dispatched path."""
 
     def __init__(self) -> None:
-        self.appended: list[_AppendCall] = []
+        self.appended: list[AttestationRecord] = []
 
-    async def append(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
-        self.appended.append(
-            _AppendCall(
-                hypothesis_id=hypothesis_id,
-                oracle_id=oracle_id,
-                correlation_id=correlation_id,
-                timestamp=timestamp,
-                t_oracle=t_oracle,
-                c_oracle_raw=c_oracle_raw,
-                c_oracle_discounted=c_oracle_discounted,
-                c_herd=c_herd,
-                n_oracle_prior=n_oracle_prior,
-            )
-        )
+    async def append(self, record: AttestationRecord) -> None:
+        self.appended.append(record)
 
     async def find_by_hypothesis(self, hypothesis_id: str) -> list[AttestationRecord]:
         raise NotImplementedError
@@ -206,7 +155,7 @@ def _make_recorder(
     return recorder, attestations
 
 
-def _transfer_rows(attestations: _StubAttestations) -> list[_AppendCall]:
+def _transfer_rows(attestations: _StubAttestations) -> list[AttestationRecord]:
     return [a for a in attestations.appended if a.oracle_id == TRANSFER_ORACLE]
 
 
@@ -478,7 +427,7 @@ def _attestation_for_oracle(*, hypothesis_id: str, oracle_id: str) -> Attestatio
 
 
 class TestRecorderPassesDistinctOracleCountToAppend:
-    """The Recorder hands ``n_oracle_prior = |distinct oracles| − {self}`` to ``append()``.
+    """The Recorder hands ``n_oracle_prior = |distinct oracles| - {self}`` to ``append()``.
 
     The trust scan reads this column verbatim — there is no longer a SQL
     derivation to fall back on. Round-trip tests verify the column survives
