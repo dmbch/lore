@@ -13,6 +13,7 @@ rolls back; the seeded prior attestation is the only row that survives
 on the existing hypothesis, and no row exists for the novel.
 """
 
+import re
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, cast
@@ -208,7 +209,7 @@ async def test_recorder_failure_rolls_back_attestations(
         settings=make_settings(),
     )
 
-    with pytest.raises(StorageError, match="attestations.append failing on second call"):
+    with pytest.raises(StorageError, match=re.escape("attestations.append failing on second call")):
         await orchestrator.consult(
             oracle_id="oracle-1",
             request=ConsultLoreRequest(
