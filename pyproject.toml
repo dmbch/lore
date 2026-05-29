@@ -52,7 +52,25 @@ target-version = "py314"
 exclude = [".claude/worktrees", "references"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM", "C90", "FBT", "PLR0913", "RUF", "ANN401"]
+select = [
+    "ANN401",
+    "ASYNC",
+    "B",
+    "C90",
+    "E",
+    "EM",
+    "F",
+    "FBT",
+    "I",
+    "PLR0913",
+    "PYI",
+    "RUF",
+    "S",
+    "SIM",
+    "TID",
+    "UP",
+    "W",
+]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
@@ -61,8 +79,10 @@ max-complexity = 10
 max-args = 8
 
 [tool.ruff.lint.per-file-ignores]
-"src/lore/math/**" = ["RUF002", "RUF003"]   # canonical unicode math notation
-"tests/math/**"    = ["RUF002", "RUF003"]   # math test docstrings mirror the notation
+"src/lore/math/**"           = ["RUF002", "RUF003"] # canonical unicode math notation
+"tests/math/**"              = ["RUF002", "RUF003"] # math test docstrings mirror the notation
+"src/lore/repositories/**"   = ["S608"]             # SQL is parameterized; S608 heuristic misfires
+"tests/**"                   = ["S101", "S104", "S105", "S108", "S608", "EM", "ASYNC240"] # test-only patterns
 
 [tool.pyright]
 include = ["src", "tests"]

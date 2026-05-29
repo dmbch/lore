@@ -194,6 +194,9 @@ class Orchestrator:
                                 correlation_id=correlation_id,
                             )
                             ceiling = _RETRY_BASE_SECONDS * 2**attempt
-                            await asyncio.sleep(random.uniform(ceiling / 2, ceiling))
+                            delay = random.uniform(  # noqa: S311 - retry jitter, not cryptographic
+                                ceiling / 2, ceiling
+                            )
+                            await asyncio.sleep(delay)
 
                 return ConsultLoreResponse(answer=reasoned.answer)

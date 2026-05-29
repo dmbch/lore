@@ -226,13 +226,17 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
                 # issuing ``_transfer`` would write full-credibility attestations).
                 claim = token.claims.get("sub")
                 if claim is None:
-                    raise AuthenticationError("access token missing 'sub' claim")
+                    msg = "access token missing 'sub' claim"
+                    raise AuthenticationError(msg)
                 if not isinstance(claim, str):
-                    raise AuthenticationError("access token 'sub' claim must be a string")
+                    msg = "access token 'sub' claim must be a string"
+                    raise AuthenticationError(msg)
                 if not claim:
-                    raise AuthenticationError("access token 'sub' claim must not be empty")
+                    msg = "access token 'sub' claim must not be empty"
+                    raise AuthenticationError(msg)
                 if claim.startswith("_"):
-                    raise AuthenticationError("oracle_id must not use the synthetic '_*' namespace")
+                    msg = "oracle_id must not use the synthetic '_*' namespace"
+                    raise AuthenticationError(msg)
                 oracle_id = claim
             else:
                 oracle_id = LOCAL_ORACLE
@@ -255,7 +259,8 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
                 correlation_id=correlation_id,
                 exc_info=True,
             )
-            raise ToolError(f"authentication failed (correlation_id={correlation_id})") from exc
+            msg = f"authentication failed (correlation_id={correlation_id})"
+            raise ToolError(msg) from exc
         except ValidationError as exc:
             # Pydantic's str() includes `input_value=...`, so surfacing the
             # message verbatim would echo the client's payload back. Scrub
@@ -269,7 +274,8 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
                 correlation_id=correlation_id,
                 exc_info=True,
             )
-            raise ToolError(f"invalid consult input (correlation_id={correlation_id})") from exc
+            msg = f"invalid consult input (correlation_id={correlation_id})"
+            raise ToolError(msg) from exc
         except Exception as exc:
             # Everything else (domain errors carrying DSN host:port / vendor
             # SDK detail / rejected-ID specifics; stray non-domain leaks like
@@ -282,7 +288,8 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
                 correlation_id=correlation_id,
                 exc_info=True,
             )
-            raise ToolError(f"internal error (correlation_id={correlation_id})") from exc
+            msg = f"internal error (correlation_id={correlation_id})"
+            raise ToolError(msg) from exc
 
     # Keep a reference so pyright doesn't flag as unused.
     _ = consult

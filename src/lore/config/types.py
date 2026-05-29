@@ -18,7 +18,7 @@ _UNITS: dict[str, int] = {
 }
 
 
-def _parse_half_life(value: str | int | float) -> float:
+def _parse_half_life(value: str | float) -> float:
     """Parse a duration string (`"1y"`, `"90d"`, `"24h"`, ...) or bare seconds."""
     if isinstance(value, int | float):
         seconds = float(value)
@@ -130,7 +130,7 @@ class DecayConfig(BaseModel):
 
     @field_validator("attestation", "trust", mode="before")
     @classmethod
-    def _validate_half_life(cls, v: str | int | float) -> float:
+    def _validate_half_life(cls, v: str | float) -> float:
         return _parse_half_life(v)
 
 

@@ -124,7 +124,8 @@ def make_probe(
             async with asyncio.timeout(timeout), pool.session():
                 pass
         except TimeoutError as e:
-            raise StorageError(f"readiness probe timed out after {timeout}s") from e
+            msg = f"readiness probe timed out after {timeout}s"
+            raise StorageError(msg) from e
 
     return probe
 
