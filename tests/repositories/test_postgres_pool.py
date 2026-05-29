@@ -14,6 +14,7 @@ from lore.repositories import AttestationRecord, RequestRecord
 from lore.repositories.postgres.connection import create_pool
 from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository
 from lore.repositories.postgres.pool import PostgresPool
+from lore.repositories.records import generate_id
 from tests.repositories.conftest import SCHEMA_DIM, TEST_POSTGRES_CONFIG
 
 
@@ -119,15 +120,18 @@ class TestPostgresPoolSnapshotIsolation:
                     RequestRecord(id=seed_correlation_id, oracle_id="sub:seed", timestamp=0)
                 )
                 await repos.attestations.append(
-                    hypothesis_id=hypothesis.id,
-                    oracle_id="sub:seed",
-                    correlation_id=seed_correlation_id,
-                    timestamp=1000,
-                    t_oracle=0.5,
-                    c_oracle_raw=0.5,
-                    c_oracle_discounted=0.25,
-                    c_herd=0.4,
-                    n_oracle_prior=0,
+                    AttestationRecord(
+                        id=generate_id(),
+                        hypothesis_id=hypothesis.id,
+                        oracle_id="sub:seed",
+                        correlation_id=seed_correlation_id,
+                        timestamp=1000,
+                        t_oracle=0.5,
+                        c_oracle_raw=0.5,
+                        c_oracle_discounted=0.25,
+                        c_herd=0.4,
+                        n_oracle_prior=0,
+                    )
                 )
 
             t1_inside_txn = asyncio.Event()
@@ -150,15 +154,18 @@ class TestPostgresPoolSnapshotIsolation:
                         )
                     )
                     await repos.attestations.append(
-                        hypothesis_id=hypothesis.id,
-                        oracle_id="sub:writer",
-                        correlation_id=writer_correlation_id,
-                        timestamp=2000,
-                        t_oracle=0.5,
-                        c_oracle_raw=0.5,
-                        c_oracle_discounted=0.25,
-                        c_herd=0.4,
-                        n_oracle_prior=0,
+                        AttestationRecord(
+                            id=generate_id(),
+                            hypothesis_id=hypothesis.id,
+                            oracle_id="sub:writer",
+                            correlation_id=writer_correlation_id,
+                            timestamp=2000,
+                            t_oracle=0.5,
+                            c_oracle_raw=0.5,
+                            c_oracle_discounted=0.25,
+                            c_herd=0.4,
+                            n_oracle_prior=0,
+                        )
                     )
                 t2_committed.set()
 
@@ -214,15 +221,18 @@ class TestPostgresPoolSerializationFailureTranslation:
                     RequestRecord(id=t2_correlation_id, oracle_id="sub:t2", timestamp=2000)
                 )
                 await repos.attestations.append(
-                    hypothesis_id=hypothesis.id,
-                    oracle_id="sub:seed",
-                    correlation_id=seed_correlation_id,
-                    timestamp=500,
-                    t_oracle=0.5,
-                    c_oracle_raw=0.5,
-                    c_oracle_discounted=0.25,
-                    c_herd=0.4,
-                    n_oracle_prior=0,
+                    AttestationRecord(
+                        id=generate_id(),
+                        hypothesis_id=hypothesis.id,
+                        oracle_id="sub:seed",
+                        correlation_id=seed_correlation_id,
+                        timestamp=500,
+                        t_oracle=0.5,
+                        c_oracle_raw=0.5,
+                        c_oracle_discounted=0.25,
+                        c_herd=0.4,
+                        n_oracle_prior=0,
+                    )
                 )
 
             t1_read_done = asyncio.Event()
@@ -241,15 +251,18 @@ class TestPostgresPoolSerializationFailureTranslation:
                         # relative to T2's commit — SERIALIZABLE detects the
                         # write-skew at commit time and raises SQLSTATE 40001.
                         await repos.attestations.append(
-                            hypothesis_id=hypothesis.id,
-                            oracle_id="sub:t1",
-                            correlation_id=t1_correlation_id,
-                            timestamp=1000,
-                            t_oracle=0.5,
-                            c_oracle_raw=0.5,
-                            c_oracle_discounted=0.25,
-                            c_herd=0.4,
-                            n_oracle_prior=1,
+                            AttestationRecord(
+                                id=generate_id(),
+                                hypothesis_id=hypothesis.id,
+                                oracle_id="sub:t1",
+                                correlation_id=t1_correlation_id,
+                                timestamp=1000,
+                                t_oracle=0.5,
+                                c_oracle_raw=0.5,
+                                c_oracle_discounted=0.25,
+                                c_herd=0.4,
+                                n_oracle_prior=1,
+                            )
                         )
                 except RetryableTransactionError as e:
                     retryable_caught.append(e)
@@ -259,15 +272,18 @@ class TestPostgresPoolSerializationFailureTranslation:
                 async with pool.transaction() as repos:
                     await repos.attestations.find_by_hypothesis(hypothesis.id)
                     await repos.attestations.append(
-                        hypothesis_id=hypothesis.id,
-                        oracle_id="sub:t2",
-                        correlation_id=t2_correlation_id,
-                        timestamp=2000,
-                        t_oracle=0.5,
-                        c_oracle_raw=0.5,
-                        c_oracle_discounted=0.25,
-                        c_herd=0.4,
-                        n_oracle_prior=1,
+                        AttestationRecord(
+                            id=generate_id(),
+                            hypothesis_id=hypothesis.id,
+                            oracle_id="sub:t2",
+                            correlation_id=t2_correlation_id,
+                            timestamp=2000,
+                            t_oracle=0.5,
+                            c_oracle_raw=0.5,
+                            c_oracle_discounted=0.25,
+                            c_herd=0.4,
+                            n_oracle_prior=1,
+                        )
                     )
                 t2_committed.set()
 

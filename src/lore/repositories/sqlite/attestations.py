@@ -8,7 +8,6 @@ import aiosqlite
 from pydantic import ValidationError
 
 from lore.domain import StorageError, TrustSignal
-from lore.repositories import records
 from lore.repositories.records import (
     AttestationRecord,
     build_attestation_records,
@@ -22,21 +21,8 @@ class SqliteAttestationsRepository:
     def __init__(self, conn: aiosqlite.Connection) -> None:
         self._conn = conn
 
-    async def append(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
+    async def append(self, record: AttestationRecord) -> None:
         """Append an attestation to the immutable ledger."""
-        attestation_id = records.generate_id()
         try:
             await self._conn.execute(
                 """INSERT INTO attestations
@@ -45,16 +31,16 @@ class SqliteAttestationsRepository:
                  n_oracle_prior)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    attestation_id,
-                    hypothesis_id,
-                    oracle_id,
-                    correlation_id,
-                    timestamp,
-                    t_oracle,
-                    c_oracle_raw,
-                    c_oracle_discounted,
-                    c_herd,
-                    n_oracle_prior,
+                    record.id,
+                    record.hypothesis_id,
+                    record.oracle_id,
+                    record.correlation_id,
+                    record.timestamp,
+                    record.t_oracle,
+                    record.c_oracle_raw,
+                    record.c_oracle_discounted,
+                    record.c_herd,
+                    record.n_oracle_prior,
                 ),
             )
         except sqlite3.IntegrityError as e:

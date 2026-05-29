@@ -18,8 +18,9 @@ from lore.domain import (
 )
 from lore.orchestrator import Orchestrator
 from lore.providers import Providers, TaskTypeKey
-from lore.repositories import RequestRecord
+from lore.repositories import AttestationRecord, RequestRecord
 from lore.repositories.postgres.pool import PostgresPool
+from lore.repositories.records import generate_id
 from tests.orchestrator.conftest import (
     StubCompletion,
     make_interpreter_output,
@@ -72,15 +73,18 @@ class TestConcurrentConsultsAgainstPostgres:
                     RequestRecord(id=seed_correlation_id, oracle_id="sub:seed", timestamp=0)
                 )
                 await repos.attestations.append(
-                    hypothesis_id=hypothesis.id,
-                    oracle_id="sub:seed",
-                    correlation_id=seed_correlation_id,
-                    timestamp=1,
-                    t_oracle=0.5,
-                    c_oracle_raw=0.4,
-                    c_oracle_discounted=0.2,
-                    c_herd=0.2,
-                    n_oracle_prior=0,
+                    AttestationRecord(
+                        id=generate_id(),
+                        hypothesis_id=hypothesis.id,
+                        oracle_id="sub:seed",
+                        correlation_id=seed_correlation_id,
+                        timestamp=1,
+                        t_oracle=0.5,
+                        c_oracle_raw=0.4,
+                        c_oracle_discounted=0.2,
+                        c_herd=0.2,
+                        n_oracle_prior=0,
+                    )
                 )
 
             embedder = _FixedDimEmbedder(embedding)

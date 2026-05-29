@@ -100,7 +100,8 @@ class StubHypotheses:
         self, *, content: str, embedding: Sequence[float], created_at: int
     ) -> HypothesisRecord:
         self.stored.append((content, embedding, created_at))
-        record_id = f"aaa{self._next_id:05d}00-e29b-41d4-a716-446655440000"
+        # Deterministic but valid UUID — first segment is exactly 8 hex chars.
+        record_id = f"aaa{self._next_id:05d}-e29b-41d4-a716-446655440000"
         self._next_id += 1
         return HypothesisRecord.model_construct(
             id=record_id, content=content, created_at=created_at
@@ -121,33 +122,6 @@ class StubHypotheses:
         return self._results
 
 
-class _AppendCall:
-    """Recorded call to append()."""
-
-    def __init__(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
-        self.hypothesis_id = hypothesis_id
-        self.oracle_id = oracle_id
-        self.correlation_id = correlation_id
-        self.timestamp = timestamp
-        self.t_oracle = t_oracle
-        self.c_oracle_raw = c_oracle_raw
-        self.c_oracle_discounted = c_oracle_discounted
-        self.c_herd = c_herd
-        self.n_oracle_prior = n_oracle_prior
-
-
 class StubAttestations:
     """In-memory attestation ledger."""
 
@@ -158,34 +132,10 @@ class StubAttestations:
     ) -> None:
         self._by_hypotheses = by_hypotheses or {}
         self._trust_alignments = trust_alignments or []
-        self.appended: list[_AppendCall] = []
+        self.appended: list[AttestationRecord] = []
 
-    async def append(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
-        self.appended.append(
-            _AppendCall(
-                hypothesis_id=hypothesis_id,
-                oracle_id=oracle_id,
-                correlation_id=correlation_id,
-                timestamp=timestamp,
-                t_oracle=t_oracle,
-                c_oracle_raw=c_oracle_raw,
-                c_oracle_discounted=c_oracle_discounted,
-                c_herd=c_herd,
-                n_oracle_prior=n_oracle_prior,
-            )
-        )
+    async def append(self, record: AttestationRecord) -> None:
+        self.appended.append(record)
 
     async def find_by_hypothesis(self, hypothesis_id: str) -> list[AttestationRecord]:
         return self._by_hypotheses.get(hypothesis_id, [])

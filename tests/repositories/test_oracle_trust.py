@@ -17,14 +17,15 @@ import math
 import pytest
 
 from lore.math.service import MathService
+from lore.repositories import AttestationRecord
 from lore.repositories.protocols import (
     AttestationsRepository,
     HypothesisRepository,
     RequestRepository,
 )
+from lore.repositories.records import generate_id
 from tests.repositories.conftest import (
     EPSILON,
-    append_attestation,
     seed_hypothesis,
     seed_request,
 )
@@ -80,25 +81,33 @@ class TestFetchTrustAlignments:
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-B",
-            timestamp=100,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
-            n_oracle_prior=0,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-B",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-A",
-            timestamp=200,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
-            n_oracle_prior=1,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=200,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=1,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(
@@ -134,14 +143,19 @@ class TestFetchTrustAlignments:
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-A",
-            timestamp=1000,
-            c_oracle_raw=0.6,
-            c_oracle_discounted=0.3,
-            c_herd=0.6,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=1000,
+                t_oracle=0.5,
+                c_oracle_raw=0.6,
+                c_oracle_discounted=0.3,
+                c_herd=0.6,
+                n_oracle_prior=0,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(
@@ -177,35 +191,47 @@ class TestFetchTrustAlignments:
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-B",
-            timestamp=100,
-            c_oracle_raw=0.3,
-            c_oracle_discounted=0.15,
-            c_herd=0.3,
-            n_oracle_prior=0,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-B",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=0.3,
+                c_oracle_discounted=0.15,
+                c_herd=0.3,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-C",
-            timestamp=200,
-            c_oracle_raw=0.6,
-            c_oracle_discounted=0.3,
-            c_herd=0.6,
-            n_oracle_prior=1,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-C",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=200,
+                t_oracle=0.5,
+                c_oracle_raw=0.6,
+                c_oracle_discounted=0.3,
+                c_herd=0.6,
+                n_oracle_prior=1,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-A",
-            timestamp=300,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.7,
-            n_oracle_prior=2,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=300,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.7,
+                n_oracle_prior=2,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(
@@ -242,25 +268,33 @@ class TestFetchTrustAlignments:
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-A",
-            timestamp=100,
-            c_oracle_raw=0.4,
-            c_oracle_discounted=0.2,
-            c_herd=0.4,
-            n_oracle_prior=0,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=0.4,
+                c_oracle_discounted=0.2,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-D",
-            timestamp=200,
-            c_oracle_raw=0.8,
-            c_oracle_discounted=0.4,
-            c_herd=0.8,
-            n_oracle_prior=1,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-D",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=200,
+                t_oracle=0.5,
+                c_oracle_raw=0.8,
+                c_oracle_discounted=0.4,
+                c_herd=0.8,
+                n_oracle_prior=1,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(
@@ -297,46 +331,62 @@ class TestFetchTrustAlignments:
         h1_id = await seed_hypothesis(hypothesis_repo)
         h2_id = await seed_hypothesis(hypothesis_repo)
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h1_id,
-            oracle_id="sub:oracle-B",
-            timestamp=50,
-            c_oracle_raw=0.3,
-            c_oracle_discounted=0.15,
-            c_herd=0.3,
-            n_oracle_prior=0,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h1_id,
+                oracle_id="sub:oracle-B",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=50,
+                t_oracle=0.5,
+                c_oracle_raw=0.3,
+                c_oracle_discounted=0.15,
+                c_herd=0.3,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h1_id,
-            oracle_id="sub:oracle-A",
-            timestamp=100,
-            c_oracle_raw=-0.8,
-            c_oracle_discounted=-0.4,
-            c_herd=-0.3,
-            n_oracle_prior=1,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h1_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=-0.8,
+                c_oracle_discounted=-0.4,
+                c_herd=-0.3,
+                n_oracle_prior=1,
+            )
         )
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h2_id,
-            oracle_id="sub:oracle-C",
-            timestamp=8900,
-            c_oracle_raw=-0.2,
-            c_oracle_discounted=-0.1,
-            c_herd=-0.2,
-            n_oracle_prior=0,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h2_id,
+                oracle_id="sub:oracle-C",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=8900,
+                t_oracle=0.5,
+                c_oracle_raw=-0.2,
+                c_oracle_discounted=-0.1,
+                c_herd=-0.2,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h2_id,
-            oracle_id="sub:oracle-A",
-            timestamp=9000,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
-            n_oracle_prior=1,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h2_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=9000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=1,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(
@@ -400,46 +450,62 @@ class TestFetchTrustAlignments:
         h1_id = await seed_hypothesis(hypothesis_repo)
         h2_id = await seed_hypothesis(hypothesis_repo)
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h1_id,
-            oracle_id="sub:oracle-B",
-            timestamp=50,
-            c_oracle_raw=0.9,
-            c_oracle_discounted=0.45,
-            c_herd=0.9,
-            n_oracle_prior=0,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h1_id,
+                oracle_id="sub:oracle-B",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=50,
+                t_oracle=0.5,
+                c_oracle_raw=0.9,
+                c_oracle_discounted=0.45,
+                c_herd=0.9,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h1_id,
-            oracle_id="sub:oracle-A",
-            timestamp=100,
-            c_oracle_raw=-0.9,
-            c_oracle_discounted=-0.45,
-            c_herd=0.0,
-            n_oracle_prior=1,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h1_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=-0.9,
+                c_oracle_discounted=-0.45,
+                c_herd=0.0,
+                n_oracle_prior=1,
+            )
         )
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h2_id,
-            oracle_id="sub:oracle-C",
-            timestamp=5900,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
-            n_oracle_prior=0,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h2_id,
+                oracle_id="sub:oracle-C",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=5900,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h2_id,
-            oracle_id="sub:oracle-A",
-            timestamp=6000,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
-            n_oracle_prior=1,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h2_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=6000,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=1,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(
@@ -468,23 +534,33 @@ class TestFetchTrustAlignments:
         window's lower bound truly collapses.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-B",
-            timestamp=100,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-B",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=0,
+            )
         )
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-A",
-            timestamp=1,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=1,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=0,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(
@@ -510,15 +586,19 @@ class TestFetchTrustAlignments:
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
-        await append_attestation(
-            attestations_repo,
-            hypothesis_id=h_id,
-            oracle_id="sub:oracle-A",
-            timestamp=100,
-            c_oracle_raw=0.5,
-            c_oracle_discounted=0.25,
-            c_herd=0.5,
-            n_oracle_prior=99,
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-A",
+                correlation_id=_DEFAULT_CORRELATION_ID,
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.5,
+                n_oracle_prior=99,
+            )
         )
 
         rows = await attestations_repo.fetch_trust_alignments(

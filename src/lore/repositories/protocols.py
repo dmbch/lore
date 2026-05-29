@@ -77,25 +77,13 @@ class HypothesisRepository(Protocol):
 class AttestationsRepository(Protocol):
     """Append-only, immutable attestation ledger."""
 
-    async def append(
-        self,
-        *,
-        hypothesis_id: str,
-        oracle_id: str,
-        correlation_id: str,
-        timestamp: int,
-        t_oracle: float,
-        c_oracle_raw: float,
-        c_oracle_discounted: float,
-        c_herd: float,
-        n_oracle_prior: int,
-    ) -> None:
+    async def append(self, record: AttestationRecord) -> None:
         """Append an attestation to the immutable ledger.
 
-        ``n_oracle_prior`` is the distinct count of prior attesters on the
-        hypothesis at write time, excluding the current oracle — a snapshot
-        the Recorder computes against the transaction's attestation map.
-        Stored on the row so trust scans read the column rather than
+        ``record.n_oracle_prior`` is the distinct count of prior attesters
+        on the hypothesis at write time, excluding the current oracle — a
+        snapshot the Recorder computes against the transaction's attestation
+        map. Stored on the row so trust scans read the column rather than
         recomputing the count with a correlated subquery.
         """
         ...
