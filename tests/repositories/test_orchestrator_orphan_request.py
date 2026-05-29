@@ -13,6 +13,7 @@ autocommitted request row — written before the transaction opens —
 must survive.
 """
 
+import re
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, cast
@@ -201,7 +202,9 @@ async def test_write_path_attestation_failure_inside_transaction_preserves_reque
         settings=make_settings(),
     )
 
-    with pytest.raises(RuntimeError, match="attestations.append failing inside transaction"):
+    with pytest.raises(
+        RuntimeError, match=re.escape("attestations.append failing inside transaction")
+    ):
         await orchestrator.consult(
             oracle_id="oracle-1",
             request=ConsultLoreRequest(

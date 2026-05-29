@@ -1,6 +1,7 @@
 """Tests for HypothesisRepository Protocol behavior."""
 
 import math
+import re
 from collections.abc import Awaitable, Callable
 
 import pytest
@@ -408,7 +409,7 @@ class TestSearch:
 
         With ``limit=1, fan_out=3`` each lane fetches its top-3. C now
         appears in both lanes (rank 2 in each), and its cross-lane
-        composite ``2 × 0.5/62`` overtakes the single-lane single-rank
+        composite ``2 * 0.5/62`` overtakes the single-lane single-rank
         winners F1 and B (each ``0.5/61``).
         """
         # Embeddings sized for SCHEMA_DIM=1024 (must match conftest schema).
@@ -493,7 +494,7 @@ class TestSearch:
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
         """Weights that don't sum to 1.0 are rejected with ValueError."""
-        with pytest.raises(ValueError, match="weights must sum to 1.0"):
+        with pytest.raises(ValueError, match=re.escape("weights must sum to 1.0")):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
                 query="any",

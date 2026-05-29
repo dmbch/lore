@@ -6,6 +6,7 @@ over both backends via the conftest ``pool`` fixture.
 """
 
 import asyncio
+import re
 import sqlite3
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -259,7 +260,7 @@ class TestMemoryDsnRejected:
     """SQLite :memory: is rejected at bootstrap — each connection gets a private DB."""
 
     def test_run_migrations_rejects_memory_dsn(self) -> None:
-        with pytest.raises(ValueError, match="Please use a .tmp. file path"):
+        with pytest.raises(ValueError, match=re.escape("Please use a (tmp) file path")):
             run_migrations(
                 settings=make_settings(dsn="sqlite:///:memory:"), embedding_dim=SCHEMA_DIM
             )
