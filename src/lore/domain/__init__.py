@@ -30,6 +30,8 @@ from lore.domain.types import (
 )
 
 __all__ = [
+    "LOCAL_ORACLE",
+    "TRANSFER_ORACLE",
     "ArchivistInput",
     "ArchivistOutput",
     "ArchivistResolutionError",
@@ -43,11 +45,9 @@ __all__ = [
     "IntegrityViolation",
     "InterpreterInput",
     "InterpreterOutput",
-    "LOCAL_ORACLE",
-    "TRANSFER_ORACLE",
-    "TrustSignal",
     "Resolution",
     "RetryableTransactionError",
     "SearchResult",
     "StorageError",
+    "TrustSignal",
 ]

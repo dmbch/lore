@@ -152,7 +152,7 @@ def _resolve_prompts(prompts: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, str) and value.startswith(_BUNDLED_PREFIX):
             relative = value.removeprefix(_BUNDLED_PREFIX)
             parts = relative.split("/")
-            package = ".".join(["lore"] + parts[:-1])
+            package = ".".join(["lore", *parts[:-1]])
             filename = parts[-1]
             resource = importlib.resources.files(package).joinpath(filename)
             resolved[key] = Path(str(resource))
