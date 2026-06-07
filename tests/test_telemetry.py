@@ -117,32 +117,40 @@ def test_log_level_warning_suppresses_info(
 
 
 # ---------------------------------------------------------------------------
-# LOG_LEVEL propagation to FASTMCP_LOG_LEVEL and OTEL_LOG_LEVEL
+# FastMCP / LiteLLM logger reroute — and the OTEL_LOG_LEVEL gate
 # ---------------------------------------------------------------------------
 
 
-def test_configure_telemetry_propagates_log_level_to_fastmcp(isolated_configure: None) -> None:
-    """LOG_LEVEL flows through to FASTMCP_LOG_LEVEL so FastMCP shares the gate."""
-    with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}):
-        telemetry.configure_telemetry()
-        assert os.environ["FASTMCP_LOG_LEVEL"] == "DEBUG"
+def test_configure_telemetry_reroutes_fastmcp_logger(isolated_configure: None) -> None:
+    """The ``fastmcp`` logger is reset to bare-stdlib defaults so records propagate to root.
 
-
-def test_configure_telemetry_preserves_explicit_fastmcp_log_level(
-    isolated_configure: None,
-) -> None:
-    """An explicit FASTMCP_LOG_LEVEL wins over LOG_LEVEL — operator override stands."""
-    with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG", "FASTMCP_LOG_LEVEL": "WARNING"}):
-        telemetry.configure_telemetry()
-        assert os.environ["FASTMCP_LOG_LEVEL"] == "WARNING"
-
-
-def test_configure_telemetry_defaults_fastmcp_log_level_to_info(
-    isolated_configure: None,
-) -> None:
-    """With no LOG_LEVEL set, FASTMCP_LOG_LEVEL lands at the same default (INFO)."""
+    FastMCP attaches a ``RichHandler`` and sets ``propagate = False`` at import. The
+    reroute reverses that so the root structlog handler sees the records.
+    """
     telemetry.configure_telemetry()
-    assert os.environ["FASTMCP_LOG_LEVEL"] == "INFO"
+    fastmcp_logger = logging.getLogger("fastmcp")
+    assert fastmcp_logger.handlers == []
+    assert fastmcp_logger.propagate is True
+    assert fastmcp_logger.level == logging.NOTSET
+
+
+@pytest.mark.parametrize("name", ["LiteLLM", "LiteLLM Proxy", "LiteLLM Router"])
+def test_configure_telemetry_reroutes_litellm_loggers(isolated_configure: None, name: str) -> None:
+    """LiteLLM attaches a ``StreamHandler`` to three loggers at import. All three reroute."""
+    telemetry.configure_telemetry()
+    litellm_logger = logging.getLogger(name)
+    assert litellm_logger.handlers == []
+    assert litellm_logger.propagate is True
+    assert litellm_logger.level == logging.NOTSET
+
+
+def test_fastmcp_logger_records_flow_to_root_renderer(
+    isolated_configure: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End-to-end: a record emitted on the fastmcp logger renders through structlog."""
+    telemetry.configure_telemetry()
+    logging.getLogger("fastmcp").info("from fastmcp")
+    assert "from fastmcp" in capsys.readouterr().err
 
 
 def test_configure_telemetry_mirrors_log_level_to_otel(isolated_configure: None) -> None:
@@ -229,6 +237,79 @@ def test_stdlib_bridge_with_info_flows_through_renderer(
     captured = capsys.readouterr()
     assert "bridge test message" in captured.err
     assert captured.out == ""
+
+
+def test_native_structlog_records_carry_logger_name(
+    isolated_configure: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Native structlog records render the emitter name, same as bridged stdlib ones.
+
+    Pairs symmetrically with ``test_stdlib_bridge_with_info_flows_through_renderer``:
+    both record kinds carry a ``logger`` key, so JSON consumers can group by emitter
+    regardless of who produced the record.
+    """
+    telemetry.configure_telemetry()
+    structlog.get_logger("test.named").info("hello")
+    output = capsys.readouterr().err
+    assert "logger" in output
+    assert "test.named" in output
+
+
+def test_json_renderer_exc_info_emits_structured_traceback(
+    isolated_configure: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """In JSON mode, ``log.error(..., exc_info=True)`` surfaces a structured exception.
+
+    Four call sites in ``adapter/mcp.py`` rely on this contract. ``dict_tracebacks``
+    produces a JSON-queryable list of frames (exc_type, exc_value, frames) — log
+    aggregators filter by exception class natively, rather than grepping a wall-
+    of-text string traceback.
+    """
+    telemetry.configure_telemetry()
+    log = structlog.get_logger("test.exc")
+    try:
+        msg = "deliberate"
+        raise RuntimeError(msg)
+    except RuntimeError:
+        log.error("boom", exc_info=True)
+    output = capsys.readouterr().err
+    assert "exception" in output
+    assert "RuntimeError" in output
+    assert "deliberate" in output
+
+
+def test_console_renderer_exc_info_does_not_crash_formatter(
+    isolated_configure: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """In TTY mode, ``log.error(..., exc_info=True)`` must not blow up the formatter.
+
+    ``ConsoleRenderer`` writes ``"\\n" + exc`` (string concat) for the rendered
+    traceback. ``dict_tracebacks`` would replace ``exc_info`` with a list, raising
+    ``TypeError`` on the concat and losing the log line to stdlib's "Logging
+    error" fallback. The split is to keep the dict-tracebacks step on the JSON
+    branch only; this test pins the no-crash invariant for the dev path.
+    """
+    import io
+
+    class FakeTTY(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    fake = FakeTTY()
+    monkeypatch.setattr("sys.stderr", fake)
+    telemetry.configure_telemetry()
+
+    log = structlog.get_logger("test.tty_exc")
+    try:
+        msg = "deliberate"
+        raise RuntimeError(msg)
+    except RuntimeError:
+        log.error("boom", exc_info=True)
+
+    output = fake.getvalue()
+    assert "boom" in output
+    assert "RuntimeError" in output
+    assert "Logging error" not in output  # stdlib fallback when formatter raises
 
 
 # ---------------------------------------------------------------------------

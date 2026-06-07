@@ -15,6 +15,11 @@ import lore.telemetry as _telemetry
 
 
 def _reset_telemetry_state() -> None:
+    # Note: the four library loggers ``configure_telemetry`` reroutes (fastmcp,
+    # LiteLLM, LiteLLM Proxy, LiteLLM Router) are not restored — they hold the
+    # bare-stdlib state the reroute leaves them in. No current test depends on
+    # the pre-reroute state across the boundary; a future test that does will
+    # need to capture and restore those loggers itself.
     _telemetry._configured = False  # pyright: ignore[reportPrivateUsage]
     structlog.reset_defaults()
     structlog.contextvars.clear_contextvars()
