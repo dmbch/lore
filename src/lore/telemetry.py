@@ -9,8 +9,10 @@ the wrapper, the global providers are OTel API proxies — spans are
 non-recording, logs still flow.
 
 `LOG_LEVEL` (default `INFO`) controls stderr verbosity and is mirrored
-into `FASTMCP_LOG_LEVEL` and `OTEL_LOG_LEVEL` via `setdefault` so the
-same gate covers FastMCP and the OTel SDK; explicit operator values win.
+into `OTEL_LOG_LEVEL` via `setdefault` so the OTel SDK shares the gate;
+an explicit operator value wins. FastMCP and LiteLLM attach their own
+handlers at import; `_configure_logging` resets those loggers so records
+propagate to the root structlog handler — one gate covers everyone.
 """
 
 import logging
@@ -55,9 +57,15 @@ def _add_trace_context(
 
 def _configure_logging(log_level: str) -> None:
     level = getattr(logging, log_level)
+    # ConsoleRenderer formats `exc_info` itself (string traceback); JSONRenderer
+    # needs `dict_tracebacks` to surface a structured exception. Wiring
+    # `dict_tracebacks` into the shared chain would feed ConsoleRenderer a list
+    # where it expects a string and raise `TypeError` on the first
+    # ``log.error(..., exc_info=True)`` call.
+    tty = sys.stderr.isatty()
     renderer: structlog.types.Processor = (
-        structlog.dev.ConsoleRenderer()
-        if sys.stderr.isatty()
+        structlog.dev.ConsoleRenderer(pad_event=0, sort_keys=False)
+        if tty
         else structlog.processors.JSONRenderer()
     )
 
@@ -65,18 +73,18 @@ def _configure_logging(log_level: str) -> None:
         structlog.contextvars.merge_contextvars,
         _add_trace_context,
         structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
     ]
+    if not tty:
+        shared_processors.insert(-1, structlog.processors.dict_tracebacks)
 
     formatter = structlog.stdlib.ProcessorFormatter(
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
             renderer,
         ],
-        foreign_pre_chain=[
-            *shared_processors,
-            structlog.stdlib.add_logger_name,
-        ],
+        foreign_pre_chain=shared_processors,
     )
     handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(formatter)
@@ -84,6 +92,16 @@ def _configure_logging(log_level: str) -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(level)
+
+    # FastMCP attaches a RichHandler + propagate=False at import; LiteLLM does the
+    # same with a StreamHandler across three logger names. Reset all four to bare
+    # stdlib defaults so records propagate to the root structlog handler and the
+    # one LOG_LEVEL gate covers everyone.
+    for name in ("fastmcp", "LiteLLM", "LiteLLM Proxy", "LiteLLM Router"):
+        lib = logging.getLogger(name)
+        lib.handlers.clear()
+        lib.propagate = True
+        lib.setLevel(logging.NOTSET)
 
     structlog.configure(
         processors=[
@@ -109,7 +127,6 @@ def configure_telemetry() -> None:
         if log_level not in _VALID_LOG_LEVELS:
             msg = f"invalid LOG_LEVEL: {log_level!r} (expected one of {sorted(_VALID_LOG_LEVELS)})"
             raise ValueError(msg)
-        os.environ.setdefault("FASTMCP_LOG_LEVEL", log_level)
         os.environ.setdefault("OTEL_LOG_LEVEL", log_level)
 
         _configure_logging(log_level)

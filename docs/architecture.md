@@ -227,7 +227,7 @@ Configuration is centralized in `lore.telemetry`. Acquisition is decentralized �
 
 **Env-var contract.** SDK behaviour is configured by the standard OTel Python env vars; Lore reads only the structlog gate. The invariant: telemetry is initialized before any other code can emit logs, with `__main__.configure()` as the enforcement point.
 
-- `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` — `otlp` (default when wrapped), `console`, or `none`.
+- `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` / `OTEL_LOGS_EXPORTER` — `otlp` (default when wrapped), `console`, or `none`. Under stdio MCP transport, `console` corrupts the protocol channel — pair console exporters with HTTP transport, or use OTLP.
 - `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS` — endpoint shipping.
 - `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` — collector-side tagging.
 - `OTEL_SDK_DISABLED` / `OTEL_TRACES_EXPORTER=none` — off-switches.
