@@ -20,8 +20,10 @@ import os
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import cast
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from fastmcp import FastMCP
 from starlette.testclient import TestClient
@@ -79,12 +81,23 @@ def _client(server: FastMCP[Orchestrator]) -> TestClient:
     return TestClient(server.http_app())
 
 
+def _get(client: TestClient, path: str) -> httpx.Response:
+    """Typed wrapper for ``TestClient.get``.
+
+    Starlette 1.2 annotates ``TestClient.get`` against httpx2 symbols absent
+    in httpx 0.28; the call surface is correct at runtime (TestClient still
+    returns ``httpx.Response``), only pyright loses the return type. Cast
+    restores typing for the whole suite at one ignore site, no dep pin.
+    """
+    return cast(httpx.Response, client.get(path))  # pyright: ignore[reportUnknownMemberType]
+
+
 def test_health_returns_ok_unconditionally(settings: LoreSettings) -> None:
     """`/health` is a no-op liveness probe; never touches the probe callable."""
     # Even with a probe that would raise, /health stays 200 — confirming
     # the route does not call the probe.
     client = _client(_server(settings, health_probe=_failing_probe))
-    response = client.get("/health")
+    response = _get(client, "/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
@@ -92,7 +105,7 @@ def test_health_returns_ok_unconditionally(settings: LoreSettings) -> None:
 def test_ready_returns_ok_when_probe_succeeds(settings: LoreSettings) -> None:
     """`/ready` returns 200 when the injected probe completes without raising."""
     client = _client(_server(settings, health_probe=_ok_probe))
-    response = client.get("/ready")
+    response = _get(client, "/ready")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
@@ -105,7 +118,7 @@ def test_ready_returns_ok_when_no_probe_configured(settings: LoreSettings) -> No
     shouldn't have to wire a stub probe).
     """
     client = _client(_server(settings))
-    response = client.get("/ready")
+    response = _get(client, "/ready")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
@@ -113,7 +126,7 @@ def test_ready_returns_ok_when_no_probe_configured(settings: LoreSettings) -> No
 def test_ready_returns_503_when_probe_raises_storage_error(settings: LoreSettings) -> None:
     """`/ready` translates `StorageError` to a 503 — load balancers pull the pod."""
     client = _client(_server(settings, health_probe=_failing_probe))
-    response = client.get("/ready")
+    response = _get(client, "/ready")
     assert response.status_code == 503
     # Full-body equality: the contract is exactly this payload, not "contains some token".
     assert response.json() == {"status": "unavailable"}
@@ -130,7 +143,7 @@ def test_ready_returns_503_when_probe_raises_unexpected_exception(
     ``ready.error.internal``.
     """
     client = _client(_server(settings, health_probe=_crashing_probe))
-    response = client.get("/ready")
+    response = _get(client, "/ready")
     assert response.status_code == 503
     assert response.json() == {"status": "unavailable"}
 
@@ -144,5 +157,5 @@ def test_ready_503_does_not_leak_storage_error_message(settings: LoreSettings) -
     the contract more tightly than substring assertions on a sampled message.
     """
     client = _client(_server(settings, health_probe=_failing_probe))
-    response = client.get("/ready")
+    response = _get(client, "/ready")
     assert response.json() == {"status": "unavailable"}
