@@ -93,7 +93,7 @@ async def bootstrap(settings: LoreSettings, pool: RepositoryPool) -> AsyncGenera
 
 
 async def amain() -> None:
-    """Async entry point. Scopes the pool lifetime around server.run_async()."""
+    """Async entry point. Scopes the pool lifetime around ``serve(create_server(...))``."""
     settings = configure()
     async with setup(settings) as pool:
         probe = make_probe(pool)
