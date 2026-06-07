@@ -136,19 +136,19 @@ async def test_amain_wires_live_pool_probe(bootstrap_env: None) -> None:
     fake_pool = MagicMock(name="pool", spec=RepositoryPool)
     fake_probe = AsyncMock(name="probe")
     mock_server = MagicMock()
-    mock_server.run_async = AsyncMock()
     with (
         patch("lore.__main__.configure", return_value=MagicMock()),
         patch("lore.__main__.setup", new=_fake_setup_cm(fake_pool)),
         patch("lore.__main__.make_probe", return_value=fake_probe) as mock_make_probe,
         patch("lore.__main__.bootstrap", return_value=MagicMock()),
         patch("lore.__main__.create_server", return_value=mock_server) as mock_create,
+        patch("lore.__main__.serve", new=AsyncMock()) as mock_serve,
     ):
         await amain()
 
     mock_make_probe.assert_called_once_with(fake_pool)
     assert mock_create.call_args.kwargs["health_probe"] is fake_probe
-    mock_server.run_async.assert_awaited_once()
+    mock_serve.assert_awaited_once_with(mock_server)
 
 
 async def test_setup_closes_pool_when_caller_raises(bootstrap_env: None) -> None:
@@ -215,7 +215,6 @@ async def test_amain_closes_pool_when_server_raises(bootstrap_env: None) -> None
     fake_pool = MagicMock(name="pool", spec=RepositoryPool)
     fake_pool.close = AsyncMock()
     mock_server = MagicMock()
-    mock_server.run_async = AsyncMock(side_effect=RuntimeError("server crash"))
     with (
         patch("lore.__main__.configure", return_value=MagicMock()),
         patch("lore.__main__.run_migrations"),
@@ -224,6 +223,7 @@ async def test_amain_closes_pool_when_server_raises(bootstrap_env: None) -> None
         patch("lore.__main__.make_probe", return_value=AsyncMock()),
         patch("lore.__main__.bootstrap", return_value=MagicMock()),
         patch("lore.__main__.create_server", return_value=mock_server),
+        patch("lore.__main__.serve", new=AsyncMock(side_effect=RuntimeError("server crash"))),
         pytest.raises(RuntimeError, match="server crash"),
     ):
         await amain()

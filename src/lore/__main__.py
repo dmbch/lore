@@ -14,7 +14,7 @@ from pathlib import Path
 
 import structlog
 
-from lore.adapter import create_server
+from lore.adapter import create_server, serve
 from lore.config import LoreSettings, load_settings
 from lore.math import MathService
 from lore.orchestrator import Orchestrator
@@ -107,11 +107,13 @@ async def amain() -> None:
     settings = configure()
     async with setup(settings) as pool:
         probe = make_probe(pool)
-        await create_server(
-            settings=settings,
-            system=bootstrap(settings, pool),
-            health_probe=probe,
-        ).run_async()
+        await serve(
+            create_server(
+                settings=settings,
+                system=bootstrap(settings, pool),
+                health_probe=probe,
+            )
+        )
 
 
 def main() -> None:
