@@ -8,7 +8,7 @@ import pytest
 import structlog
 from pydantic import ValidationError
 
-from lore.config import load_settings
+from lore.config import load_settings, redact_dsn
 from lore.config.loader import discover_toml, parse_oidc_url
 from lore.config.types import DecayConfig, OidcConfig
 
@@ -364,34 +364,81 @@ def test_oidc_url_from_env() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Transport-mode logging routes through the module-level structlog logger
+# DSN redaction — operator-facing diagnostic, never leaks creds
 # ---------------------------------------------------------------------------
 
 
-def test_load_settings_logs_transport_mode_stdio() -> None:
-    """When OIDC is absent, the loader emits a structured stdio transport event."""
+def test_redact_dsn_postgres_strips_user_password() -> None:
+    """Postgres credentials never reach the diagnostic log."""
+    redacted = redact_dsn("postgresql://alice:s3cret@db.internal:5432/lore")
+    assert "alice" not in redacted
+    assert "s3cret" not in redacted
+    assert redacted == "postgresql://db.internal:5432/lore"
+
+
+def test_redact_dsn_postgres_without_port_round_trips() -> None:
+    """Hostname-only Postgres DSNs survive without an injected port."""
+    assert redact_dsn("postgresql://db.internal/lore") == "postgresql://db.internal/lore"
+
+
+def test_redact_dsn_sqlite_preserves_absolute_path() -> None:
+    """The four-slash SQLite absolute-path form round-trips unchanged."""
+    assert redact_dsn("sqlite:////tmp/lore-dev.db") == "sqlite:////tmp/lore-dev.db"
+
+
+def test_redact_dsn_drops_query_and_fragment() -> None:
+    """Defensive: any DSN query/fragment is stripped (operators never log them)."""
+    redacted = redact_dsn("postgresql://db.internal/lore?sslmode=require#fragment")
+    assert redacted == "postgresql://db.internal/lore"
+
+
+# ---------------------------------------------------------------------------
+# bootstrap.env — the diagnostic dump
+# ---------------------------------------------------------------------------
+
+
+def test_load_settings_emits_bootstrap_env_with_redacted_dsn() -> None:
+    """The diagnostic log carries the credential-free DSN, never the raw user:pass."""
+    env = {"DATABASE_URL": "postgresql://alice:s3cret@db.internal:5432/lore"}
     with (
         structlog.testing.capture_logs() as cap,
-        patch.dict(os.environ, _BASE_ENV, clear=True),
+        patch.dict(os.environ, env, clear=True),
     ):
         load_settings(toml_path=_TOML_PATH)
-    assert any(e["event"] == "transport_mode" and e["mode"] == "stdio" for e in cap)
+    events = [e for e in cap if e["event"] == "bootstrap.env"]
+    assert len(events) == 1
+    assert events[0]["database_url"] == "postgresql://db.internal:5432/lore"
+    assert "alice" not in events[0]["database_url"]
+    assert "s3cret" not in events[0]["database_url"]
 
 
-def test_load_settings_logs_transport_mode_http() -> None:
-    """When OIDC + BASE_URL are set, the loader emits the http transport event."""
+def test_load_settings_bootstrap_env_surfaces_oidc_discovery_url_only() -> None:
+    """``oidc_url`` carries the credential-free discovery URL, not the raw OIDC_URL."""
     env = {**_BASE_ENV, "BASE_URL": "https://lore.example.com", "OIDC_URL": _OIDC_URL}
     with (
         structlog.testing.capture_logs() as cap,
         patch.dict(os.environ, env, clear=True),
     ):
         load_settings(toml_path=_TOML_PATH)
-    assert any(
-        e["event"] == "transport_mode"
-        and e["mode"] == "http"
-        and e["base_url"] == "https://lore.example.com"
-        for e in cap
-    )
+    event = next(e for e in cap if e["event"] == "bootstrap.env")
+    oidc_url = event["oidc_url"]
+    assert oidc_url is not None
+    assert "client" not in oidc_url  # client_id from _OIDC_URL stays out
+    assert "secret" not in oidc_url  # client_secret too
+    assert oidc_url.startswith("https://")
+
+
+def test_load_settings_bootstrap_env_does_not_invent_fastmcp_defaults() -> None:
+    """FastMCP owns its env-var defaults; unset reads as None, not our guess."""
+    with (
+        structlog.testing.capture_logs() as cap,
+        patch.dict(os.environ, _BASE_ENV, clear=True),
+    ):
+        load_settings(toml_path=_TOML_PATH)
+    event = next(e for e in cap if e["event"] == "bootstrap.env")
+    assert event["fastmcp_transport"] is None
+    assert event["fastmcp_host"] is None
+    assert event["fastmcp_port"] is None
 
 
 # ---------------------------------------------------------------------------

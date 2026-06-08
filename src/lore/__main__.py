@@ -12,8 +12,6 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import structlog
-
 from lore.adapter import create_server, serve
 from lore.config import LoreSettings, load_settings
 from lore.math import MathService
@@ -28,15 +26,13 @@ from lore.repositories import (
 )
 from lore.telemetry import configure_telemetry
 
-log = structlog.get_logger(__name__)
-
 
 def configure(*, toml_path: Path | None = None) -> LoreSettings:
     """Sync bootstrap: configure telemetry first, then load settings and enforce auth opt-in.
 
-    Telemetry runs before any other code can emit logs so the transport-mode INFO logs
-    from ``_resolve_env`` (and any future settings-time logs) route through the structlog
-    stdlib bridge instead of being dropped at the stdlib root's default WARNING level.
+    Telemetry runs before any other code can emit logs so the ``bootstrap.env``
+    INFO log emitted by ``load_settings`` routes through the structlog stdlib
+    bridge instead of being dropped at the stdlib root's default WARNING level.
 
     The ``auth_required`` check still runs after ``load_settings`` because it consumes
     the loaded settings. ``load_settings`` already enforces ``OIDC_URL ↔ BASE_URL``
@@ -54,22 +50,16 @@ def configure(*, toml_path: Path | None = None) -> LoreSettings:
 async def setup(settings: LoreSettings) -> AsyncGenerator[RepositoryPool]:
     """Eager bootstrap as a scoped pool lifetime.
 
-    Logs models, runs migrations + health check, opens the pool, yields
-    it, and closes on exit. ``bootstrap()`` and ``make_probe(pool)``
-    share the yielded pool, so ``/ready`` and the orchestrator see the
-    same connections.
+    Runs migrations + health check, opens the pool, yields it, and
+    closes on exit. ``bootstrap()`` and ``make_probe(pool)`` share the
+    yielded pool, so ``/ready`` and the orchestrator see the same
+    connections.
 
     The ``finally`` arm closes the pool on any exception from the yield
     or from caller code inside the scope. Steps added between
     ``connect()`` and ``try:`` would not be guarded — keep new
     post-connect work inside the try block.
     """
-    log.info(
-        "bootstrap.models",
-        embedding=settings.embedding.model,
-        fast=settings.fast.model,
-        reasoning=settings.reasoning.model,
-    )
     dim = resolve_dimensions(
         model=settings.embedding.model, configured=settings.embedding.dimensions
     )

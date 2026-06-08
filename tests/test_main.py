@@ -45,33 +45,6 @@ async def test_setup_and_bootstrap_complete_without_error(tmp_path: Path) -> Non
         pass
 
 
-async def test_setup_logs_configured_models(tmp_path: Path) -> None:
-    """setup() emits one 'bootstrap.models' INFO event with the three model strings.
-
-    The log is in ``setup`` (the eager phase) rather than ``bootstrap`` so it
-    fires before any lifespan-scoped wiring runs — the operator sees the
-    chosen models even if pool creation or migrations subsequently fail.
-    """
-    from lore.__main__ import setup
-    from lore.config import load_settings
-
-    db_path = tmp_path / "test.db"
-    env = {"DATABASE_URL": f"sqlite:///{db_path}"}
-    with patch.dict(os.environ, env, clear=True):
-        settings = load_settings(toml_path=_COMPLETE_TOML)
-
-    with structlog.testing.capture_logs() as cap:
-        async with setup(settings):
-            pass
-
-    bootstrap_events = [e for e in cap if e.get("event") == "bootstrap.models"]
-    assert len(bootstrap_events) == 1
-    event = bootstrap_events[0]
-    assert event["embedding"] == "test/embedding-model"
-    assert event["fast"] == "test/fast-model"
-    assert event["reasoning"] == "test/reasoning-model"
-
-
 def test_configure_loads_settings_and_wires_telemetry(bootstrap_env: None) -> None:
     """configure() loads TOML settings and wires telemetry against API-proxy providers
     when run outside ``opentelemetry-instrument``.
@@ -320,43 +293,22 @@ def test_configure_oidc_without_base_url_fails_in_loader_not_configure(tmp_path:
 # ---------------------------------------------------------------------------
 
 
-def test_configure_emits_transport_mode_stdio_log_through_structlog(
+def test_configure_emits_bootstrap_env_log_through_structlog(
     bootstrap_env: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """stdio transport_mode event reaches the configured structlog renderer.
+    """The bootstrap.env diagnostic event reaches the configured structlog renderer.
 
-    The product invariant under test: ``configure()`` calls
-    ``configure_telemetry()`` first, so the transport_mode log from
-    ``_resolve_env`` routes through the renderer the wrapper installed,
-    not a dropped default.
+    The product invariant: ``configure()`` calls ``configure_telemetry()``
+    first, so the ``bootstrap.env`` log emitted by ``load_settings``
+    routes through the renderer the wrapper installed instead of being
+    dropped at the stdlib root's default WARNING level.
     """
     from lore.__main__ import configure
 
     configure(toml_path=_COMPLETE_TOML)
 
     rendered = capsys.readouterr().err
-    assert "transport_mode" in rendered
-    assert "stdio" in rendered
-
-
-def test_configure_emits_transport_mode_http_log_through_structlog(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """http transport_mode event reaches the configured structlog renderer."""
-    from lore.__main__ import configure
-
-    env = {
-        "DATABASE_URL": "sqlite:///:memory:",
-        "OIDC_URL": "oidc://client:secret@auth.example.com/.well-known/openid-configuration",
-        "BASE_URL": "https://lore.example.com",
-    }
-    with patch.dict(os.environ, env, clear=True):
-        configure(toml_path=_COMPLETE_TOML)
-
-    rendered = capsys.readouterr().err
-    assert "transport_mode" in rendered
-    assert "http" in rendered
-    assert "https://lore.example.com" in rendered
+    assert "bootstrap.env" in rendered
 
 
 def test_configure_initializes_telemetry_before_settings_load(bootstrap_env: None) -> None:
