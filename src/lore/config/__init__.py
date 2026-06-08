@@ -1,6 +1,6 @@
 """Configuration package — public API."""
 
-from lore.config.loader import load_settings
+from lore.config.loader import load_settings, redact_dsn
 from lore.config.types import (
     EmbeddingModelConfig,
     LoreSettings,
@@ -16,4 +16,5 @@ __all__ = [
     "PostgresConfig",
     "PromptsConfig",
     "load_settings",
+    "redact_dsn",
 ]

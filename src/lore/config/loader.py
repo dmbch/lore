@@ -9,7 +9,7 @@ import os
 import tomllib
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import parse_qs, unquote, urlparse, urlunsplit
+from urllib.parse import parse_qs, unquote, urlparse, urlsplit, urlunsplit
 
 import structlog
 from pydantic import SecretStr
@@ -21,6 +21,22 @@ log = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 # OIDC URL parsing
 # ---------------------------------------------------------------------------
+
+
+def redact_dsn(dsn: str) -> str:
+    """Return ``scheme://host[:port]/path``; drop any user:password netloc credentials.
+
+    Cheap operator-facing redaction for diagnostic logs. Postgres DSNs
+    (``postgresql://user:pass@host:5432/db``) come back without
+    credentials; SQLite paths (``sqlite:////tmp/lore.db``) round-trip
+    unchanged. Query strings and fragments are dropped — they should
+    never carry secrets, but the redaction is defensive.
+    """
+    parts = urlsplit(dsn)
+    netloc = parts.hostname or ""
+    if parts.port is not None:
+        netloc = f"{netloc}:{parts.port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, "", ""))
 
 
 def parse_oidc_url(url: str) -> OidcConfig:
@@ -135,10 +151,6 @@ def _resolve_env() -> tuple[str, OidcConfig | None, str | None]:
     if oidc is not None and base_url is None:
         msg = "OIDC_URL requires BASE_URL for authenticated HTTP mode"
         raise ValueError(msg)
-    if base_url:
-        log.info("transport_mode", mode="http", base_url=base_url)
-    else:
-        log.info("transport_mode", mode="stdio")
     return dsn, oidc, base_url
 
 
@@ -178,7 +190,7 @@ def load_settings(
     6. Add DSN, OIDC, and version from env
     7. ``model_validate`` the final config into ``LoreSettings``
 
-    Settings-time INFO logs (transport mode) emit through the module-level
+    Settings-time INFO log (``bootstrap.env``) emits through the module-level
     structlog logger, which routes to whatever wrapper ``configure_telemetry``
     has installed. ``toml_path`` overrides TOML discovery (useful for tests).
     """
@@ -213,4 +225,30 @@ def load_settings(
     # default) leaves the dev marker on LoreSettings.version.
     if version := os.environ.get("LORE_VERSION"):
         config["version"] = version
-    return LoreSettings.model_validate(config)
+    settings = LoreSettings.model_validate(config)
+    _log_bootstrap_env(settings)
+    return settings
+
+
+def _log_bootstrap_env(settings: LoreSettings) -> None:
+    """Emit one structured diagnostic line with the env shape Lore booted with.
+
+    Credentials are redacted (``DATABASE_URL`` user:pass; ``OIDC_URL``
+    client_id:client_secret stays buried in ``OidcConfig``, so the log
+    surfaces only the credential-free ``discovery_url``). Model strings
+    are not env, and Instructor/LiteLLM logs them on provider init.
+    """
+    log.info(
+        "bootstrap.env",
+        database_url=redact_dsn(settings.dsn),
+        oidc_url=settings.oidc.discovery_url if settings.oidc else None,
+        base_url=settings.base_url,
+        fastmcp_transport=os.environ.get("FASTMCP_TRANSPORT"),
+        fastmcp_host=os.environ.get("FASTMCP_HOST"),
+        fastmcp_port=os.environ.get("FASTMCP_PORT"),
+        log_level=os.environ.get("LOG_LEVEL", "INFO"),
+        otel_service_name=os.environ.get("OTEL_SERVICE_NAME"),
+        otel_traces_exporter=os.environ.get("OTEL_TRACES_EXPORTER"),
+        otel_metrics_exporter=os.environ.get("OTEL_METRICS_EXPORTER"),
+        otel_exporter_otlp_endpoint=os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"),
+    )
