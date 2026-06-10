@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# Smoke-test the built image: boots, serves /health + /ready, then stops.
+# Smoke-test the built image: sqlite floor, boots, serves /health + /ready, stops.
 set -euo pipefail
 IMAGE="${1:?usage: $0 <image>}"
+# Runtime floor: vec0 KNN needs SQLite >= 3.41 (see repositories/sqlite).
+docker run --rm --entrypoint python "$IMAGE" -c \
+  'import sqlite3; assert sqlite3.sqlite_version_info >= (3, 41), sqlite3.sqlite_version'
+echo "OK: runtime sqlite >= 3.41"
 cid=$(docker run -d --rm \
   -e GEMINI_API_KEY="${GEMINI_API_KEY:-smoke}" \
   -e FASTMCP_TRANSPORT=http -e FASTMCP_HOST=0.0.0.0 -e FASTMCP_PORT=8000 \
