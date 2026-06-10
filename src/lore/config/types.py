@@ -176,6 +176,25 @@ class RetrievalConfig(BaseModel):
             raise ValueError(msg)
         return v
 
+    @model_validator(mode="after")
+    def _validate_weight_sum(self) -> Self:
+        # Tolerance matches repositories/_validation.py — the Protocol-boundary
+        # check stays as defense in depth; this one fails at startup instead of
+        # first consult (deep-merge partial overrides are the landmine).
+        if abs(self.proximity + self.authority - 1.0) > 0.001:
+            msg = (
+                f"retrieval weights must sum to 1.0 (±0.001):"
+                f" proximity={self.proximity} + authority={self.authority}"
+                f" = {self.proximity + self.authority}"
+            )
+            raise ValueError(msg)
+        return self
+
+    @property
+    def weights(self) -> tuple[float, float]:
+        """Lane weights in ``(proximity, authority)`` order — the search Protocol shape."""
+        return (self.proximity, self.authority)
+
 
 _PG_FULLTEXT_CONFIG_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SQLITE_FULLTEXT_CONFIG_RE = re.compile(r"^[a-z][a-z0-9_ ]*$")

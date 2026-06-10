@@ -64,7 +64,7 @@ async def search_candidates(
     """Search per-source and dedup. Pure DB — runs inside a session scope."""
     with start_span("lore.search_candidates"):
         query = " ".join(interpreted.keywords[: settings.retrieval.max_keywords])
-        weights = (settings.retrieval.proximity, settings.retrieval.authority)
+        weights = settings.retrieval.weights
         limit = settings.retrieval.limit
         fan_out = settings.retrieval.fan_out
 
