@@ -115,7 +115,10 @@ class SqliteHypothesisRepository:
         # Lane 1: proximity — ranked by cosine distance (ascending).
         # ``distance`` is exposed alongside ``rank`` so the projection can
         # compute ``proximity = 1 - distance`` without re-querying the
-        # virtual table.
+        # virtual table. LIMIT-style vec0 KNN requires SQLite >= 3.41
+        # (older planners never push the limit down to the virtual table,
+        # and sqlite-vec then rejects the query); the shipped image and
+        # uv-managed dev Pythons both clear that floor.
         l1_cte = (
             "l1_ranked AS ("
             "  SELECT hypothesis_id, distance,"
