@@ -4,7 +4,9 @@ ARG PYTHON_VERSION=3.14
 # Pinned uv binary — match the version that resolved uv.lock (verify on bump).
 FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
 
-FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
+# Trixie's libsqlite3 (3.46) satisfies the vec0 KNN floor: sqlite-vec needs
+# SQLite >= 3.41 for LIMIT-style KNN queries (see repositories/sqlite).
+FROM python:${PYTHON_VERSION}-slim-trixie AS builder
 COPY --from=uv /uv /usr/local/bin/uv
 ENV UV_PROJECT_ENVIRONMENT=/opt/lore \
     UV_COMPILE_BYTECODE=1 \
@@ -25,7 +27,7 @@ COPY . /src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-editable
 
-FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
+FROM python:${PYTHON_VERSION}-slim-trixie AS runtime
 
 # Baked by the publish job (--build-arg LORE_VERSION=<release>); unset from
 # source so create_server reports the "0.0.0+dev" marker instead.
