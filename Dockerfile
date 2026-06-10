@@ -52,7 +52,6 @@ RUN groupadd --gid 1000 lore \
 
 USER lore
 WORKDIR /data
-VOLUME ["/data"]
 EXPOSE 8000
 
 # opentelemetry-instrument is the always-on wrapper; with exporters set to
