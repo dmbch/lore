@@ -169,6 +169,23 @@ def test_configure_telemetry_preserves_explicit_otel_log_level(
         assert os.environ["OTEL_LOG_LEVEL"] == "ERROR"
 
 
+def test_configure_telemetry_defaults_litellm_to_request_span_mode(
+    isolated_configure: None,
+) -> None:
+    """litellm records LLM calls on its own child spans, not Lore's ended stage spans."""
+    telemetry.configure_telemetry()
+    assert os.environ["USE_OTEL_LITELLM_REQUEST_SPAN"] == "true"
+
+
+def test_configure_telemetry_preserves_explicit_litellm_span_mode(
+    isolated_configure: None,
+) -> None:
+    """An explicit USE_OTEL_LITELLM_REQUEST_SPAN wins — operator override stands."""
+    with patch.dict(os.environ, {"USE_OTEL_LITELLM_REQUEST_SPAN": "false"}):
+        telemetry.configure_telemetry()
+        assert os.environ["USE_OTEL_LITELLM_REQUEST_SPAN"] == "false"
+
+
 # ---------------------------------------------------------------------------
 # trace_id injection (requires an SDK TracerProvider — the wrapper case)
 # ---------------------------------------------------------------------------
