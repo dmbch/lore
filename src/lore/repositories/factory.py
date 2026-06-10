@@ -15,16 +15,19 @@ Backend-specific logic lives in ``postgres/bootstrap.py`` and
 import asyncio
 import sqlite3
 from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 import psycopg
 
-from lore.config import LoreSettings
 from lore.domain import StorageError
 from lore.repositories.postgres import PostgresPool, postgres_bootstrap
 from lore.repositories.postgres.bootstrap import is_postgres
 from lore.repositories.protocols import RepositoryPool
 from lore.repositories.sqlite import SqlitePool, sqlite_bootstrap
 from lore.repositories.sqlite.bootstrap import is_sqlite
+
+if TYPE_CHECKING:
+    from lore.config import LoreSettings
 
 
 def _unsupported_dsn(dsn: str) -> ValueError:

@@ -8,7 +8,7 @@ import importlib.resources
 from base64 import b64encode
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Annotated, cast
+from typing import TYPE_CHECKING, Annotated, cast
 from uuid import uuid4
 
 import fastmcp
@@ -23,11 +23,13 @@ from pydantic import Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from lore.config import LoreSettings
 from lore.domain import LOCAL_ORACLE, ConsultLoreRequest, ConsultLoreResponse
 from lore.domain.errors import AuthenticationError, StorageError
 from lore.orchestrator import Orchestrator
 from lore.prompts import build_system_prompt, load_prompt
+
+if TYPE_CHECKING:
+    from lore.config import LoreSettings
 
 log = structlog.get_logger(__name__)
 
