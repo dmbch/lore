@@ -3,6 +3,7 @@
 Covers Decay, Trust, Limits, Retrieval, Server, Prompts, Postgres, Sqlite.
 """
 
+import math
 import os
 from pathlib import Path
 from unittest.mock import patch
@@ -243,6 +244,39 @@ def test_retrieval_config_from_toml() -> None:
         assert s.retrieval.limit == 20
         assert s.retrieval.fan_out == 3
         assert s.retrieval.max_keywords == 10
+
+
+def test_retrieval_config_rejects_weights_not_summing_to_one() -> None:
+    with pytest.raises(ValidationError, match=r"sum to 1\.0"):
+        RetrievalConfig(proximity=0.7, authority=0.5, limit=10, fan_out=2, max_keywords=10)
+
+
+def test_retrieval_config_accepts_weights_within_tolerance() -> None:
+    exact = RetrievalConfig(proximity=0.5, authority=0.5, limit=10, fan_out=2, max_keywords=10)
+    assert exact.proximity + exact.authority == 1.0
+    near = RetrievalConfig(proximity=0.6, authority=0.3995, limit=10, fan_out=2, max_keywords=10)
+    assert math.isclose(near.proximity + near.authority, 0.9995)
+
+
+def test_retrieval_config_weights_property_returns_lane_tuple() -> None:
+    rc = RetrievalConfig(proximity=0.7, authority=0.3, limit=10, fan_out=2, max_keywords=10)
+    assert rc.weights == (0.7, 0.3)
+
+
+def test_load_settings_rejects_partial_weight_override(tmp_path: Path) -> None:
+    """A user TOML overriding only one lane weight must fail at load, not first consult.
+
+    Deep merge would otherwise silently combine the user's `proximity = 0.7`
+    with the bundled default `authority = 0.5`.
+    """
+    toml_file = tmp_path / "partial_retrieval.toml"
+    toml_file.write_text("[retrieval]\nproximity = 0.7\n")
+    env = {**_BASE_ENV, "GEMINI_API_KEY": "fake-key"}
+    with (
+        patch.dict(os.environ, env, clear=True),
+        pytest.raises(ValidationError, match=r"sum to 1\.0"),
+    ):
+        load_settings(toml_path=toml_file)
 
 
 # ---------------------------------------------------------------------------
