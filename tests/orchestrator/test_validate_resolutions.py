@@ -185,9 +185,7 @@ def _make_settings() -> LoreSettings:
         fast=ModelConfig(model="test/fast"),
         reasoning=ModelConfig(model="test/reasoning"),
         trust=TrustConfig(maturity=1.0),
-        limits=LimitsConfig(
-            question=10000, hypothesis=10000, context=10000, reasoning=10000, answer=10000
-        ),
+        limits=LimitsConfig(question=10000, hypothesis=10000, context=10000, reasoning=10000),
         retrieval=RetrievalConfig(
             proximity=0.5, authority=0.5, limit=10, fan_out=2, max_keywords=1000
         ),

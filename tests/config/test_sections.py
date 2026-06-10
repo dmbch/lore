@@ -125,7 +125,6 @@ def test_limits_config_is_frozen() -> None:
         hypothesis=3072,
         context=4096,
         reasoning=4096,
-        answer=8192,
     )
     with pytest.raises(ValidationError, match="frozen"):
         lc.question = 512  # pyright: ignore[reportAttributeAccessIssue]
@@ -139,7 +138,6 @@ def test_limits_bundled_defaults_match_spec() -> None:
         assert s.limits.hypothesis == 3072
         assert s.limits.context == 4096
         assert s.limits.reasoning == 4096
-        assert s.limits.answer == 8192
 
 
 def test_limits_config_question_zero_raises() -> None:
@@ -149,7 +147,6 @@ def test_limits_config_question_zero_raises() -> None:
             hypothesis=3072,
             context=4096,
             reasoning=4096,
-            answer=8192,
         )
 
 
@@ -160,7 +157,18 @@ def test_limits_config_question_negative_raises() -> None:
             hypothesis=3072,
             context=4096,
             reasoning=4096,
-            answer=8192,
+        )
+
+
+def test_limits_config_rejects_answer_key() -> None:
+    """answer is no longer a config field — extra="forbid" rejects it."""
+    with pytest.raises(ValidationError):
+        LimitsConfig(
+            question=1024,
+            hypothesis=3072,
+            context=4096,
+            reasoning=4096,
+            answer=8192,  # pyright: ignore[reportCallIssue]
         )
 
 
@@ -178,7 +186,6 @@ def test_limits_config_from_toml() -> None:
         assert s.limits.hypothesis == 4096
         assert s.limits.context == 8192
         assert s.limits.reasoning == 8192
-        assert s.limits.answer == 16384
         assert s.retrieval.max_keywords == 20
 
 
