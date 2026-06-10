@@ -22,7 +22,6 @@ question = 1024
 hypothesis = 3072
 context = 4096
 reasoning = 4096
-answer = 8192
 
 [postgres]
 min_size = 1

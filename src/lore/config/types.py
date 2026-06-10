@@ -141,9 +141,8 @@ class LimitsConfig(BaseModel):
     hypothesis: int
     context: int
     reasoning: int
-    answer: int
 
-    @field_validator("question", "hypothesis", "context", "reasoning", "answer")
+    @field_validator("question", "hypothesis", "context", "reasoning")
     @classmethod
     def _validate_positive(cls, v: int) -> int:
         if v <= 0:

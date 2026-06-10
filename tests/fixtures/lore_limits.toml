@@ -16,7 +16,6 @@ question = 2048
 hypothesis = 4096
 context = 8192
 reasoning = 8192
-answer = 16384
 
 [retrieval]
 max_keywords = 20
