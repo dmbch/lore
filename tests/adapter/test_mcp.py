@@ -337,8 +337,8 @@ def test_build_auth_returns_none_without_oidc(settings: LoreSettings) -> None:
 
 def test_build_auth_returns_none_without_base_url(settings: LoreSettings) -> None:
     """OIDC config without base_url means no auth provider."""
+    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
-    from lore.config.types import OidcConfig
 
     oidc_settings = settings.model_copy(
         update={
@@ -359,8 +359,8 @@ def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -
     structurally. Per-kwarg tests below cover the trust-grading additions
     (`required_scopes`, `verify_id_token`, `extra_authorize_params`).
     """
+    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
-    from lore.config.types import OidcConfig
 
     oidc_settings = settings.model_copy(
         update={
@@ -384,8 +384,8 @@ def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -
 
 def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None:
     """openid is hardcoded at the OIDCProxy boundary — the minimum OIDC guarantees an id_token."""
+    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
-    from lore.config.types import OidcConfig
 
     oidc_settings = settings.model_copy(
         update={
@@ -407,8 +407,8 @@ def test_build_auth_forwards_verify_id_token_from_settings(
     settings: LoreSettings, *, verify: bool
 ) -> None:
     """settings.server.verify_id_token flows through to OIDCProxy verbatim."""
+    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
-    from lore.config.types import OidcConfig
 
     oidc_settings = settings.model_copy(
         update={
@@ -430,8 +430,8 @@ def test_build_auth_forwards_extra_authorize_params_from_settings(
     settings: LoreSettings,
 ) -> None:
     """Non-empty extra_authorize_params flows through verbatim (e.g. Google's hd=)."""
+    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
-    from lore.config.types import OidcConfig
 
     oidc_settings = settings.model_copy(
         update={

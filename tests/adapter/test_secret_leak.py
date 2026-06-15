@@ -36,9 +36,9 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from pydantic import SecretStr
 
 from lore import telemetry as telemetry_module
+from lore.adapter import OidcConfig
 from lore.adapter.mcp import create_server
 from lore.config import load_settings
-from lore.config.types import OidcConfig
 from lore.orchestrator import Orchestrator
 
 _COMPLETE_TOML = Path(__file__).parents[1] / "fixtures" / "lore_complete.toml"

@@ -8,9 +8,10 @@ import pytest
 import structlog
 from pydantic import ValidationError
 
+from lore.adapter import OidcConfig
 from lore.config import load_settings, redact_dsn
 from lore.config.loader import discover_toml, parse_oidc_url
-from lore.config.types import DecayConfig, OidcConfig
+from lore.config.types import DecayConfig
 
 # Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}

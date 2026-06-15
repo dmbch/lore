@@ -14,7 +14,8 @@ from urllib.parse import parse_qs, unquote, urlparse, urlsplit, urlunsplit
 import structlog
 from pydantic import SecretStr
 
-from lore.config.types import LoreSettings, OidcConfig
+from lore.adapter.config import OidcConfig
+from lore.config.types import LoreSettings
 
 log = structlog.get_logger(__name__)
 

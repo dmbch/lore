@@ -35,10 +35,10 @@ from typing import cast
 import pytest
 from pydantic import BaseModel
 
+from lore.adapter import LimitsConfig
 from lore.config import LoreSettings
 from lore.config.types import (
     DecayConfig,
-    LimitsConfig,
     TrustConfig,
 )
 from lore.domain import (

@@ -2,8 +2,9 @@
 
 import re
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
+from lore.adapter.config import LimitsConfig, OidcConfig, ServerConfig
 from lore.prompts.config import PromptsConfig
 from lore.providers.config import EmbeddingModelConfig, ModelConfig
 from lore.repositories.config import PostgresConfig, RetrievalConfig, SqliteConfig
@@ -37,19 +38,6 @@ def _parse_half_life(value: str | float) -> float:
         msg = f"half_life must be positive, got {value!r}"
         raise ValueError(msg)
     return seconds
-
-
-class OidcConfig(BaseModel):
-    """Parsed OIDC credentials. `client_secret` is `SecretStr` so accidental
-    serialisation prints `'**********'`; callers unwrap via `.get_secret_value()`.
-    """
-
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
-    discovery_url: str
-    client_id: str
-    client_secret: SecretStr
-    extra_authorize_params: dict[str, str] = Field(default_factory=dict)
 
 
 class TrustConfig(BaseModel):
@@ -95,32 +83,6 @@ class DecayConfig(BaseModel):
     @classmethod
     def _validate_half_life(cls, v: str | float) -> float:
         return _parse_half_life(v)
-
-
-class LimitsConfig(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
-    question: int
-    hypothesis: int
-    context: int
-    reasoning: int
-
-    @field_validator("question", "hypothesis", "context", "reasoning")
-    @classmethod
-    def _validate_positive(cls, v: int) -> int:
-        if v <= 0:
-            msg = f"must be > 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-
-class ServerConfig(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
-    name: str = "Lore"
-    auth_required: bool = False
-    icon_url: str | None = None
-    verify_id_token: bool = True
 
 
 class LoreSettings(BaseModel):
