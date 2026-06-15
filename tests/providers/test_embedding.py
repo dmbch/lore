@@ -6,9 +6,8 @@ import openai
 import pytest
 from litellm.types.utils import Embedding, EmbeddingResponse
 
-from lore.config import EmbeddingModelConfig
-from lore.config.types import TaskTypeConfig
 from lore.domain import InferenceError
+from lore.providers import EmbeddingModelConfig, TaskTypeConfig
 from lore.providers.embedding import EmbeddingProvider
 
 

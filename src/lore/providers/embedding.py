@@ -10,8 +10,8 @@ import litellm
 import openai
 from litellm.types.utils import EmbeddingResponse
 
-from lore.config import EmbeddingModelConfig
 from lore.domain import InferenceError
+from lore.providers.config import EmbeddingModelConfig
 from lore.providers.protocols import TaskTypeKey
 
 

@@ -17,8 +17,8 @@ from openai.types.chat import (
 )
 from pydantic import BaseModel, ValidationError
 
-from lore.config import ModelConfig
 from lore.domain import InferenceError
+from lore.providers.config import ModelConfig
 
 
 class CompletionProvider:
