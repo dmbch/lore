@@ -142,12 +142,19 @@ def test_load_settings_rejects_partial_weight_override(tmp_path: Path) -> None:
 
 
 def test_auth_config_required_round_trips_from_toml(tmp_path: Path) -> None:
+    # ``required = true`` is only a valid load state with OIDC configured —
+    # the cross-section validator refuses ``required`` without ``oidc``.
     toml_file = tmp_path / "auth.toml"
     toml_file.write_text(
         "[auth]\nrequired = true\n"
         '[embedding]\nmodel = "test/e"\n[fast]\nmodel = "test/f"\n[reasoning]\nmodel = "test/r"\n'
     )
-    with patch.dict(os.environ, _BASE_ENV, clear=True):
+    env = {
+        **_BASE_ENV,
+        "OIDC_URL": "oidc://client:secret@auth.example.com/.well-known/openid-configuration",
+        "BASE_URL": "https://lore.example.com",
+    }
+    with patch.dict(os.environ, env, clear=True):
         s = load_settings(toml_path=toml_file)
         assert s.auth.required is True
 

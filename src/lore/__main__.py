@@ -28,22 +28,16 @@ from lore.telemetry import configure_telemetry
 
 
 def configure(*, toml_path: Path | None = None) -> LoreSettings:
-    """Sync bootstrap: configure telemetry first, then load settings and enforce auth opt-in.
+    """Sync bootstrap: telemetry first, then load + validate settings.
 
-    Telemetry runs before any other code can emit logs so the ``bootstrap.env``
-    INFO log emitted by ``load_settings`` routes through the structlog stdlib
-    bridge instead of being dropped at the stdlib root's default WARNING level.
-
-    The ``auth.required`` check still runs after ``load_settings`` because it consumes
-    the loaded settings. ``load_settings`` already enforces ``OIDC_URL ↔ BASE_URL``
-    pairing, so the check here only needs to refuse ``oidc is None``.
+    Telemetry runs before any other code can emit logs so the
+    ``bootstrap.env`` INFO log from ``load_settings`` routes through the
+    structlog stdlib bridge. All cross-section invariants (auth↔oidc,
+    oidc↔base_url) live on ``LoreSettings`` now and fire inside
+    ``load_settings``.
     """
     configure_telemetry()
-    settings = load_settings(toml_path=toml_path)
-    if settings.auth.required and settings.oidc is None:
-        msg = "[auth] required = true requires OIDC_URL"
-        raise ValueError(msg)
-    return settings
+    return load_settings(toml_path=toml_path)
 
 
 @asynccontextmanager

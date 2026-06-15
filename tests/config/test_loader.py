@@ -98,7 +98,7 @@ def test_base_url_without_oidc_url_raises() -> None:
     env = {**_BASE_ENV, "BASE_URL": "https://lore.example.com"}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValueError, match="BASE_URL requires OIDC_URL"),
+        pytest.raises(ValidationError, match="BASE_URL requires OIDC_URL"),
     ):
         load_settings(toml_path=_TOML_PATH)
 
@@ -107,9 +107,27 @@ def test_oidc_url_without_base_url_raises() -> None:
     env = {**_BASE_ENV, "OIDC_URL": _OIDC_URL}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValueError, match="OIDC_URL requires BASE_URL"),
+        pytest.raises(ValidationError, match="OIDC_URL requires BASE_URL"),
     ):
         load_settings(toml_path=_TOML_PATH)
+
+
+def test_settings_reject_auth_required_without_oidc(tmp_path: Path) -> None:
+    """``[auth] required = true`` with no OIDC_URL fails inside ``load_settings``.
+
+    The cross-section invariant lives on ``LoreSettings`` now, so the refusal
+    fires during ``model_validate`` rather than in ``__main__.configure``.
+    """
+    toml_file = tmp_path / "auth_required.toml"
+    toml_file.write_text(
+        "[auth]\nrequired = true\n"
+        '[embedding]\nmodel = "test/e"\n[fast]\nmodel = "test/f"\n[reasoning]\nmodel = "test/r"\n'
+    )
+    with (
+        patch.dict(os.environ, _BASE_ENV, clear=True),
+        pytest.raises(ValidationError, match=r"\[auth\] required = true requires OIDC_URL"),
+    ):
+        load_settings(toml_path=toml_file)
 
 
 def test_both_set_returns_http_config() -> None:

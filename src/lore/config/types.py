@@ -1,6 +1,8 @@
 """Config types — frozen Pydantic models."""
 
-from pydantic import BaseModel, ConfigDict
+from typing import Self
+
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from lore.adapter.config import AuthConfig, LimitsConfig, OidcConfig, ServerConfig
 from lore.math.config import EpistemicsConfig
@@ -34,3 +36,23 @@ class LoreSettings(BaseModel):
     postgres: PostgresConfig
     sqlite: SqliteConfig = SqliteConfig()
     prompts: PromptsConfig
+
+    @model_validator(mode="after")
+    def _validate_cross_section(self) -> Self:
+        """Enforce the three cross-section invariants the partials can't see alone.
+
+        Each partial validates within its own section; these three span sections
+        (auth ↔ oidc, oidc ↔ base_url) and so live on the composer. They fire at
+        ``model_validate`` time, which is the genuine load-time boundary —
+        ``model_copy(update=...)`` does not re-run them (pydantic v2).
+        """
+        if self.auth.required and self.oidc is None:
+            msg = "[auth] required = true requires OIDC_URL"
+            raise ValueError(msg)
+        if self.base_url is not None and self.oidc is None:
+            msg = "BASE_URL requires OIDC_URL for authenticated HTTP mode"
+            raise ValueError(msg)
+        if self.oidc is not None and self.base_url is None:
+            msg = "OIDC_URL requires BASE_URL for authenticated HTTP mode"
+            raise ValueError(msg)
+        return self
