@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from lore.adapter.config import LimitsConfig, OidcConfig, ServerConfig
+from lore.adapter.config import AuthConfig, LimitsConfig, OidcConfig, ServerConfig
 from lore.math.config import EpistemicsConfig
 from lore.prompts.config import PromptsConfig
 from lore.providers.config import EmbeddingModelConfig, ModelConfig
@@ -30,6 +30,7 @@ class LoreSettings(BaseModel):
     limits: LimitsConfig
     retrieval: RetrievalConfig
     server: ServerConfig = ServerConfig()
+    auth: AuthConfig = AuthConfig()
     postgres: PostgresConfig
     sqlite: SqliteConfig = SqliteConfig()
     prompts: PromptsConfig

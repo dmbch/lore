@@ -81,7 +81,7 @@ def _build_auth(settings: LoreSettings) -> OIDCProxy | None:
         base_url=settings.base_url,
         # Hardcoded: 'sub' is only guaranteed when 'openid' is requested.
         required_scopes=["openid"],
-        verify_id_token=settings.server.verify_id_token,
+        verify_id_token=settings.auth.verify_id_token,
         # Forwarded verbatim from OIDC_URL query (e.g. Google's `hd=` workspace restriction).
         extra_authorize_params=settings.oidc.extra_authorize_params,
     )

@@ -403,10 +403,10 @@ def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None
 
 
 @pytest.mark.parametrize("verify", [True, False])
-def test_build_auth_forwards_verify_id_token_from_settings(
+def test_build_auth_forwards_verify_id_token_from_auth_section(
     settings: LoreSettings, *, verify: bool
 ) -> None:
-    """settings.server.verify_id_token flows through to OIDCProxy verbatim."""
+    """settings.auth.verify_id_token flows through to OIDCProxy verbatim."""
     from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
@@ -418,7 +418,7 @@ def test_build_auth_forwards_verify_id_token_from_settings(
                 client_secret=SecretStr("test-secret"),
             ),
             "base_url": "https://lore.example.com",
-            "server": settings.server.model_copy(update={"verify_id_token": verify}),
+            "auth": settings.auth.model_copy(update={"verify_id_token": verify}),
         }
     )
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:

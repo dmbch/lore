@@ -136,20 +136,20 @@ def test_load_settings_rejects_partial_weight_override(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# ServerConfig — loader integration (model construction tests live in
+# AuthConfig — loader integration (model construction tests live in
 # tests/adapter/test_config.py)
 # ---------------------------------------------------------------------------
 
 
-def test_server_config_auth_required_round_trips_from_toml(tmp_path: Path) -> None:
+def test_auth_config_required_round_trips_from_toml(tmp_path: Path) -> None:
     toml_file = tmp_path / "auth.toml"
     toml_file.write_text(
-        "[server]\nauth_required = true\n"
+        "[auth]\nrequired = true\n"
         '[embedding]\nmodel = "test/e"\n[fast]\nmodel = "test/f"\n[reasoning]\nmodel = "test/r"\n'
     )
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=toml_file)
-        assert s.server.auth_required is True
+        assert s.auth.required is True
 
 
 # ---------------------------------------------------------------------------

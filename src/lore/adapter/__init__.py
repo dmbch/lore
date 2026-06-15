@@ -1,9 +1,10 @@
 """MCP adapter — public API."""
 
-from lore.adapter.config import LimitsConfig, OidcConfig, ServerConfig
+from lore.adapter.config import AuthConfig, LimitsConfig, OidcConfig, ServerConfig
 from lore.adapter.mcp import create_server, serve
 
 __all__ = [
+    "AuthConfig",
     "LimitsConfig",
     "OidcConfig",
     "ServerConfig",

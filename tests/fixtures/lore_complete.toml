@@ -1,5 +1,5 @@
-[server]
-auth_required = false
+[auth]
+required = false
 
 [epistemics]
 attestation_half_life = "30d"
