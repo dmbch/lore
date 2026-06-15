@@ -34,14 +34,14 @@ def configure(*, toml_path: Path | None = None) -> LoreSettings:
     INFO log emitted by ``load_settings`` routes through the structlog stdlib
     bridge instead of being dropped at the stdlib root's default WARNING level.
 
-    The ``auth_required`` check still runs after ``load_settings`` because it consumes
+    The ``auth.required`` check still runs after ``load_settings`` because it consumes
     the loaded settings. ``load_settings`` already enforces ``OIDC_URL ↔ BASE_URL``
     pairing, so the check here only needs to refuse ``oidc is None``.
     """
     configure_telemetry()
     settings = load_settings(toml_path=toml_path)
-    if settings.server.auth_required and settings.oidc is None:
-        msg = "[server] auth_required = true requires OIDC_URL"
+    if settings.auth.required and settings.oidc is None:
+        msg = "[auth] required = true requires OIDC_URL"
         raise ValueError(msg)
     return settings
 

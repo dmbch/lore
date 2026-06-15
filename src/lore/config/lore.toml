@@ -1,6 +1,9 @@
 [server]
 name = "Lore"
-auth_required = false
+
+[auth]
+required = false
+verify_id_token = true
 
 [epistemics]
 attestation_half_life = "90d"

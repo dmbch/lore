@@ -1,13 +1,24 @@
 """Tests for adapter-layer config models.
 
-Covers Server, Oidc, Limits — pure construction and validation. The
+Covers Auth, Server, Oidc, Limits — pure construction and validation. The
 section→field loader mapping for these types lives in tests/config/test_sections.py.
 """
 
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from lore.adapter import LimitsConfig, OidcConfig, ServerConfig
+from lore.adapter import AuthConfig, LimitsConfig, OidcConfig, ServerConfig
+
+# ---------------------------------------------------------------------------
+# AuthConfig
+# ---------------------------------------------------------------------------
+
+
+def test_auth_config_defaults() -> None:
+    ac = AuthConfig()
+    assert ac.required is False
+    assert ac.verify_id_token is True
+
 
 # ---------------------------------------------------------------------------
 # ServerConfig
@@ -25,19 +36,17 @@ def test_server_config_is_frozen() -> None:
         sc.name = "Other"  # pyright: ignore[reportAttributeAccessIssue]
 
 
-def test_server_config_auth_required_defaults_to_false() -> None:
-    sc = ServerConfig()
-    assert sc.auth_required is False
-
-
 def test_server_config_icon_url_defaults_to_none() -> None:
     sc = ServerConfig()
     assert sc.icon_url is None
 
 
-def test_server_config_verify_id_token_defaults_to_true() -> None:
-    sc = ServerConfig()
-    assert sc.verify_id_token is True
+def test_server_config_rejects_legacy_auth_keys() -> None:
+    """auth_required and verify_id_token moved to [auth] — extra="forbid" rejects them."""
+    with pytest.raises(ValidationError):
+        ServerConfig(auth_required=False)  # pyright: ignore[reportCallIssue]
+    with pytest.raises(ValidationError):
+        ServerConfig(verify_id_token=True)  # pyright: ignore[reportCallIssue]
 
 
 # ---------------------------------------------------------------------------

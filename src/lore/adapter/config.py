@@ -38,10 +38,20 @@ class LimitsConfig(BaseModel):
         return v
 
 
+class AuthConfig(BaseModel):
+    """Authentication policy. ``required`` is the operator-controlled fail-fast:
+    when true, bootstrap refuses to start without OIDC. ``verify_id_token`` toggles
+    ID-token signature verification on the OIDC client.
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    required: bool = False
+    verify_id_token: bool = True
+
+
 class ServerConfig(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     name: str = "Lore"
-    auth_required: bool = False
     icon_url: str | None = None
-    verify_id_token: bool = True

@@ -205,38 +205,36 @@ async def test_amain_closes_pool_when_server_raises(bootstrap_env: None) -> None
 
 
 # ---------------------------------------------------------------------------
-# Auth opt-in: [server] auth_required = true requires OIDC at boot
+# Auth opt-in: [auth] required = true requires OIDC at boot
 # ---------------------------------------------------------------------------
 
 
 def _toml_with_auth_required(tmp_path: Path) -> Path:
-    """Write a complete TOML fixture with auth_required = true."""
+    """Write a complete TOML fixture with [auth] required = true."""
     base = _COMPLETE_TOML.read_text()
-    new = base.replace("auth_required = false", "auth_required = true", 1)
+    new = base.replace("required = false", "required = true", 1)
     if new == base:
-        raise RuntimeError(
-            f"{_COMPLETE_TOML.name} must contain 'auth_required = false' for this helper"
-        )
+        raise RuntimeError(f"{_COMPLETE_TOML.name} must contain 'required = false' for this helper")
     toml_file = tmp_path / "lore.toml"
     toml_file.write_text(new)
     return toml_file
 
 
 def test_configure_refuses_when_auth_required_and_oidc_missing(tmp_path: Path) -> None:
-    """auth_required=true with no OIDC_URL is a fail-fast at boot."""
+    """[auth] required=true with no OIDC_URL is a fail-fast at boot."""
     from lore.__main__ import configure
 
     toml_file = _toml_with_auth_required(tmp_path)
     env = {"DATABASE_URL": "sqlite:///:memory:"}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValueError, match="auth_required"),
+        pytest.raises(ValueError, match=r"\[auth\]"),
     ):
         configure(toml_path=toml_file)
 
 
 def test_configure_boots_when_auth_required_with_oidc(tmp_path: Path) -> None:
-    """auth_required=true with OIDC_URL + BASE_URL boots normally."""
+    """[auth] required=true with OIDC_URL + BASE_URL boots normally."""
     from lore.__main__ import configure
 
     toml_file = _toml_with_auth_required(tmp_path)
@@ -248,11 +246,11 @@ def test_configure_boots_when_auth_required_with_oidc(tmp_path: Path) -> None:
     with patch.dict(os.environ, env, clear=True):
         settings = configure(toml_path=toml_file)
         assert settings.oidc is not None
-        assert settings.server.auth_required is True
+        assert settings.auth.required is True
 
 
 def test_configure_default_boots_without_oidc() -> None:
-    """Default auth_required=false: no OIDC, any FASTMCP_HOST — boots without complaint."""
+    """Default [auth] required=false: no OIDC, any FASTMCP_HOST — boots without complaint."""
     from lore.__main__ import configure
 
     env = {
@@ -261,14 +259,14 @@ def test_configure_default_boots_without_oidc() -> None:
     }
     with patch.dict(os.environ, env, clear=True):
         settings = configure(toml_path=_COMPLETE_TOML)
-        assert settings.server.auth_required is False
+        assert settings.auth.required is False
         assert settings.oidc is None
 
 
 def test_configure_oidc_without_base_url_fails_in_loader_not_configure(tmp_path: Path) -> None:
     """OIDC ↔ BASE_URL pairing is owned by load_settings, not the configure-level check.
 
-    Pins the layering: configure's auth_required check only enforces ``oidc is None``,
+    Pins the layering: configure's auth.required check only enforces ``oidc is None``,
     relying on the loader to have already rejected the partial pair. A future refactor
     that weakens the loader pairing must also re-examine the configure check.
     """
