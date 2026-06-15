@@ -19,10 +19,10 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from pydantic import BaseModel
 from structlog.typing import EventDict
 
+from lore.adapter import LimitsConfig
 from lore.config import LoreSettings
 from lore.config.types import (
     DecayConfig,
-    LimitsConfig,
     TrustConfig,
 )
 from lore.domain import (

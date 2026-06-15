@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 
 from lore.config import load_settings
 from lore.config.loader import (
@@ -16,9 +16,6 @@ from lore.config.loader import (
 )
 from lore.config.types import (
     DecayConfig,
-    LimitsConfig,
-    OidcConfig,
-    ServerConfig,
     TrustConfig,
 )
 
@@ -113,19 +110,9 @@ def test_decay_attestation_independent_of_trust() -> None:
 
 
 # ---------------------------------------------------------------------------
-# LimitsConfig — character limits for pipeline payloads
+# LimitsConfig — character limits for pipeline payloads (loader integration;
+# model construction tests live in tests/adapter/test_config.py)
 # ---------------------------------------------------------------------------
-
-
-def test_limits_config_is_frozen() -> None:
-    lc = LimitsConfig(
-        question=1024,
-        hypothesis=3072,
-        context=4096,
-        reasoning=4096,
-    )
-    with pytest.raises(ValidationError, match="frozen"):
-        lc.question = 512  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def test_limits_bundled_defaults_match_spec() -> None:
@@ -136,38 +123,6 @@ def test_limits_bundled_defaults_match_spec() -> None:
         assert s.limits.hypothesis == 3072
         assert s.limits.context == 4096
         assert s.limits.reasoning == 4096
-
-
-def test_limits_config_question_zero_raises() -> None:
-    with pytest.raises(ValidationError, match="question"):
-        LimitsConfig(
-            question=0,
-            hypothesis=3072,
-            context=4096,
-            reasoning=4096,
-        )
-
-
-def test_limits_config_question_negative_raises() -> None:
-    with pytest.raises(ValidationError, match="question"):
-        LimitsConfig(
-            question=-1,
-            hypothesis=3072,
-            context=4096,
-            reasoning=4096,
-        )
-
-
-def test_limits_config_rejects_answer_key() -> None:
-    """answer is no longer a config field — extra="forbid" rejects it."""
-    with pytest.raises(ValidationError):
-        LimitsConfig(
-            question=1024,
-            hypothesis=3072,
-            context=4096,
-            reasoning=4096,
-            answer=8192,  # pyright: ignore[reportCallIssue]
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -239,34 +194,9 @@ def test_load_settings_rejects_partial_weight_override(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# ServerConfig
+# ServerConfig — loader integration (model construction tests live in
+# tests/adapter/test_config.py)
 # ---------------------------------------------------------------------------
-
-
-def test_server_config_default_name() -> None:
-    sc = ServerConfig()
-    assert sc.name == "Lore"
-
-
-def test_server_config_is_frozen() -> None:
-    sc = ServerConfig()
-    with pytest.raises(ValidationError, match="frozen"):
-        sc.name = "Other"  # pyright: ignore[reportAttributeAccessIssue]
-
-
-def test_server_config_auth_required_defaults_to_false() -> None:
-    sc = ServerConfig()
-    assert sc.auth_required is False
-
-
-def test_server_config_icon_url_defaults_to_none() -> None:
-    sc = ServerConfig()
-    assert sc.icon_url is None
-
-
-def test_server_config_verify_id_token_defaults_to_true() -> None:
-    sc = ServerConfig()
-    assert sc.verify_id_token is True
 
 
 def test_server_config_auth_required_round_trips_from_toml(tmp_path: Path) -> None:
@@ -278,20 +208,6 @@ def test_server_config_auth_required_round_trips_from_toml(tmp_path: Path) -> No
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=toml_file)
         assert s.server.auth_required is True
-
-
-# ---------------------------------------------------------------------------
-# OidcConfig
-# ---------------------------------------------------------------------------
-
-
-def test_oidc_config_extra_authorize_params_defaults_to_empty() -> None:
-    oc = OidcConfig(
-        discovery_url="https://auth.example.com/.well-known/openid-configuration",
-        client_id="cid",
-        client_secret=SecretStr("sec"),
-    )
-    assert oc.extra_authorize_params == {}
 
 
 # ---------------------------------------------------------------------------
