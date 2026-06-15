@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from lore.config import PromptsConfig, load_settings
+from lore.config import load_settings
 from lore.config.loader import (
     _resolve_prompts,  # pyright: ignore[reportPrivateUsage]
 )
@@ -295,36 +295,9 @@ def test_oidc_config_extra_authorize_params_defaults_to_empty() -> None:
 
 
 # ---------------------------------------------------------------------------
-# PromptsConfig
+# PromptsConfig — loader resolution (model construction tests live in
+# tests/prompts/test_prompts.py, alongside the layer that owns the model)
 # ---------------------------------------------------------------------------
-
-
-def test_prompts_config_requires_bundled_paths() -> None:
-    pc = PromptsConfig(
-        scribe=Path("/tmp/scribe.md"),
-        consult=Path("/tmp/consult.md"),
-        interpreter=Path("/tmp/interpreter.md"),
-        archivist=Path("/tmp/archivist.md"),
-    )
-    assert pc.narrative is None
-    assert pc.glossary is None
-    assert pc.scribe == Path("/tmp/scribe.md")
-    assert pc.consult == Path("/tmp/consult.md")
-    assert pc.interpreter == Path("/tmp/interpreter.md")
-    assert pc.archivist == Path("/tmp/archivist.md")
-
-
-def test_prompts_config_accepts_narrative_and_glossary() -> None:
-    pc = PromptsConfig(
-        narrative=Path("/tmp/narrative.md"),
-        glossary=Path("/tmp/glossary.md"),
-        scribe=Path("/tmp/scribe.md"),
-        consult=Path("/tmp/consult.md"),
-        interpreter=Path("/tmp/interpreter.md"),
-        archivist=Path("/tmp/archivist.md"),
-    )
-    assert pc.narrative == Path("/tmp/narrative.md")
-    assert pc.glossary == Path("/tmp/glossary.md")
 
 
 def test_load_settings_resolves_bundled_prompts() -> None:

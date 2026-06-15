@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from lore.config import LoreSettings, load_settings
-from lore.prompts import build_system_prompt, load_prompt
+from lore.prompts import PromptsConfig, build_system_prompt, load_prompt
 
 _COMPLETE_TOML = Path(__file__).parents[1] / "fixtures" / "lore_complete.toml"
 
@@ -76,8 +76,6 @@ def test_build_system_prompt_with_narrative_and_glossary(tmp_path: Path) -> None
 
     settings = _load_test_settings()
     # Build a new PromptsConfig with narrative/glossary overlays.
-    from lore.config.types import PromptsConfig
-
     config = PromptsConfig(
         narrative=narrative,
         glossary=glossary,
@@ -93,3 +91,36 @@ def test_build_system_prompt_with_narrative_and_glossary(tmp_path: Path) -> None
     parts = result.split("\n\n")
     assert parts[0] == "Our domain narrative."
     assert parts[1] == "Term definitions."
+
+
+# ---------------------------------------------------------------------------
+# PromptsConfig — model construction
+# ---------------------------------------------------------------------------
+
+
+def test_prompts_config_requires_bundled_paths() -> None:
+    pc = PromptsConfig(
+        scribe=Path("/tmp/scribe.md"),
+        consult=Path("/tmp/consult.md"),
+        interpreter=Path("/tmp/interpreter.md"),
+        archivist=Path("/tmp/archivist.md"),
+    )
+    assert pc.narrative is None
+    assert pc.glossary is None
+    assert pc.scribe == Path("/tmp/scribe.md")
+    assert pc.consult == Path("/tmp/consult.md")
+    assert pc.interpreter == Path("/tmp/interpreter.md")
+    assert pc.archivist == Path("/tmp/archivist.md")
+
+
+def test_prompts_config_accepts_narrative_and_glossary() -> None:
+    pc = PromptsConfig(
+        narrative=Path("/tmp/narrative.md"),
+        glossary=Path("/tmp/glossary.md"),
+        scribe=Path("/tmp/scribe.md"),
+        consult=Path("/tmp/consult.md"),
+        interpreter=Path("/tmp/interpreter.md"),
+        archivist=Path("/tmp/archivist.md"),
+    )
+    assert pc.narrative == Path("/tmp/narrative.md")
+    assert pc.glossary == Path("/tmp/glossary.md")
