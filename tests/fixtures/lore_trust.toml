@@ -1,6 +1,7 @@
-[decay]
-attestation = "30d"
-trust = "45d"
+[epistemics]
+attestation_half_life = "30d"
+trust_half_life = "45d"
+maturity_k = 3
 
 [embedding]
 model = "test/embedding-model"
@@ -10,6 +11,3 @@ model = "test/fast-model"
 
 [reasoning]
 model = "test/reasoning-model"
-
-[trust]
-maturity = 3

@@ -316,11 +316,10 @@ class TestMaxKeywordsTruncation:
         settings = LoreSettings.model_construct(
             dsn=base.dsn,
             oidc=base.oidc,
-            decay=base.decay,
+            epistemics=base.epistemics,
             embedding=base.embedding,
             fast=base.fast,
             reasoning=base.reasoning,
-            trust=base.trust,
             limits=base.limits,
             retrieval=RetrievalConfig(
                 proximity=0.5,
@@ -376,11 +375,10 @@ class TestOrchestratorForwardsFanOutToSearch:
         settings = LoreSettings.model_construct(
             dsn=base.dsn,
             oidc=base.oidc,
-            decay=base.decay,
+            epistemics=base.epistemics,
             embedding=base.embedding,
             fast=base.fast,
             reasoning=base.reasoning,
-            trust=base.trust,
             limits=base.limits,
             retrieval=RetrievalConfig(
                 proximity=0.5,

@@ -47,7 +47,7 @@ async def record(
         alignments = await repos.attestations.fetch_trust_alignments(
             oracle_id=context.oracle_id,
             t_now=context.t_now,
-            trust_half_life=settings.decay.trust,
+            trust_half_life=settings.epistemics.trust_half_life,
         )
         t_oracle = math.compute_oracle_trust(rows=alignments, t_now=context.t_now)
 
@@ -242,7 +242,7 @@ class Recorder:
     def _compute_transfer(self, contradicts: list[str]) -> float | None:
         """Consolidated transfer scalar from the latest c_herd per contradicted
         hypothesis, fused via decayed ECBF and negated. Returns None when the
-        fused magnitude falls below ``settings.trust.threshold`` (e.g.
+        fused magnitude falls below ``settings.epistemics.transfer_threshold`` (e.g.
         balanced contradictions): no transfer row is written."""
         evidence_pieces: list[EvidenceInput] = []
         for h_id in contradicts:
@@ -258,7 +258,7 @@ class Recorder:
             attestations=evidence_pieces, t_now=self._context.t_now
         )
         c_transfer = -fused
-        if abs(c_transfer) < self._settings.trust.threshold:
+        if abs(c_transfer) < self._settings.epistemics.transfer_threshold:
             log.debug(
                 "recorder.transfer_skipped",
                 contradicts=contradicts,

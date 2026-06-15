@@ -2,8 +2,9 @@
 
 The Recorder writes a consolidated transfer attestation on a novel hypothesis
 when an orthogonal-novel resolution carries contradicted IDs. If the fused
-magnitude falls below ``settings.trust.threshold`` — an epistemic-significance
-floor decoupled from the math core's IEEE epsilon — no row is written.
+magnitude falls below ``settings.epistemics.transfer_threshold`` — an
+epistemic-significance floor decoupled from the math core's IEEE epsilon — no
+row is written.
 
 These tests drive ``_compute_transfer`` by handing the Recorder an
 ``ArchivistOutput`` carrying a single contributes/contradicts resolution and
@@ -133,9 +134,11 @@ _DEFAULT_THRESHOLD = 1e-3
 
 
 def _settings_with_threshold(threshold: float = _DEFAULT_THRESHOLD) -> LoreSettings:
-    """A LoreSettings whose ``trust.threshold`` is the only field tests care about."""
+    """A LoreSettings whose ``epistemics.transfer_threshold`` is the only field tests care about."""
     base = make_settings()
-    return base.model_copy(update={"trust": base.trust.model_copy(update={"threshold": threshold})})
+    return base.model_copy(
+        update={"epistemics": base.epistemics.model_copy(update={"transfer_threshold": threshold})}
+    )
 
 
 def _make_recorder(
@@ -214,7 +217,7 @@ class TestComputeTransferLogsSkipWhenFusedRoundsToZero:
 
 
 class TestComputeTransferReturnsNoneBelowThreshold:
-    """A fused-result whose magnitude is below ``settings.trust.threshold`` writes no row.
+    """A fused-result below ``settings.epistemics.transfer_threshold`` writes no row.
 
     Engineered scalar: ``c_herd = 1e-4`` — five orders of magnitude above
     ``Opinion.EPSILON`` (math-core noise floor) but an order below the
@@ -234,7 +237,7 @@ class TestComputeTransferReturnsNoneBelowThreshold:
 
 
 class TestComputeTransferWritesAboveThreshold:
-    """A fused-result with magnitude clearly above ``settings.trust.threshold`` writes one row.
+    """A fused-result clearly above ``settings.epistemics.transfer_threshold`` writes one row.
 
     Engineered scalar: ``c_herd = 0.1`` — two orders of magnitude above the
     default threshold so floating-point drift inside ECBF + maximize_uncertainty

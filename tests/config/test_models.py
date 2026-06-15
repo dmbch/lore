@@ -15,7 +15,6 @@ from lore.config import load_settings
 from lore.config.loader import (
     _load_bundled_toml,  # pyright: ignore[reportPrivateUsage]
 )
-from lore.config.types import DecayConfig
 
 # Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
@@ -28,8 +27,6 @@ _NO_TOML = Path(__file__).parent.parent / "fixtures" / "nonexistent.toml"
 
 # Complete TOML with all three models + dimensions.
 _COMPLETE_TOML = Path(__file__).parent.parent / "fixtures" / "lore_complete.toml"
-
-_90_DAYS = 90 * 86400.0
 
 
 # ---------------------------------------------------------------------------
@@ -160,22 +157,17 @@ def test_build_model_missing_model_key_raises() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_user_toml_trust_partial_override_merges_with_defaults() -> None:
-    """User overrides one trust field — rest comes from base defaults."""
+def test_user_toml_epistemics_override_merges_with_defaults() -> None:
+    """User overrides the epistemics section — rest comes from base defaults."""
     toml_path = Path(__file__).parent.parent / "fixtures" / "lore_trust_partial.toml"
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=toml_path)
-        assert s.trust.maturity == 5.0
+        assert s.epistemics.maturity_k == 5.0
 
 
 # ---------------------------------------------------------------------------
-# Chunk 3: BeforeValidator + extra="forbid"
+# Chunk 3: extra="forbid"
 # ---------------------------------------------------------------------------
-
-
-def test_decay_config_accepts_duration_string() -> None:
-    dc = DecayConfig(attestation="45d", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == 45 * 86400.0
 
 
 def test_top_level_toml_typo_raises(tmp_path: Path) -> None:
@@ -215,9 +207,9 @@ def test_user_overrides_embedding_dimension_preserves_vendor_task_type(
     """User sets [embedding] dimensions, vendor provides task_type. Deep merge preserves both."""
     toml_file = tmp_path / "override.toml"
     toml_file.write_text(
-        "[decay]\n"
-        'attestation = "90d"\n'
-        'trust = "90d"\n\n'
+        "[epistemics]\n"
+        'attestation_half_life = "90d"\n'
+        'trust_half_life = "90d"\n\n'
         "[embedding]\n"
         'model = "gemini/gemini-embedding-001"\n'
         "dimensions = 768\n"

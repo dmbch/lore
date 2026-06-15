@@ -11,7 +11,6 @@ from pydantic import ValidationError
 from lore.adapter import OidcConfig
 from lore.config import load_settings, redact_dsn
 from lore.config.loader import discover_toml, parse_oidc_url
-from lore.config.types import DecayConfig
 
 # Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
@@ -137,7 +136,7 @@ def test_neither_set_returns_stdio_config() -> None:
 def test_settings_from_toml() -> None:
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=_TOML_PATH)
-        assert s.decay.attestation == _30_DAYS
+        assert s.epistemics.attestation_half_life == _30_DAYS
         assert s.embedding.model == "test/embedding-model"
         assert s.fast.model == "test/fast-model"
         assert s.reasoning.model == "test/reasoning-model"
@@ -147,7 +146,45 @@ def test_half_life_default_without_toml() -> None:
     env = {**_BASE_ENV, "GEMINI_API_KEY": "fake-key"}
     with patch.dict(os.environ, env, clear=True):
         s = load_settings(toml_path=_NO_TOML)
-        assert s.decay.attestation == _90_DAYS
+        assert s.epistemics.attestation_half_life == _90_DAYS
+
+
+def test_settings_expose_epistemics_section() -> None:
+    """``load_settings`` maps ``[epistemics]`` onto ``settings.epistemics``."""
+    with patch.dict(os.environ, _BASE_ENV, clear=True):
+        s = load_settings(toml_path=_TOML_PATH)
+        assert s.epistemics.attestation_half_life == _30_DAYS
+        assert s.epistemics.trust_half_life == _90_DAYS
+        assert s.epistemics.maturity_k == 1.0
+        assert s.epistemics.transfer_threshold == 1e-3
+
+
+def test_settings_reject_legacy_decay_section(tmp_path: Path) -> None:
+    """The pre-rename ``[decay]`` section is now an unknown key (extra='forbid')."""
+    toml_file = tmp_path / "legacy_decay.toml"
+    toml_file.write_text(
+        '[decay]\nattestation = "30d"\ntrust = "90d"\n'
+        '[embedding]\nmodel = "test/e"\n[fast]\nmodel = "test/f"\n[reasoning]\nmodel = "test/r"\n'
+    )
+    with (
+        patch.dict(os.environ, _BASE_ENV, clear=True),
+        pytest.raises(ValidationError, match="extra_forbidden"),
+    ):
+        load_settings(toml_path=toml_file)
+
+
+def test_settings_reject_legacy_trust_section(tmp_path: Path) -> None:
+    """The pre-rename ``[trust]`` section is now an unknown key (extra='forbid')."""
+    toml_file = tmp_path / "legacy_trust.toml"
+    toml_file.write_text(
+        "[trust]\nmaturity = 1.0\n"
+        '[embedding]\nmodel = "test/e"\n[fast]\nmodel = "test/f"\n[reasoning]\nmodel = "test/r"\n'
+    )
+    with (
+        patch.dict(os.environ, _BASE_ENV, clear=True),
+        pytest.raises(ValidationError, match="extra_forbidden"),
+    ):
+        load_settings(toml_path=toml_file)
 
 
 def test_discover_toml_first_candidate_wins(tmp_path: Path) -> None:
@@ -188,7 +225,7 @@ def test_toml_no_file_uses_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     env = {**_BASE_ENV, "GEMINI_API_KEY": "fake-key"}
     with patch.dict(os.environ, env, clear=True):
         s = load_settings()
-        assert s.decay.attestation == _90_DAYS
+        assert s.epistemics.attestation_half_life == _90_DAYS
         assert "gemini/" in s.embedding.model
 
 
@@ -202,7 +239,7 @@ def test_env_does_not_override_half_life() -> None:
     with patch.dict(os.environ, env, clear=True):
         s = load_settings(toml_path=_TOML_PATH)
         # half_life comes from TOML, not env.
-        assert s.decay.attestation == _30_DAYS
+        assert s.epistemics.attestation_half_life == _30_DAYS
 
 
 # ---------------------------------------------------------------------------
@@ -443,82 +480,12 @@ def test_load_settings_bootstrap_env_does_not_invent_fastmcp_defaults() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Half-life parsing (duration strings → seconds) — tested through types
+# Half-life through the loader (grammar tests live in tests/math/test_config.py)
 # ---------------------------------------------------------------------------
-
-
-def test_half_life_bare_float() -> None:
-    dc = DecayConfig(attestation=86400.0, trust=_90_DAYS)
-    assert dc.attestation == 86400.0
-
-
-def test_half_life_bare_int() -> None:
-    dc = DecayConfig(attestation=3600, trust=_90_DAYS)
-    assert dc.attestation == 3600.0
-
-
-def test_half_life_hours_string() -> None:
-    dc = DecayConfig(attestation="24h", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == 86400.0
-
-
-def test_half_life_days_string() -> None:
-    dc = DecayConfig(attestation="90d", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == _90_DAYS
-
-
-def test_half_life_months_string() -> None:
-    dc = DecayConfig(attestation="3M", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == 3 * 2592000.0
-
-
-def test_half_life_years_string() -> None:
-    dc = DecayConfig(attestation="1y", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == 31536000.0
-
-
-def test_half_life_fractional() -> None:
-    dc = DecayConfig(attestation="1.5h", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == 5400.0
-
-
-def test_half_life_whitespace() -> None:
-    dc = DecayConfig(attestation="  90d  ", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == _90_DAYS
-
-
-def test_half_life_invalid_unit_raises() -> None:
-    with pytest.raises(ValidationError, match="invalid half_life"):
-        DecayConfig(attestation="90x", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-
-
-def test_half_life_seconds_string() -> None:
-    dc = DecayConfig(attestation="3600s", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == 3600.0
-
-
-def test_half_life_minutes_string() -> None:
-    dc = DecayConfig(attestation="60m", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-    assert dc.attestation == 3600.0
-
-
-def test_half_life_invalid_string_raises() -> None:
-    with pytest.raises(ValidationError, match="invalid half_life"):
-        DecayConfig(attestation="hello", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
-
-
-def test_half_life_negative_raises() -> None:
-    with pytest.raises(ValidationError, match="must be positive"):
-        DecayConfig(attestation=-1.0, trust=_90_DAYS)
-
-
-def test_half_life_zero_raises() -> None:
-    with pytest.raises(ValidationError, match="must be positive"):
-        DecayConfig(attestation=0, trust=_90_DAYS)
 
 
 def test_half_life_duration_string_in_toml() -> None:
     toml_path = Path(__file__).parent.parent / "fixtures" / "lore_halflife.toml"
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=toml_path)
-        assert s.decay.attestation == _90_DAYS
+        assert s.epistemics.attestation_half_life == _90_DAYS
