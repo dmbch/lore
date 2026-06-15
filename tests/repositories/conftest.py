@@ -26,16 +26,17 @@ import psycopg
 import pytest
 from testcontainers.postgres import PostgresContainer
 
-from lore.config import LoreSettings, PostgresConfig
-from lore.config.types import SqliteConfig
+from lore.config import LoreSettings
 from lore.repositories import (
     AttestationRecord,
     AttestationsRepository,
     HypothesisRepository,
+    PostgresConfig,
     Repositories,
     RepositoryPool,
     RequestRecord,
     RequestRepository,
+    SqliteConfig,
     connect,
     records,
     run_migrations,

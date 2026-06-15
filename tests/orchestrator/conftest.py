@@ -21,13 +21,11 @@ from structlog.typing import EventDict
 
 from lore.config import (
     LoreSettings,
-    PostgresConfig,
     PromptsConfig,
 )
 from lore.config.types import (
     DecayConfig,
     LimitsConfig,
-    RetrievalConfig,
     TrustConfig,
 )
 from lore.domain import (
@@ -43,8 +41,10 @@ from lore.repositories import (
     AttestationRecord,
     HypothesisRecord,
     HypothesisResult,
+    PostgresConfig,
     Repositories,
     RequestRecord,
+    RetrievalConfig,
 )
 
 # ---------------------------------------------------------------------------

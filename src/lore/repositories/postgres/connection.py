@@ -13,7 +13,7 @@ from pgvector.psycopg import register_vector_async
 from psycopg import IsolationLevel
 from psycopg_pool import AsyncConnectionPool
 
-from lore.config import PostgresConfig
+from lore.repositories.config import PostgresConfig
 
 
 async def _configure_connection(conn: psycopg.AsyncConnection[Any]) -> None:

@@ -3,6 +3,7 @@
 Exports the public API for consumers (orchestrator, bootstrap).
 """
 
+from lore.repositories.config import PostgresConfig, RetrievalConfig, SqliteConfig
 from lore.repositories.factory import check_health, connect, make_probe, run_migrations
 from lore.repositories.protocols import (
     AttestationsRepository,
@@ -24,10 +25,13 @@ __all__ = [
     "HypothesisRecord",
     "HypothesisRepository",
     "HypothesisResult",
+    "PostgresConfig",
     "Repositories",
     "RepositoryPool",
     "RequestRecord",
     "RequestRepository",
+    "RetrievalConfig",
+    "SqliteConfig",
     "check_health",
     "connect",
     "make_probe",
