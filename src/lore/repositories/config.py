@@ -68,7 +68,7 @@ class PostgresConfig(BaseModel):
 
     min_size: int
     max_size: int
-    getconn_timeout: float
+    timeout: float
     max_waiting: int
     fulltext_config: str = "english"
 
@@ -93,11 +93,11 @@ class PostgresConfig(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("getconn_timeout")
+    @field_validator("timeout")
     @classmethod
     def _validate_timeout(cls, v: float) -> float:
         if v <= 0:
-            msg = f"getconn_timeout must be > 0, got {v}"
+            msg = f"timeout must be > 0, got {v}"
             raise ValueError(msg)
         return v
 

@@ -41,7 +41,7 @@ async def create_pool(
         dsn,
         min_size=config.min_size,
         max_size=config.max_size,
-        timeout=config.getconn_timeout,
+        timeout=config.timeout,
         max_waiting=config.max_waiting,
         open=False,
         kwargs={"autocommit": True},

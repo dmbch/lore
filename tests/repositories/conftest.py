@@ -54,7 +54,7 @@ from tests.repositories._orchestrator_fixtures import make_settings as _make_set
 # Test PostgresConfig — defaults from PLAN.md locked positions, used wherever
 # a repository test instantiates the pool.
 TEST_POSTGRES_CONFIG: PostgresConfig = PostgresConfig(
-    min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=50
+    min_size=1, max_size=20, timeout=10.0, max_waiting=50
 )
 
 # Schema dimension for test migrations. All test embedding vectors must match.

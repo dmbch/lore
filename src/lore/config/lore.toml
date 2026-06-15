@@ -27,7 +27,7 @@ reasoning = 4096
 [postgres]
 min_size = 1
 max_size = 20
-getconn_timeout = 10.0
+timeout = 10.0
 max_waiting = 50
 fulltext_config = "english"
 

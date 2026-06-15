@@ -498,10 +498,10 @@ class TestCheckHealthPostgres:
     def test_check_health_different_fulltext_config_raises(self, pg_health_dsn: str) -> None:
         """Different fulltext_config raises StorageError — tsvector lexer drift."""
         english_pg = PostgresConfig(
-            min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=50, fulltext_config="english"
+            min_size=1, max_size=20, timeout=10.0, max_waiting=50, fulltext_config="english"
         )
         simple_pg = PostgresConfig(
-            min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=50, fulltext_config="simple"
+            min_size=1, max_size=20, timeout=10.0, max_waiting=50, fulltext_config="simple"
         )
         check_health(
             settings=make_settings(dsn=pg_health_dsn, postgres=english_pg), embedding_dim=1024
