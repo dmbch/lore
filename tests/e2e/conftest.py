@@ -8,8 +8,8 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 
 from lore.config import load_settings
-from lore.config.types import DecayConfig
 from lore.domain import ConsultLoreRequest, ConsultLoreResponse
+from lore.math import EpistemicsConfig
 from lore.orchestrator import Orchestrator
 from lore.repositories.sqlite.pool import SqlitePool
 
@@ -42,7 +42,10 @@ async def decay_system(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> AsyncGenerator[Orchestrator]:
     dsn = f"sqlite:///{tmp_path_factory.mktemp('lore') / 'lore.db'}"
-    async for orchestrator in _bootstrap(dsn, decay=DecayConfig(attestation=2.0, trust=2.0)):
+    async for orchestrator in _bootstrap(
+        dsn,
+        epistemics=EpistemicsConfig(attestation_half_life=2.0, trust_half_life=2.0, maturity_k=1.0),
+    ):
         yield orchestrator
 
 

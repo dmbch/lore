@@ -26,17 +26,13 @@ from pydantic import BaseModel
 
 from lore.adapter import LimitsConfig
 from lore.config import LoreSettings
-from lore.config.types import (
-    DecayConfig,
-    TrustConfig,
-)
 from lore.domain import (
     ArchivistOutput,
     ConsultLoreRequest,
     InterpreterOutput,
     TrustSignal,
 )
-from lore.math import MathService
+from lore.math import EpistemicsConfig, MathService
 from lore.orchestrator import Orchestrator
 from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
@@ -191,11 +187,12 @@ def _make_settings() -> LoreSettings:
     return LoreSettings(
         dsn="sqlite:///:memory:",
         oidc=None,
-        decay=DecayConfig(attestation=86400.0, trust=86400.0),
+        epistemics=EpistemicsConfig(
+            attestation_half_life=86400.0, trust_half_life=86400.0, maturity_k=1.0
+        ),
         embedding=EmbeddingModelConfig(model="test/embed", dimensions=3),
         fast=ModelConfig(model="test/fast"),
         reasoning=ModelConfig(model="test/reasoning"),
-        trust=TrustConfig(maturity=1.0),
         limits=LimitsConfig(
             question=10000,
             hypothesis=10000,

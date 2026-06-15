@@ -2,13 +2,11 @@
 name = "Lore"
 auth_required = false
 
-[decay]
-attestation = "90d"
-trust = "90d"
-
-[trust]
-maturity = 1.0
-threshold = 1e-3
+[epistemics]
+attestation_half_life = "90d"
+trust_half_life = "90d"
+maturity_k = 1.0
+transfer_threshold = 1e-3
 
 [retrieval]
 proximity = 0.5

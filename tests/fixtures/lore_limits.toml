@@ -1,6 +1,6 @@
-[decay]
-attestation = "30d"
-trust = "90d"
+[epistemics]
+attestation_half_life = "30d"
+trust_half_life = "90d"
 
 [embedding]
 model = "test/embedding-model"

@@ -85,9 +85,9 @@ async def bootstrap(settings: LoreSettings, pool: RepositoryPool) -> AsyncGenera
         archivist=CompletionProvider(settings.reasoning),
     )
     math = MathService(
-        c_half_life=settings.decay.attestation,
-        t_half_life=settings.decay.trust,
-        maturity_k=settings.trust.maturity,
+        c_half_life=settings.epistemics.attestation_half_life,
+        t_half_life=settings.epistemics.trust_half_life,
+        maturity_k=settings.epistemics.maturity_k,
     )
     yield Orchestrator(pool=pool, providers=providers, math=math, settings=settings)
 

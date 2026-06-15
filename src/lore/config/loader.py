@@ -183,7 +183,7 @@ def load_settings(
     """Load and validate all settings from env + TOML + vendor detection.
 
     Loading order:
-    1. Bundled ``lore.toml`` — behavioral defaults (decay, trust, limits, retrieval)
+    1. Bundled ``lore.toml`` — behavioral defaults (epistemics, limits, retrieval)
     2. Detect vendor → load vendor defaults (stripped of ``api_key``) — model defaults
     3. Deep merge vendor over bundled → proto-config
     4. Discover user ``lore.toml`` → deep merge user over proto-config

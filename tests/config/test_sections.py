@@ -1,6 +1,9 @@
-"""Tests for lore.config section configs.
+"""Tests for lore.config section configs — loader integration.
 
-Covers Decay, Trust, Limits, Retrieval, Server, Prompts, Postgres, Sqlite.
+Covers the Epistemics, Limits, Retrieval, Server, Prompts, Postgres, and Sqlite
+sections as they map through ``load_settings``. Pure model-construction tests
+for ``EpistemicsConfig`` live in ``tests/math/test_config.py`` (the math layer
+owns that type).
 """
 
 import os
@@ -14,10 +17,6 @@ from lore.config import load_settings
 from lore.config.loader import (
     _resolve_prompts,  # pyright: ignore[reportPrivateUsage]
 )
-from lore.config.types import (
-    DecayConfig,
-    TrustConfig,
-)
 
 # Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
@@ -25,88 +24,31 @@ _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 # Path to the test TOML fixture.
 _TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore.toml"
 
-_90_DAYS = 90 * 86400.0
-
 
 # ---------------------------------------------------------------------------
-# DecayConfig
+# Epistemics section — loader integration (model construction tests live in
+# tests/math/test_config.py)
 # ---------------------------------------------------------------------------
 
-
-def test_decay_config_is_frozen() -> None:
-    dc = DecayConfig(attestation=_90_DAYS, trust=_90_DAYS)
-    with pytest.raises(ValidationError, match="frozen"):
-        dc.attestation = 1.0  # pyright: ignore[reportAttributeAccessIssue]
+_EPISTEMICS_TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore_trust.toml"
 
 
-def test_decay_config_zero_attestation_raises() -> None:
-    with pytest.raises(ValidationError, match="must be positive"):
-        DecayConfig(attestation=0, trust=_90_DAYS)
-
-
-def test_decay_config_zero_trust_raises() -> None:
-    with pytest.raises(ValidationError, match="must be positive"):
-        DecayConfig(attestation=_90_DAYS, trust=0)
-
-
-# ---------------------------------------------------------------------------
-# Trust config
-# ---------------------------------------------------------------------------
-
-_TRUST_TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore_trust.toml"
-_45_DAYS = 45 * 86400.0
-
-
-def test_trust_config_defaults_without_toml_section() -> None:
+def test_epistemics_maturity_defaults_without_toml_section() -> None:
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=_TOML_PATH)
-        assert s.trust.maturity == 1
+        assert s.epistemics.maturity_k == 1
 
 
-def test_trust_config_from_toml() -> None:
+def test_epistemics_maturity_from_toml() -> None:
     with patch.dict(os.environ, _BASE_ENV, clear=True):
-        s = load_settings(toml_path=_TRUST_TOML_PATH)
-        assert s.trust.maturity == 3
+        s = load_settings(toml_path=_EPISTEMICS_TOML_PATH)
+        assert s.epistemics.maturity_k == 3
 
 
-def test_trust_config_maturity_zero_is_valid_transparent_mode() -> None:
-    tc = TrustConfig(maturity=0)
-    assert tc.maturity == 0
-
-
-def test_trust_config_maturity_negative_raises() -> None:
-    with pytest.raises(ValueError, match="maturity"):
-        TrustConfig(maturity=-1)
-
-
-def test_trust_config_threshold_defaults_to_one_thousandth() -> None:
-    tc = TrustConfig(maturity=1.0)
-    assert tc.threshold == 1e-3
-
-
-def test_trust_config_threshold_zero_raises() -> None:
-    with pytest.raises(ValueError, match="threshold"):
-        TrustConfig(maturity=1.0, threshold=0)
-
-
-def test_trust_config_threshold_negative_raises() -> None:
-    with pytest.raises(ValueError, match="threshold"):
-        TrustConfig(maturity=1.0, threshold=-1e-3)
-
-
-def test_trust_config_rejects_alignment_weight() -> None:
-    """alignment_weight is no longer a config field — extra="forbid" rejects it."""
-    with pytest.raises(ValidationError):
-        TrustConfig(
-            maturity=1.0,
-            alignment_weight=0.5,  # pyright: ignore[reportCallIssue]
-        )
-
-
-def test_decay_attestation_independent_of_trust() -> None:
+def test_epistemics_attestation_half_life_independent_of_trust() -> None:
     with patch.dict(os.environ, _BASE_ENV, clear=True):
-        s = load_settings(toml_path=_TRUST_TOML_PATH)
-        assert s.decay.attestation != s.decay.trust
+        s = load_settings(toml_path=_EPISTEMICS_TOML_PATH)
+        assert s.epistemics.attestation_half_life != s.epistemics.trust_half_life
 
 
 # ---------------------------------------------------------------------------
