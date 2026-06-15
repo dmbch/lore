@@ -1,14 +1,10 @@
 """Configuration package — public API."""
 
 from lore.config.loader import load_settings, redact_dsn
-from lore.config.types import (
-    LoreSettings,
-    PromptsConfig,
-)
+from lore.config.types import LoreSettings
 
 __all__ = [
     "LoreSettings",
-    "PromptsConfig",
     "load_settings",
     "redact_dsn",
 ]

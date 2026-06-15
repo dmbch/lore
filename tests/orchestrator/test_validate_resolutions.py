@@ -35,10 +35,7 @@ from typing import cast
 import pytest
 from pydantic import BaseModel
 
-from lore.config import (
-    LoreSettings,
-    PromptsConfig,
-)
+from lore.config import LoreSettings
 from lore.config.types import (
     DecayConfig,
     LimitsConfig,
@@ -54,6 +51,7 @@ from lore.domain import (
 )
 from lore.math import MathService
 from lore.orchestrator import Orchestrator
+from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
     AttestationRecord,

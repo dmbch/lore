@@ -19,10 +19,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from pydantic import BaseModel
 from structlog.typing import EventDict
 
-from lore.config import (
-    LoreSettings,
-    PromptsConfig,
-)
+from lore.config import LoreSettings
 from lore.config.types import (
     DecayConfig,
     LimitsConfig,
@@ -36,6 +33,7 @@ from lore.domain import (
 )
 from lore.math import MathService
 from lore.orchestrator import Orchestrator
+from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
     AttestationRecord,

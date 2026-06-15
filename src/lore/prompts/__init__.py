@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from lore.config import PromptsConfig
+from lore.prompts.config import PromptsConfig
 
-__all__ = ["build_system_prompt", "load_prompt"]
+__all__ = ["PromptsConfig", "build_system_prompt", "load_prompt"]
 
 
 def load_prompt(path: Path) -> str:

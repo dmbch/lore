@@ -1,10 +1,10 @@
 """Config types — frozen Pydantic models."""
 
 import re
-from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
+from lore.prompts.config import PromptsConfig
 from lore.providers.config import EmbeddingModelConfig, ModelConfig
 from lore.repositories.config import PostgresConfig, RetrievalConfig, SqliteConfig
 
@@ -121,19 +121,6 @@ class ServerConfig(BaseModel):
     auth_required: bool = False
     icon_url: str | None = None
     verify_id_token: bool = True
-
-
-class PromptsConfig(BaseModel):
-    """Resolved prompt paths. Bundled defaults (`bundled:name`) are resolved by the loader."""
-
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
-    narrative: Path | None = None
-    glossary: Path | None = None
-    scribe: Path
-    consult: Path
-    interpreter: Path
-    archivist: Path
 
 
 class LoreSettings(BaseModel):
