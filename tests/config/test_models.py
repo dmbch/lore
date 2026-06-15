@@ -1,4 +1,8 @@
-"""Tests for lore.config model-role configs and vendor defaults."""
+"""Tests for lore.config loader — vendor defaults, deep merge, validation.
+
+Pure model-construction tests for the model-role configs live in
+``tests/providers/test_config.py`` (the providers layer owns those types).
+"""
 
 import os
 from pathlib import Path
@@ -7,11 +11,11 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from lore.config import EmbeddingModelConfig, ModelConfig, load_settings
+from lore.config import load_settings
 from lore.config.loader import (
     _load_bundled_toml,  # pyright: ignore[reportPrivateUsage]
 )
-from lore.config.types import DecayConfig, TaskTypeConfig
+from lore.config.types import DecayConfig
 
 # Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
@@ -44,75 +48,14 @@ def test_model_config_carries_litellm_params() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Embedding config — dimensions and task_type
+# Embedding config — dimensions from TOML
 # ---------------------------------------------------------------------------
-
-
-def test_embedding_config_accepts_explicit_dimensions() -> None:
-    ec = EmbeddingModelConfig(model="test/m", dimensions=1536)
-    assert ec.dimensions == 1536
-
-
-def test_embedding_config_dimensions_zero_raises() -> None:
-    with pytest.raises(ValidationError, match="dimensions"):
-        EmbeddingModelConfig(model="test/m", dimensions=0)
-
-
-def test_embedding_config_dimensions_negative_raises() -> None:
-    with pytest.raises(ValidationError, match="dimensions"):
-        EmbeddingModelConfig(model="test/m", dimensions=-1)
 
 
 def test_embedding_config_dimensions_from_toml() -> None:
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=_COMPLETE_TOML)
         assert s.embedding.dimensions == 1024
-
-
-# ---------------------------------------------------------------------------
-# TaskTypeConfig
-# ---------------------------------------------------------------------------
-
-
-def test_task_type_config_accepts_partial_fields() -> None:
-    tc = TaskTypeConfig(document="RETRIEVAL_DOCUMENT")
-    assert tc.document == "RETRIEVAL_DOCUMENT"
-    assert tc.question is None
-    assert tc.verification is None
-
-
-def test_task_type_config_frozen() -> None:
-    tc = TaskTypeConfig(document="X")
-    with pytest.raises(ValidationError, match="frozen"):
-        tc.document = "Y"  # pyright: ignore[reportAttributeAccessIssue]
-
-
-def test_task_type_config_rejects_unknown_keys() -> None:
-    with pytest.raises(ValidationError, match="extra"):
-        TaskTypeConfig(documnet="RETRIEVAL_DOCUMENT")  # pyright: ignore[reportCallIssue]
-
-
-# ---------------------------------------------------------------------------
-# EmbeddingModelConfig.task_type
-# ---------------------------------------------------------------------------
-
-
-def test_embedding_config_accepts_task_type() -> None:
-    tt = TaskTypeConfig(document="DOC", question="QA")
-    ec = EmbeddingModelConfig(model="test/m", task_type=tt)
-    assert ec.task_type is not None
-    assert ec.task_type.document == "DOC"
-    assert ec.task_type.question == "QA"
-
-
-# ---------------------------------------------------------------------------
-# ModelConfig.reasoning_effort
-# ---------------------------------------------------------------------------
-
-
-def test_model_config_accepts_reasoning_effort() -> None:
-    mc = ModelConfig(model="test/m", reasoning_effort="high")
-    assert mc.reasoning_effort == "high"
 
 
 # ---------------------------------------------------------------------------
@@ -233,26 +176,6 @@ def test_user_toml_trust_partial_override_merges_with_defaults() -> None:
 def test_decay_config_accepts_duration_string() -> None:
     dc = DecayConfig(attestation="45d", trust=_90_DAYS)  # pyright: ignore[reportArgumentType]
     assert dc.attestation == 45 * 86400.0
-
-
-def test_model_config_accepts_extras_as_pass_through() -> None:
-    """ModelConfig admits arbitrary keys; they round-trip via model_dump.
-
-    Model-role configs are pass-through containers (see
-    ``docs/architecture.md`` §LLM Providers). Unknown keys are not typos —
-    they are vendor-specific LiteLLM kwargs Lore commits to forwarding
-    unchanged. Constructed via ``model_validate`` so the dynamic-key
-    contract does not need a typed-call escape hatch.
-    """
-    cfg = ModelConfig.model_validate({"model": "x", "custom_vendor_knob": "y"})
-    assert cfg.model_dump()["custom_vendor_knob"] == "y"
-
-
-def test_embedding_model_config_round_trips_extra_kwargs_through_model_dump() -> None:
-    cfg = EmbeddingModelConfig.model_validate({"model": "x", "custom": "y"})
-    dumped = cfg.model_dump()
-    assert dumped["model"] == "x"
-    assert dumped["custom"] == "y"
 
 
 def test_top_level_toml_typo_raises(tmp_path: Path) -> None:

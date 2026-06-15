@@ -20,9 +20,7 @@ from pydantic import BaseModel
 from structlog.typing import EventDict
 
 from lore.config import (
-    EmbeddingModelConfig,
     LoreSettings,
-    ModelConfig,
     PostgresConfig,
     PromptsConfig,
 )
@@ -40,7 +38,7 @@ from lore.domain import (
 )
 from lore.math import MathService
 from lore.orchestrator import Orchestrator
-from lore.providers import Providers, TaskTypeKey
+from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
     AttestationRecord,
     HypothesisRecord,

@@ -12,8 +12,8 @@ from instructor.core.exceptions import (
 )
 from pydantic import BaseModel, ValidationError
 
-from lore.config import ModelConfig
 from lore.domain import InferenceError
+from lore.providers import ModelConfig
 from lore.providers.completion import CompletionProvider
 
 

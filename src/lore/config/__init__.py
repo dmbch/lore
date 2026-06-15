@@ -2,17 +2,13 @@
 
 from lore.config.loader import load_settings, redact_dsn
 from lore.config.types import (
-    EmbeddingModelConfig,
     LoreSettings,
-    ModelConfig,
     PostgresConfig,
     PromptsConfig,
 )
 
 __all__ = [
-    "EmbeddingModelConfig",
     "LoreSettings",
-    "ModelConfig",
     "PostgresConfig",
     "PromptsConfig",
     "load_settings",
