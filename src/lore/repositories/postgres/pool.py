@@ -15,8 +15,8 @@ import psycopg
 import psycopg.errors
 from psycopg_pool import AsyncConnectionPool
 
-from lore.config import PostgresConfig
 from lore.domain import RetryableTransactionError, StorageError
+from lore.repositories.config import PostgresConfig
 from lore.repositories.postgres.attestations import PostgresAttestationsRepository
 from lore.repositories.postgres.connection import create_pool
 from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository

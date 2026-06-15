@@ -16,10 +16,8 @@ import psycopg
 import pytest
 import structlog
 
-from lore.config import PostgresConfig
-from lore.config.types import SqliteConfig
 from lore.domain import StorageError
-from lore.repositories import check_health, run_migrations
+from lore.repositories import PostgresConfig, SqliteConfig, check_health, run_migrations
 from lore.repositories.migrate import read_migrations
 from tests.repositories.conftest import drop_pg_tables, make_settings
 

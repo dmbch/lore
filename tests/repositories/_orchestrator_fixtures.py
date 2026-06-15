@@ -16,18 +16,16 @@ from pydantic import BaseModel
 
 from lore.config import (
     LoreSettings,
-    PostgresConfig,
     PromptsConfig,
 )
 from lore.config.types import (
     DecayConfig,
     LimitsConfig,
-    RetrievalConfig,
-    SqliteConfig,
     TrustConfig,
 )
 from lore.math import MathService
 from lore.providers import EmbeddingModelConfig, ModelConfig
+from lore.repositories import PostgresConfig, RetrievalConfig, SqliteConfig
 
 _DEFAULT_POSTGRES = PostgresConfig(min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=50)
 _DEFAULT_SQLITE = SqliteConfig()

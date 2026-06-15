@@ -8,9 +8,8 @@ import psycopg
 import pytest
 from psycopg_pool import AsyncConnectionPool
 
-from lore.config import PostgresConfig
 from lore.domain import RetryableTransactionError, StorageError
-from lore.repositories import AttestationRecord, RequestRecord
+from lore.repositories import AttestationRecord, PostgresConfig, RequestRecord
 from lore.repositories.postgres.connection import create_pool
 from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository
 from lore.repositories.postgres.pool import PostgresPool

@@ -6,7 +6,6 @@ from collections.abc import Sequence
 import pytest
 
 from lore.config import LoreSettings
-from lore.config.types import RetrievalConfig
 from lore.domain import (
     ArchivistOutput,
     ConsultLoreRequest,
@@ -17,6 +16,7 @@ from lore.providers import Providers, TaskTypeKey
 from lore.repositories import (
     HypothesisResult,
     Repositories,
+    RetrievalConfig,
 )
 from tests.orchestrator.conftest import (
     STUB_EMBEDDING,

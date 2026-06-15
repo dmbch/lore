@@ -359,7 +359,7 @@ class TestPostgresPoolCheckCallback:
         """
         from psycopg_pool import AsyncConnectionPool
 
-        from lore.config.types import PostgresConfig
+        from lore.repositories import PostgresConfig
         from lore.repositories.postgres.connection import create_pool
 
         config = PostgresConfig(min_size=1, max_size=2, getconn_timeout=1.0, max_waiting=0)
