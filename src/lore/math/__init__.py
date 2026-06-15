@@ -4,6 +4,7 @@ Consumers import from this package: ``from lore.math import MathService``.
 Internal modules (opinion, fusion, decay, etc.) are implementation details.
 """
 
+from lore.math.config import EpistemicsConfig
 from lore.math.service import MathService
 
-__all__ = ["MathService"]
+__all__ = ["EpistemicsConfig", "MathService"]
