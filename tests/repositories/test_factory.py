@@ -362,7 +362,7 @@ class TestPostgresPoolCheckCallback:
         from lore.repositories import PostgresConfig
         from lore.repositories.postgres.connection import create_pool
 
-        config = PostgresConfig(min_size=1, max_size=2, getconn_timeout=1.0, max_waiting=0)
+        config = PostgresConfig(min_size=1, max_size=2, timeout=1.0, max_waiting=0)
         with patch.object(AsyncConnectionPool, "open", new=AsyncMock()):
             pool = await create_pool(dsn="postgresql://x:y@host/db", config=config)
         try:

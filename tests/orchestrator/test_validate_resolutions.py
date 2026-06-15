@@ -182,7 +182,7 @@ def _make_settings() -> LoreSettings:
         retrieval=RetrievalConfig(
             proximity=0.5, authority=0.5, limit=10, fan_out=2, max_keywords=1000
         ),
-        postgres=PostgresConfig(min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=50),
+        postgres=PostgresConfig(min_size=1, max_size=20, timeout=10.0, max_waiting=50),
         prompts=PromptsConfig(
             scribe=_bundled_prompt("scribe"),
             consult=_bundled_prompt("consult"),

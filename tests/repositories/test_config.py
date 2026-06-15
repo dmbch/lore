@@ -60,44 +60,61 @@ def test_retrieval_config_weights_property_returns_lane_tuple() -> None:
 
 
 def test_postgres_config_is_frozen() -> None:
-    pc = PostgresConfig(min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=50)
+    pc = PostgresConfig(min_size=1, max_size=20, timeout=10.0, max_waiting=50)
     with pytest.raises(ValidationError, match="frozen"):
         pc.max_size = 30  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def test_postgres_config_max_size_below_min_size_raises() -> None:
     with pytest.raises(ValidationError, match="max_size"):
-        PostgresConfig(min_size=10, max_size=5, getconn_timeout=10.0, max_waiting=50)
+        PostgresConfig(min_size=10, max_size=5, timeout=10.0, max_waiting=50)
 
 
 def test_postgres_config_min_size_zero_raises() -> None:
     with pytest.raises(ValidationError, match="min_size"):
-        PostgresConfig(min_size=0, max_size=20, getconn_timeout=10.0, max_waiting=50)
+        PostgresConfig(min_size=0, max_size=20, timeout=10.0, max_waiting=50)
 
 
 def test_postgres_config_max_size_zero_raises() -> None:
     with pytest.raises(ValidationError, match="max_size"):
-        PostgresConfig(min_size=1, max_size=0, getconn_timeout=10.0, max_waiting=50)
+        PostgresConfig(min_size=1, max_size=0, timeout=10.0, max_waiting=50)
 
 
-def test_postgres_config_getconn_timeout_zero_raises() -> None:
-    with pytest.raises(ValidationError, match="getconn_timeout"):
-        PostgresConfig(min_size=1, max_size=20, getconn_timeout=0.0, max_waiting=50)
+def test_postgres_config_uses_upstream_timeout_name() -> None:
+    """`timeout` is psycopg_pool's literal kwarg; the value forwards straight through."""
+    pc = PostgresConfig(min_size=1, max_size=20, timeout=10.0, max_waiting=50)
+    assert pc.timeout == 10.0
 
 
-def test_postgres_config_getconn_timeout_negative_raises() -> None:
-    with pytest.raises(ValidationError, match="getconn_timeout"):
-        PostgresConfig(min_size=1, max_size=20, getconn_timeout=-1.0, max_waiting=50)
+def test_postgres_config_rejects_legacy_getconn_timeout_key() -> None:
+    """The pre-rename key is gone; extra="forbid" rejects it loudly at load."""
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        PostgresConfig(
+            min_size=1,
+            max_size=20,
+            getconn_timeout=10.0,  # pyright: ignore[reportCallIssue]
+            max_waiting=50,
+        )
+
+
+def test_postgres_config_timeout_zero_raises() -> None:
+    with pytest.raises(ValidationError, match="timeout"):
+        PostgresConfig(min_size=1, max_size=20, timeout=0.0, max_waiting=50)
+
+
+def test_postgres_config_timeout_negative_raises() -> None:
+    with pytest.raises(ValidationError, match="timeout"):
+        PostgresConfig(min_size=1, max_size=20, timeout=-1.0, max_waiting=50)
 
 
 def test_postgres_config_max_waiting_negative_raises() -> None:
     with pytest.raises(ValidationError, match="max_waiting"):
-        PostgresConfig(min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=-1)
+        PostgresConfig(min_size=1, max_size=20, timeout=10.0, max_waiting=-1)
 
 
 def test_postgres_config_max_waiting_zero_is_valid_unlimited() -> None:
     """max_waiting=0 is psycopg's unlimited-queue mode; valid but not the default."""
-    pc = PostgresConfig(min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=0)
+    pc = PostgresConfig(min_size=1, max_size=20, timeout=10.0, max_waiting=0)
     assert pc.max_waiting == 0
 
 
@@ -106,7 +123,7 @@ def test_postgres_config_rejects_unknown_keys() -> None:
         PostgresConfig(
             min_size=1,
             max_size=20,
-            getconn_timeout=10.0,
+            timeout=10.0,
             max_waiting=50,
             num_workers=4,  # pyright: ignore[reportCallIssue]
         )
@@ -118,7 +135,7 @@ def test_postgres_config_fulltext_config_rejects_unsafe_values(value: str) -> No
         PostgresConfig(
             min_size=1,
             max_size=20,
-            getconn_timeout=10.0,
+            timeout=10.0,
             max_waiting=50,
             fulltext_config=value,
         )
@@ -129,7 +146,7 @@ def test_postgres_config_fulltext_config_accepts_valid_regconfigs(value: str) ->
     pc = PostgresConfig(
         min_size=1,
         max_size=20,
-        getconn_timeout=10.0,
+        timeout=10.0,
         max_waiting=50,
         fulltext_config=value,
     )

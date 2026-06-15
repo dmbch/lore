@@ -203,7 +203,7 @@ def test_postgres_config_bundled_defaults_match_locked_positions() -> None:
         s = load_settings(toml_path=_TOML_PATH)
         assert s.postgres.min_size == 1
         assert s.postgres.max_size == 20
-        assert s.postgres.getconn_timeout == 10.0
+        assert s.postgres.timeout == 10.0
         assert s.postgres.max_waiting == 50
 
 
@@ -212,7 +212,7 @@ def test_postgres_config_from_toml_overrides_defaults() -> None:
         s = load_settings(toml_path=_POSTGRES_TOML_PATH)
         assert s.postgres.min_size == 2
         assert s.postgres.max_size == 50
-        assert s.postgres.getconn_timeout == 5.0
+        assert s.postgres.timeout == 5.0
         assert s.postgres.max_waiting == 100
 
 

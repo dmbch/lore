@@ -77,7 +77,7 @@ class TestPostgresPoolIsolation:
     """pool.transaction() runs at SERIALIZABLE — the write-path concurrency contract."""
 
     async def test_postgres_transaction_runs_at_serializable(self, pg_dsn: str) -> None:
-        config = PostgresConfig(min_size=1, max_size=1, getconn_timeout=10.0, max_waiting=50)
+        config = PostgresConfig(min_size=1, max_size=1, timeout=10.0, max_waiting=50)
         pool = await PostgresPool.create(dsn=pg_dsn, config=config)
         try:
             async with pool.transaction() as repos:
@@ -304,7 +304,7 @@ class TestCreatePoolThreadsConfig:
     """create_pool() applies the configured PostgresConfig values to AsyncConnectionPool."""
 
     async def test_create_pool_applies_config(self, pg_dsn: str) -> None:
-        config = PostgresConfig(min_size=2, max_size=7, getconn_timeout=3.5, max_waiting=11)
+        config = PostgresConfig(min_size=2, max_size=7, timeout=3.5, max_waiting=11)
         pool = await create_pool(dsn=pg_dsn, config=config)
         try:
             assert pool.min_size == 2
@@ -315,7 +315,7 @@ class TestCreatePoolThreadsConfig:
             await pool.close()
 
     async def test_postgres_pool_create_threads_config_to_create_pool(self, pg_dsn: str) -> None:
-        config = PostgresConfig(min_size=1, max_size=4, getconn_timeout=2.0, max_waiting=8)
+        config = PostgresConfig(min_size=1, max_size=4, timeout=2.0, max_waiting=8)
         with patch(
             "lore.repositories.postgres.pool.create_pool",
             wraps=create_pool,

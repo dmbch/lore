@@ -21,7 +21,7 @@ from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig
 from lore.repositories import PostgresConfig, RetrievalConfig, SqliteConfig
 
-_DEFAULT_POSTGRES = PostgresConfig(min_size=1, max_size=20, getconn_timeout=10.0, max_waiting=50)
+_DEFAULT_POSTGRES = PostgresConfig(min_size=1, max_size=20, timeout=10.0, max_waiting=50)
 _DEFAULT_SQLITE = SqliteConfig()
 
 
