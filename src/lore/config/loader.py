@@ -137,7 +137,9 @@ def _resolve_env() -> tuple[str, OidcConfig | None, str | None]:
 
     ``DATABASE_URL`` is the canonical name (Heroku/Railway/Fly/Render
     convention). The scheme drives backend dispatch downstream via
-    ``is_postgres`` / ``is_sqlite``.
+    ``is_postgres`` / ``is_sqlite``. The OIDC ↔ BASE_URL pairing invariant
+    lives on the ``LoreSettings`` cross-section validator, which fires after
+    ``model_validate`` — this function only parses.
     """
     dsn = os.environ.get("DATABASE_URL")
     if not dsn or not dsn.strip():
@@ -146,12 +148,6 @@ def _resolve_env() -> tuple[str, OidcConfig | None, str | None]:
     oidc_url = os.environ.get("OIDC_URL")
     oidc = parse_oidc_url(oidc_url) if oidc_url else None
     base_url = os.environ.get("BASE_URL") or None
-    if base_url and oidc is None:
-        msg = "BASE_URL requires OIDC_URL for authenticated HTTP mode"
-        raise ValueError(msg)
-    if oidc is not None and base_url is None:
-        msg = "OIDC_URL requires BASE_URL for authenticated HTTP mode"
-        raise ValueError(msg)
     return dsn, oidc, base_url
 
 

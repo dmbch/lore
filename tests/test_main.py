@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import structlog
+from pydantic import ValidationError
 
 from lore.config import LoreSettings
 from lore.repositories import RepositoryPool
@@ -221,14 +222,18 @@ def _toml_with_auth_required(tmp_path: Path) -> Path:
 
 
 def test_configure_refuses_when_auth_required_and_oidc_missing(tmp_path: Path) -> None:
-    """[auth] required=true with no OIDC_URL is a fail-fast at boot."""
+    """[auth] required=true with no OIDC_URL is a fail-fast at boot.
+
+    The refusal now fires inside ``load_settings`` (a ``LoreSettings``
+    cross-section validator), so ``configure`` surfaces a ``ValidationError``.
+    """
     from lore.__main__ import configure
 
     toml_file = _toml_with_auth_required(tmp_path)
     env = {"DATABASE_URL": "sqlite:///:memory:"}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValueError, match=r"\[auth\]"),
+        pytest.raises(ValidationError, match=r"\[auth\] required = true requires OIDC_URL"),
     ):
         configure(toml_path=toml_file)
 
@@ -263,26 +268,9 @@ def test_configure_default_boots_without_oidc() -> None:
         assert settings.oidc is None
 
 
-def test_configure_oidc_without_base_url_fails_in_loader_not_configure(tmp_path: Path) -> None:
-    """OIDC ↔ BASE_URL pairing is owned by load_settings, not the configure-level check.
-
-    Pins the layering: configure's auth.required check only enforces ``oidc is None``,
-    relying on the loader to have already rejected the partial pair. A future refactor
-    that weakens the loader pairing must also re-examine the configure check.
-    """
-    from lore.__main__ import configure
-
-    toml_file = _toml_with_auth_required(tmp_path)
-    env = {
-        "DATABASE_URL": "sqlite:///:memory:",
-        "OIDC_URL": "oidc://client:secret@auth.example.com/.well-known/openid-configuration",
-        # BASE_URL deliberately absent.
-    }
-    with (
-        patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValueError, match="OIDC_URL requires BASE_URL"),
-    ):
-        configure(toml_path=toml_file)
+# The OIDC ↔ BASE_URL pairing invariant now lives on the ``LoreSettings``
+# cross-section validator (see ``tests/config/test_loader.py``); there is no
+# longer a configure-vs-loader layering to pin here.
 
 
 # ---------------------------------------------------------------------------
