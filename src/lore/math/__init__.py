@@ -5,6 +5,6 @@ Internal modules (opinion, fusion, decay, etc.) are implementation details.
 """
 
 from lore.math.config import EpistemicsConfig
-from lore.math.service import MathService
+from lore.math.service import MathService, build_math
 
-__all__ = ["EpistemicsConfig", "MathService"]
+__all__ = ["EpistemicsConfig", "MathService", "build_math"]

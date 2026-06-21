@@ -11,6 +11,7 @@ MathService wraps all orchestrator-facing math: hypothesis-level operations
 
 import math
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from lore.domain import AttestationComputed, EvidenceInput, TrustSignal
 from lore.math.confidence import to_confidence, to_opinion
@@ -19,6 +20,9 @@ from lore.math.discount import discount
 from lore.math.hypothesis import OpinionAtTime, compute_hypothesis_state
 from lore.math.maturity import compute_maturity
 from lore.math.opinion import BASE_RATE
+
+if TYPE_CHECKING:
+    from lore.config import LoreSettings
 
 
 class MathService:
@@ -182,6 +186,14 @@ class MathService:
         # maximize_uncertainty. The algebra guarantees the range but division
         # can produce values like 1.0000000000000002 from accumulated rounding.
         return max(0.0, min(1.0, numerator / denominator))
+
+
+def build_math(settings: LoreSettings) -> MathService:
+    return MathService(
+        c_half_life=settings.epistemics.attestation_half_life,
+        t_half_life=settings.epistemics.trust_half_life,
+        maturity_k=settings.epistemics.maturity_k,
+    )
 
 
 def _to_opinion_at_times(
