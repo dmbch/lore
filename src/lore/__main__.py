@@ -16,7 +16,7 @@ from lore.adapter import create_server, serve
 from lore.config import LoreSettings, load_settings
 from lore.math import MathService
 from lore.orchestrator import Orchestrator
-from lore.providers import CompletionProvider, EmbeddingProvider, Providers, resolve_dimensions
+from lore.providers import build_providers, resolve_dimensions
 from lore.repositories import (
     RepositoryPool,
     check_health,
@@ -71,11 +71,7 @@ async def bootstrap(settings: LoreSettings, pool: RepositoryPool) -> AsyncGenera
     Pool ownership lives in ``amain``; this context manager only assembles
     the orchestrator and yields it. The pool is not closed here.
     """
-    providers = Providers(
-        embedder=EmbeddingProvider(settings.embedding),
-        interpreter=CompletionProvider(settings.fast),
-        archivist=CompletionProvider(settings.reasoning),
-    )
+    providers = build_providers(settings)
     math = MathService(
         c_half_life=settings.epistemics.attestation_half_life,
         t_half_life=settings.epistemics.trust_half_life,

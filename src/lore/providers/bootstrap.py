@@ -8,9 +8,20 @@ from typing import TYPE_CHECKING
 import litellm
 
 from lore.domain import InferenceError
+from lore.providers.completion import CompletionProvider
+from lore.providers.embedding import EmbeddingProvider
+from lore.providers.protocols import Providers
 
 if TYPE_CHECKING:
     from lore.config import LoreSettings
+
+
+def build_providers(settings: LoreSettings) -> Providers:
+    return Providers(
+        embedder=EmbeddingProvider(settings.embedding),
+        interpreter=CompletionProvider(settings.fast),
+        archivist=CompletionProvider(settings.reasoning),
+    )
 
 
 def resolve_dimensions(settings: LoreSettings) -> int:
