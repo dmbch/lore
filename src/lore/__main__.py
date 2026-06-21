@@ -54,9 +54,7 @@ async def setup(settings: LoreSettings) -> AsyncGenerator[RepositoryPool]:
     ``connect()`` and ``try:`` would not be guarded — keep new
     post-connect work inside the try block.
     """
-    dim = resolve_dimensions(
-        model=settings.embedding.model, configured=settings.embedding.dimensions
-    )
+    dim = resolve_dimensions(settings)
     run_migrations(settings=settings, embedding_dim=dim)
     check_health(settings=settings, embedding_dim=dim)
     pool = await connect(settings)
