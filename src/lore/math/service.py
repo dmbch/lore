@@ -47,8 +47,8 @@ class MathService:
         self,
         *,
         c_half_life: float,
-        maturity_k: float = 1.0,
         t_half_life: float,
+        maturity_k: float = 1.0,
     ) -> None:
         self._lambda = math.log(2) / c_half_life
         self._maturity_k = maturity_k
