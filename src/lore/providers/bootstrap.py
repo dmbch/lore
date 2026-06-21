@@ -3,12 +3,19 @@
 Dimension resolution for embedding models — sync, runs before migrations.
 """
 
+from typing import TYPE_CHECKING
+
 import litellm
 
 from lore.domain import InferenceError
 
+if TYPE_CHECKING:
+    from lore.config import LoreSettings
 
-def resolve_dimensions(*, model: str, configured: int | None) -> int:
+
+def resolve_dimensions(settings: LoreSettings) -> int:
+    configured = settings.embedding.dimensions
+    model = settings.embedding.model
     if configured is not None:
         return configured
 
