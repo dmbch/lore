@@ -180,7 +180,7 @@ u(Δt) = 1 − (1 − u₀) · e^(−λΔt)
 where Δt = t_now − t_attestation (integer seconds)
 ```
 
-λ = ln(2) / half_life, where half_life comes from `[decay] attestation` in the config. Decay is calculated at read time, never stored. The base rate a is preserved.
+λ = ln(2) / half_life, where half_life comes from `[epistemics] attestation_half_life` in the config. Decay is calculated at read time, never stored. The base rate a is preserved.
 
 **Per-attestation, not post-fusion.** Each attestation decays individually by its own age before fusion. This follows Jøsang's canonical design (BRS 2002, Eq. 12) where individual evidence contributions are weighted by age before aggregation. Lore uses continuous elapsed time (`e^(−λΔt)`) where BRS uses discrete periods (`λ^(n−i)`). The principle is the same: fresh evidence naturally dominates stale evidence because old decayed attestations carry high uncertainty, contributing proportionally less to cumulative fusion.
 
@@ -914,11 +914,11 @@ Under the revised formula, oracles fall into recognizable clusters. The table su
 
 ### Time Axis: Trust Decay Tuning
 
-The previous subsections cover the spatial axis — alignment, info, path dependence. The time axis is controlled by `[decay] trust` and has its own tradeoffs.
+The previous subsections cover the spatial axis — alignment, info, path dependence. The time axis is controlled by `[epistemics] trust_half_life` and has its own tradeoffs.
 
 Without a trust-decay half-life, early contributors accrue permanent demigod status: their first high-info attestations never age out of the trust scan, and subsequent honest work can only add to — never erode — their historical record. Too-fast a half-life inverts the failure: a prophet's vindicating rows age out before the herd has had time to catch up, and the prophet is reduced to their aging write-time record against a vacuous prior.
 
-Attestation half-life and trust half-life are independent knobs (`[decay] attestation` and `[decay] trust` in the config). An organization may want long-lived knowledge with fast-adapting trust — a research team whose facts endure but whose individual expertise shifts quickly — or the inverse, where knowledge turns over fast but track records are measured against years of history. The two rates are decoupled by design; pick them for the organization, not for each other.
+Attestation half-life and trust half-life are independent knobs (`[epistemics] attestation_half_life` and `[epistemics] trust_half_life` in the config). An organization may want long-lived knowledge with fast-adapting trust — a research team whose facts endure but whose individual expertise shifts quickly — or the inverse, where knowledge turns over fast but track records are measured against years of history. The two rates are decoupled by design; pick them for the organization, not for each other.
 
 ### Confidence Bombing
 
