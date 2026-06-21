@@ -52,7 +52,7 @@ docker run --rm \
 
 The HTTP transport adds two operator endpoints alongside the MCP path: `GET /health` (liveness) and `GET /ready` (readiness, which confirms a working database connection). Wire them to your load balancer or orchestrator probes.
 
-Running HTTP with no authentication anywhere is not a supported topology. Either terminate auth at an upstream proxy, or enable OIDC in Lore (below) and set `auth_required = true` in `lore.toml` so startup refuses the open path.
+Running HTTP with no authentication anywhere is not a supported topology. Either terminate auth at an upstream proxy, or enable OIDC in Lore (below) and set `required = true` under `[auth]` in `lore.toml` so startup refuses the open path.
 
 ### PostgreSQL
 
@@ -192,21 +192,16 @@ Lore auto-detects the LLM vendor from API keys in the environment; first lexical
 </details>
 
 <details>
-<summary>Epistemics — <code>[decay]</code>, <code>[trust]</code>, <code>[retrieval]</code></summary>
+<summary>Epistemics — <code>[epistemics]</code>, <code>[retrieval]</code></summary>
 
-**`[decay]`**
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `attestation` | duration | `"90d"` | How fast knowledge ages. Duration string: `"1y"`, `"3M"`, `"90d"`, `"24h"`, `"60m"`, `"3600s"` |
-| `trust` | duration | `"90d"` | How fast oracle track records age. Independent of attestation decay |
-
-**`[trust]`**
+**`[epistemics]`**
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `maturity` | float | `1.0` | Half-saturation constant K for oracle diversity. Higher means more oracles needed before the trust discount lifts. K = 0 disables the maturity safeguard |
-| `threshold` | float > 0 | `1e-3` | Epistemic-significance floor for the consolidated transfer attestation. Fused magnitudes below this skip the transfer row |
+| `attestation_half_life` | duration | `"90d"` | How fast knowledge ages. Duration string: `"1y"`, `"3M"`, `"90d"`, `"24h"`, `"60m"`, `"3600s"` |
+| `trust_half_life` | duration | `"90d"` | How fast oracle track records age. Independent of attestation decay |
+| `maturity_k` | float | `1.0` | Half-saturation constant K for oracle diversity. Higher means more oracles needed before the trust discount lifts. K = 0 disables the maturity safeguard |
+| `transfer_threshold` | float > 0 | `1e-3` | Epistemic-significance floor for the consolidated transfer attestation. Fused magnitudes below this skip the transfer row |
 
 **`[retrieval]`**
 
@@ -231,7 +226,7 @@ Only the section matching your `DATABASE_URL` backend applies.
 |-------|------|---------|-------------|
 | `min_size` | int | `1` | Minimum pooled connections |
 | `max_size` | int | `20` | Maximum pooled connections (must be >= `min_size`) |
-| `getconn_timeout` | float | `10.0` | Seconds a caller waits for a free connection before timing out |
+| `timeout` | float | `10.0` | Seconds a caller waits for a free connection before timing out |
 | `max_waiting` | int | `50` | Max callers queued for a connection (0 = unbounded) |
 | `fulltext_config` | string | `"english"` | Postgres text-search config for the authority lane (`german`, `french`, `simple`, …) |
 
@@ -246,15 +241,20 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 </details>
 
 <details>
-<summary>Server, limits, prompts — <code>[server]</code>, <code>[limits]</code>, <code>[prompts]</code></summary>
+<summary>Server, auth, limits, prompts — <code>[server]</code>, <code>[auth]</code>, <code>[limits]</code>, <code>[prompts]</code></summary>
 
 **`[server]`**
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | string | `"Lore"` | Server identity for the MCP adapter |
-| `auth_required` | bool | `false` | Refuse HTTP startup when no `OIDC_URL` is set — fail-fast for the open-path mistake |
 | `icon_url` | string or omit | bundled logo | Logo URL shown on the OIDC consent screen |
+
+**`[auth]`**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `required` | bool | `false` | Refuse HTTP startup when no `OIDC_URL` is set — fail-fast for the open-path mistake |
 | `verify_id_token` | bool | `true` | Verify the OIDC id_token signature |
 
 **`[limits]`** — character limits for pipeline payloads; all values > 0
@@ -265,7 +265,6 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 | `hypothesis` | int | `3072` | Max characters for the hypothesis field |
 | `context` | int | `4096` | Max characters for the context field |
 | `reasoning` | int | `4096` | Max characters for the reasoning field |
-| `answer` | int | `8192` | Max characters for the Archivist's answer |
 
 **`[prompts]`** — template paths; bundled defaults unless overridden
 

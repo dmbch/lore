@@ -30,12 +30,12 @@ Lore is an async-first system. The MCP adapter, orchestrator, repositories, and 
 Outside the layer model. The composition root (`amain` in `__main__.py`) wires the system in a fixed sequence:
 
 1. **Telemetry** — structlog and the LiteLLM OTel callback are wired before any other code can emit logs (see Telemetry). SDK provider wiring is delegated to `opentelemetry-instrument`; `configure_telemetry()` adds Lore-specific glue (structlog with the trace-context processor, the LiteLLM OTel callback) against whichever global providers are already installed. The tracer is resolved lazily at first `start_span()` call. When the wrapper is not used, the global providers are OTel API proxies; spans are non-recording but module-level loggers still emit through structlog.
-2. **Config** — `LoreSettings` from env vars + `lore.toml` (see Config). Settings-time INFO logs (model strings, transport mode) emit through structlog because step 1 is already up. Fail-fast on invalid values.
+2. **Config** — `LoreSettings` from env vars + `lore.toml` (see Config). Settings-time INFO logs (model strings, transport mode) emit through structlog because step 1 is already up. Fail-fast on invalid values; cross-section invariants (including the auth↔OIDC check) are validated as the settings model is built, not as a separate procedural step.
 3. **Migrations** — `run_migrations(settings, embedding_dim=dim)` applies parameterized SQL schema changes (see Migrations). The `_system` table tracks applied migrations.
 4. **Health check** — `check_health(settings, embedding_dim=dim)` stores the embedding model name and dimensions on first run, verifies them on subsequent runs. Mismatch means the vector space is inconsistent; fail-fast with `StorageError`.
 5. **Repositories** — `setup(settings)` is an async context manager that runs steps 3–4 above, opens the pool via the factory, yields the live `RepositoryPool` for the duration of the scope, and closes it on exit. `amain` enters that scope around `server.run_async()`, so both the lifespan-scoped `bootstrap(settings, pool)` and the readiness probe `make_probe(pool)` close over the same pool. The CM shape makes ownership unambiguous: callers cannot forget to close, and any exception inside the scope (caller code, a future post-connect step) triggers the `finally` arm that closes the pool.
-6. **Providers** — LiteLLM implementations constructed with model strings from config (inside `bootstrap`).
-7. **Orchestrator** — wired with repos and providers (inside `bootstrap`).
+6. **Providers** — LiteLLM implementations constructed with model strings from config (inside `bootstrap`, via the `build_providers(settings)` factory).
+7. **Orchestrator** — wired with repos and providers (inside `bootstrap`). `bootstrap()` names factories — `build_providers(settings)`, `build_math(settings)`, and `resolve_dimensions(settings)`, all taking settings whole — rather than inlining constructor wiring.
 8. **Adapter** — receives the orchestrator via the lifespan and the probe via `health_probe=`; starts serving via `server.run_async()`.
 
 DSNs and API keys come from environment variables (12-factor); behavioral config from TOML. No layer imports the composition root; the composition root imports all layers.
@@ -49,7 +49,7 @@ DSNs and API keys come from environment variables (12-factor); behavioral config
 MCP is the interface. One tool: `consult`. Two adapters from day one:
 
 - **MCP over stdio** — single-user local development. No auth; oracle identity is the synthetic `_local`.
-- **MCP over HTTP** — multi-user. When `OIDC_URL` is configured, the adapter runs OAuth and extracts the oracle identity from the IdP's `sub` claim (see Authentication). Otherwise the adapter falls back to the same `_local` identity, fine for sidecar topologies that authenticate at the proxy; operators who want Lore to refuse the unauthenticated path set `[server] auth_required = true` in `lore.toml`.
+- **MCP over HTTP** — multi-user. When `OIDC_URL` is configured, the adapter runs OAuth and extracts the oracle identity from the IdP's `sub` claim (see Authentication). Otherwise the adapter falls back to the same `_local` identity, fine for sidecar topologies that authenticate at the proxy; operators who want Lore to refuse the unauthenticated path set `[auth] required = true` in `lore.toml`.
 
 Both translate the MCP protocol into an orchestrator call. No domain logic: parse, validate input shape, delegate. Each receives a fully wired orchestrator from bootstrap. Knows nothing below the orchestrator.
 
@@ -180,7 +180,15 @@ Repositories and providers catch implementation-specific errors and raise domain
 Frozen `LoreSettings` Pydantic model as the public API, built from `os.environ` + `tomllib`. Two disjoint sources, each field with exactly one authoritative source:
 
 - **Environment variables** (no prefix): secrets and deployment topology. `DATABASE_URL` (scheme-driven: `postgresql://` / `postgres://` → Postgres, `sqlite:///` → SQLite); `OIDC_URL`, `BASE_URL` (paired; both required to enable OAuth on HTTP transport). FastMCP-managed (read by FastMCP itself, not by `LoreSettings`): `FASTMCP_PORT` (default 8000) and `FASTMCP_HOST` (default 127.0.0.1); see [FastMCP settings](https://gofastmcp.com/more/settings).
-- **TOML file** (`lore.toml`): behavioral config. Server identity (`[server]`), decay rates (`[decay]`: `attestation` and `trust`, duration strings e.g. `"90d"`), model strings per role (`[embedding]`, `[fast]`, `[reasoning]`), trust parameters (`[trust]`: `maturity` K, default 1), retrieval config (`[retrieval]`: weights, limits, `max_keywords`), character limits (`[limits]`), prompt templates (`[prompts]`).
+- **TOML file** (`lore.toml`): behavioral config. Server identity (`[server]`: `name`, `icon_url`), auth knobs (`[auth]`: `required`, `verify_id_token`), epistemic hyperparameters (`[epistemics]`: `attestation_half_life`, `trust_half_life`, `maturity_k`, `transfer_threshold`), model strings per role (`[embedding]`, `[fast]`, `[reasoning]`), retrieval config (`[retrieval]`: weights, limits, `max_keywords`), character limits (`[limits]`), prompt templates (`[prompts]`).
+
+**Layer-owned config partials.** Each layer defines the config models it consumes — `lore/providers/config.py`, `lore/repositories/config.py`, `lore/adapter/config.py`, `lore/prompts/config.py`, and `lore/math/config.py` (for `EpistemicsConfig`). `lore.config` imports and composes these partials into the flat `LoreSettings`; for config shape the dependency runs layer→nothing, and `lore.config` is the composition root.
+
+**Two validation tiers.** Partials validate within their own section (field constraints); `LoreSettings` validates across sections via a `model_validator` — the `auth.required → oidc` and `oidc ↔ base_url` pairings.
+
+**TYPE_CHECKING import rule.** Layers that take `LoreSettings` import it under `if TYPE_CHECKING:` only; runtime `LoreSettings` use is confined to `lore.config`, `__main__`, and tests. This keeps `lore.config → layer partials` acyclic.
+
+**1:1 TOML↔field invariant.** TOML sections map one-to-one onto `LoreSettings` fields; `LoreSettings` stays flat, with no nesting.
 
 **Sizing K for your herd.** K governs how quickly `M = N_O / (N_O + K)` saturates, so the right value depends on how many distinct oracles a typical hypothesis attracts. K = 1 is the recommended default. Small herds (fewer than ~10 active oracles) may prefer K = 0.5 for a faster maturity ramp, so that fewer distinct attestors are needed before the discount lifts. Large herds (100+ active oracles) may prefer K = 2 to impose a stricter diversity requirement before a hypothesis is treated as mature. Guidance, not prescription: deployers who change K should understand that the same value also governs the adaptive blend in oracle trust (see `docs/logic.md`).
 
@@ -242,17 +250,17 @@ When `OIDC_URL` is configured, the adapter runs the standard MCP OAuth flow with
 
 The `_*` namespace is reserved for synthetic identities the adapter trusts by construction (`_local`, `_transfer`); IdP-claimed `sub` values matching that prefix are rejected at the adapter boundary so no external principal can impersonate a synthetic in the ledger.
 
-**Auth opt-in.** `[server] auth_required` is the operator-controlled fail-fast. Default `false`: Lore reads the FastMCP env-var contract (`FASTMCP_HOST`, `FASTMCP_TRANSPORT`) and never second-guesses it. Operators who want bootstrap to refuse without OIDC set `auth_required = true` in `lore.toml`; the missing `OIDC_URL` is then a hard error at startup, immediately after settings load and before migrations or the server start. The startup sequence is telemetry → settings → auth check → migrations → repos → providers → orchestrator → adapter; telemetry comes first so the refusal itself is logged through structlog.
+**Auth opt-in.** `[auth] required` is the operator-controlled fail-fast. Default `false`: Lore reads the FastMCP env-var contract (`FASTMCP_HOST`, `FASTMCP_TRANSPORT`) and never second-guesses it. Operators who want bootstrap to refuse without OIDC set `required = true` under `[auth]` in `lore.toml`; the missing `OIDC_URL` is then a hard error at startup, raised during settings load before migrations or the server start. The auth↔OIDC pairing is a cross-section invariant on `LoreSettings`, validated as the settings model is built rather than as a separate procedural step. The startup sequence is telemetry → settings (cross-section invariants, including auth↔OIDC, validated here) → migrations → repos → providers → orchestrator → adapter; telemetry comes first so the refusal itself is logged through structlog.
 
 Three HTTP topologies follow from this:
 
 - **HTTP behind an authenticating proxy** (supported). The proxy terminates OIDC and forwards an upstream-trusted oracle identity; Lore runs without `OIDC_URL` and the synthetic `_local` is the right fallback for the proxy-to-Lore hop.
 - **HTTP with OIDC in Lore** (supported). `OIDC_URL` and `BASE_URL` are both set; Lore runs `OIDCProxy` directly and extracts the oracle from the `sub` claim.
-- **HTTP with no authentication anywhere** (not a topology). Either terminate auth at the edge or set `auth_required = true` so startup refuses; running HTTP open is the operator's mistake, not a deployment mode Lore supports.
+- **HTTP with no authentication anywhere** (not a topology). Either terminate auth at the edge or set `required = true` under `[auth]` so startup refuses; running HTTP open is the operator's mistake, not a deployment mode Lore supports.
 
 **Rate limiting.** Rate limiting belongs at the edge proxy; the proxy authenticates the request and is the right vantage point. Lore emits no per-oracle metric for this purpose; replicating per-oracle traffic counters inside the orchestrator would explode metric cardinality on multi-tenant APMs without adding information the proxy doesn't already see.
 
-**Pool-timeout opacity.** Backpressure that does reach Lore — a caller waiting past `getconn_timeout` on an exhausted Postgres pool — surfaces as `psycopg_pool.PoolTimeout`, translates to `StorageError`, and exits through the adapter's catch-all as a scrubbed 5xx. The opacity is the contract, not a code smell: per-oracle pool accounting would duplicate the proxy's rate-limit signal at higher cardinality, and exposing the raw exception class to the client would leak deployment topology without giving the caller anything actionable. Operators diagnose pool pressure from structlog and pool-level metrics, not from the wire payload.
+**Pool-timeout opacity.** Backpressure that does reach Lore — a caller waiting past `timeout` on an exhausted Postgres pool — surfaces as `psycopg_pool.PoolTimeout`, translates to `StorageError`, and exits through the adapter's catch-all as a scrubbed 5xx. The opacity is the contract, not a code smell: per-oracle pool accounting would duplicate the proxy's rate-limit signal at higher cardinality, and exposing the raw exception class to the client would leak deployment topology without giving the caller anything actionable. Operators diagnose pool pressure from structlog and pool-level metrics, not from the wire payload.
 
 ---
 
