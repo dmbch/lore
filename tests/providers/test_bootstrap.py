@@ -1,4 +1,4 @@
-"""Tests for resolve_dimensions — bootstrap dimension resolution."""
+"""Tests for the provider bootstrap factories — dimension resolution and wiring."""
 
 import os
 from pathlib import Path
@@ -8,8 +8,8 @@ import pytest
 
 from lore.config import LoreSettings, load_settings
 from lore.domain import InferenceError
-from lore.providers import EmbeddingModelConfig
-from lore.providers.bootstrap import resolve_dimensions
+from lore.providers import CompletionProvider, EmbeddingModelConfig, EmbeddingProvider
+from lore.providers.bootstrap import build_providers, resolve_dimensions
 
 # Complete TOML with all three model roles — a valid base for model_copy.
 _COMPLETE_TOML = Path(__file__).parent.parent / "fixtures" / "lore_complete.toml"
@@ -128,3 +128,24 @@ class TestSizeInvalid:
 
             with pytest.raises(InferenceError):
                 resolve_dimensions(_settings(model="text-embedding-3-small", dimensions=None))
+
+
+# ---------------------------------------------------------------------------
+# Provider wiring
+# ---------------------------------------------------------------------------
+
+
+class TestBuildProviders:
+    def test_build_providers_wires_three_roles(self) -> None:
+        with patch.dict(os.environ, _BASE_ENV, clear=True):
+            settings = load_settings(toml_path=_COMPLETE_TOML)
+
+        providers = build_providers(settings)
+
+        assert isinstance(providers.embedder, EmbeddingProvider)
+        assert isinstance(providers.interpreter, CompletionProvider)
+        assert isinstance(providers.archivist, CompletionProvider)
+        # Each role carries the config of its matching section, by identity.
+        assert providers.embedder._config is settings.embedding  # pyright: ignore[reportPrivateUsage]
+        assert providers.interpreter._config is settings.fast  # pyright: ignore[reportPrivateUsage]
+        assert providers.archivist._config is settings.reasoning  # pyright: ignore[reportPrivateUsage]

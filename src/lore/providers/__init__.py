@@ -1,4 +1,4 @@
-from lore.providers.bootstrap import resolve_dimensions
+from lore.providers.bootstrap import build_providers, resolve_dimensions
 from lore.providers.completion import CompletionProvider
 from lore.providers.config import EmbeddingModelConfig, ModelConfig, TaskTypeConfig
 from lore.providers.embedding import EmbeddingProvider
@@ -14,5 +14,6 @@ __all__ = [
     "Providers",
     "TaskTypeConfig",
     "TaskTypeKey",
+    "build_providers",
     "resolve_dimensions",
 ]
