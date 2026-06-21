@@ -14,7 +14,7 @@ from pathlib import Path
 
 from lore.adapter import create_server, serve
 from lore.config import LoreSettings, load_settings
-from lore.math import MathService
+from lore.math import build_math
 from lore.orchestrator import Orchestrator
 from lore.providers import build_providers, resolve_dimensions
 from lore.repositories import (
@@ -72,11 +72,7 @@ async def bootstrap(settings: LoreSettings, pool: RepositoryPool) -> AsyncGenera
     the orchestrator and yields it. The pool is not closed here.
     """
     providers = build_providers(settings)
-    math = MathService(
-        c_half_life=settings.epistemics.attestation_half_life,
-        t_half_life=settings.epistemics.trust_half_life,
-        maturity_k=settings.epistemics.maturity_k,
-    )
+    math = build_math(settings)
     yield Orchestrator(pool=pool, providers=providers, math=math, settings=settings)
 
 

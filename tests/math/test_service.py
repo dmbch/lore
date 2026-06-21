@@ -6,17 +6,25 @@ timestamps. Opinion never crosses this boundary.
 """
 
 import math
+import os
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
+from lore.config import load_settings
 from lore.domain import AttestationComputed, EvidenceInput, TrustSignal
 from lore.math.opinion import EPSILON
-from lore.math.service import MathService
+from lore.math.service import MathService, build_math
 from tests.math.conftest import PROP_TOL
 from tests.repositories.conftest import NO_DECAY_TRUST_HL as _NO_DECAY_HL
+
+# Complete TOML with all required sections — a valid base for build_math.
+_COMPLETE_TOML = Path(__file__).parent.parent / "fixtures" / "lore_complete.toml"
+_BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
 # --- Strategies ---
 
@@ -861,3 +869,22 @@ class TestComputeOracleTrust:
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1_000_000)
         assert abs(result - 0.8) < EPSILON
+
+
+# --- build_math factory ---
+def test_build_math_wires_epistemics() -> None:
+    """The factory maps EpistemicsConfig half-lives and K onto the service.
+
+    MathService stores rate constants privately (λ = ln2 / half_life); the
+    test reaches them to confirm the four epistemic hyperparameters reached
+    the engine intact.
+    """
+    with patch.dict(os.environ, _BASE_ENV, clear=True):
+        settings = load_settings(toml_path=_COMPLETE_TOML)
+
+    svc = build_math(settings)
+
+    assert isinstance(svc, MathService)
+    assert svc._maturity_k == settings.epistemics.maturity_k  # pyright: ignore[reportPrivateUsage]
+    assert svc._lambda == math.log(2) / settings.epistemics.attestation_half_life  # pyright: ignore[reportPrivateUsage]
+    assert svc._trust_lambda == math.log(2) / settings.epistemics.trust_half_life  # pyright: ignore[reportPrivateUsage]
