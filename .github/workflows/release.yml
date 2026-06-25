@@ -29,7 +29,7 @@ jobs:
       version: ${{ steps.detect.outputs.version }}
       tag: ${{ steps.detect.outputs.tag }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
@@ -59,7 +59,7 @@ jobs:
     if: needs.plan.outputs.released == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -74,7 +74,7 @@ jobs:
     if: needs.plan.outputs.released == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: docker build -t lore:smoke .
       - run: tests/container/smoke.sh lore:smoke
         env:
@@ -89,7 +89,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Tag the merged HEAD
         run: |
           git tag "${{ needs.plan.outputs.tag }}"
@@ -106,7 +106,7 @@ jobs:
       id-token: write # OIDC for provenance attestation
       attestations: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.plan.outputs.tag }}
       - uses: docker/setup-qemu-action@v4
