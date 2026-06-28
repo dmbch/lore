@@ -57,10 +57,11 @@ agent per area working independently:
   deployment. Target audience: PostgreSQL in a k8s-ish environment using a single-env-var
   vendor shortcut (e.g. `GEMINI_API_KEY`) — they want the declarative artifact, not a wall
   of `-e` flags.
-- **Reference deployment** — a sanitized `fly.toml` + redacted env vars (fly.io as the
-  worked example). None is in the repo, so this needs the programmer's real one as input.
-  Redaction bar (public-repo rule, `feedback_no_private_details`): app name, org,
-  hostnames, secret values → placeholders.
+- **Reference deployment** — a sanitized `fly.toml` + redacted env vars from the actual
+  dogfooding deployment (fly.io + Gemini), included as the illustrative worked example.
+  None is in the repo, so this needs the programmer's real one as input. Redaction bar
+  (public-repo rule, `feedback_no_private_details`): app name, org, hostnames, secret
+  values → placeholders.
 - **Basic config example** — a minimal, droppable `lore.toml`, not only the field tables.
 - **env/config reference** — already strong; keep it, sync to the renamed keys.
 
@@ -69,9 +70,8 @@ surfaces the judgment calls needing human authorization (ambiguous intent, spec-
 wording, anything touching `IDEA.md` or the `docs/logic.md` formalism). No agent lands
 unreviewed prose.
 
-**Depends on.** The config-deliberate branch renames README config keys to
-`[epistemics]`/`[auth]`/`[postgres] timeout` and drops `[limits] answer` (PLAN Chunk 16).
-Run this pass after that lands, or it edits keys mid-rename.
+**Config keys landed (v0.3.0).** The `[epistemics]`/`[auth]`/`[postgres] timeout` rename
+and the `[limits] answer` removal shipped; this pass now edits against the current keys.
 
 **Status:** deferred — docs and docstrings only, no behavior change. Multi-agent fan-out
 (one branch, reviewable per area).
