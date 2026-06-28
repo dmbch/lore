@@ -27,7 +27,7 @@ dependencies = [
     "instructor[litellm]>=1.15.1",
     "aiosqlite>=0.22.1",
     "pydantic>=2.13.4,<3",
-    "fastmcp>=3.3.1",
+    "fastmcp>=3.4.0",
 ]
 
 [project.scripts]
@@ -37,13 +37,13 @@ lore = "lore.__main__:main"
 dev = [
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
-    "hypothesis>=6.152.9",
-    "ruff>=0.15.15",
-    "pyright>=1.1.409",
+    "hypothesis>=6.155.1",
+    "ruff>=0.15.16",
+    "pyright>=1.1.410",
     "testcontainers[postgres]>=4.14.2",
     "python-semantic-release>=10.5.3",
     "pytest-asyncio>=1.4.0",
-    "commitizen>=4.16.2",
+    "commitizen>=4.16.3",
 ]
 
 [tool.ruff]
