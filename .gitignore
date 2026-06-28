@@ -22,6 +22,7 @@ htmlcov/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 CLAUDE.local.md
+PLAN.md
 
 # Secrets
 .env
