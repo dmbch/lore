@@ -71,12 +71,12 @@ Migrations run at startup. The bootstrap health check refuses to start on an emb
 
 ### OIDC authentication
 
-For HTTP multi-user with Lore terminating auth itself, set both `OIDC_URL` (the discovery URL with embedded client credentials) and `BASE_URL`.
+For HTTP multi-user with Lore terminating auth itself, set both `OIDC_URL` and `BASE_URL`. `OIDC_URL` is the IdP's full discovery-document URL — ending in `/.well-known/openid-configuration` — with the client credentials in the userinfo. Lore fetches that URL as-is and appends nothing, so the path must be complete.
 
 ```bash
 docker run --rm \
   -e DATABASE_URL="postgresql://…" \
-  -e OIDC_URL="oidc://client_id:secret@auth.example.com/realms/lore" \
+  -e OIDC_URL="oidc://client_id:secret@auth.example.com/realms/lore/.well-known/openid-configuration" \
   -e BASE_URL="https://lore.example.com" \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
   -e FASTMCP_TRANSPORT=http -e FASTMCP_HOST=0.0.0.0 \
@@ -129,7 +129,7 @@ The rest are set as Fly secrets rather than `[env]` — the database DSN, the ve
 fly secrets set \
   DATABASE_URL="sqlite:////data/lore.db" \
   GEMINI_API_KEY="…" \
-  OIDC_URL="https://client_id:client_secret@accounts.google.com/.well-known/openid-configuration?hd=example.com" \
+  OIDC_URL="oidc://client_id:client_secret@accounts.google.com/.well-known/openid-configuration?hd=example.com" \
   OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic%20…"
 
 fly volumes create lore_data --region fra --size 1
@@ -181,7 +181,7 @@ Configuration has two disjoint sources. Secrets and deployment topology come fro
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | Database connection (`postgresql://…` for Postgres, `sqlite:///…` for SQLite) |
-| `OIDC_URL` | OIDC discovery URL with embedded credentials (`oidc://client_id:secret@host/path`) |
+| `OIDC_URL` | Full OIDC discovery-document URL with embedded credentials (`oidc://client_id:secret@host/.well-known/openid-configuration`) |
 | `BASE_URL` | Public base URL (required with `OIDC_URL` for HTTP mode) |
 | `LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `FASTMCP_PORT` | Server port (default 8000, managed by FastMCP) |
