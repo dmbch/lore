@@ -221,7 +221,7 @@ No overlap: env vars do not override TOML fields. Single validated object: a bad
 
 `OIDC_URL` encodes the IdP's full OIDC discovery-document URL plus client credentials in one DSN-style string (`oidc://client_id:secret@host[:port]/.well-known/openid-configuration`). The path is used verbatim as the OIDCProxy `config_url` — Lore appends no discovery suffix. Bootstrap parses it, strips credentials before any telemetry is active. Credentials are never logged.
 
-**API key handling asymmetry.** Vendor API keys (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `AWS_BEARER_TOKEN_BEDROCK`) are never read by Lore — LiteLLM reads them from the environment at call time; they never enter Lore's memory. They are therefore not `SecretStr`-wrapped. `SecretStr` is reserved for `OIDC_URL`'s `client_secret`, which Lore does hold briefly before bootstrap strips it. The asymmetry is deliberate.
+**API key handling asymmetry.** Vendor API keys (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `AWS_BEARER_TOKEN_BEDROCK`) are never read by Lore: LiteLLM reads them from the environment at call time, so they never enter Lore's config or code. They are therefore not `SecretStr`-wrapped. `SecretStr` is reserved for `OIDC_URL`'s `client_secret`, which Lore does hold briefly before bootstrap strips it. The asymmetry is deliberate.
 
 ### Telemetry
 
