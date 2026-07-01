@@ -113,7 +113,7 @@ class SqliteAttestationsRepository:
                 -- ``c_herd_prior`` is the herd consensus immediately before
                 -- this attestation; ``LAG`` orders by ``(timestamp, id)``.
                 -- The ``COALESCE`` default ``0.0`` covers two distinct
-                -- cases — "no prior row" (first attestation on a fresh
+                -- cases: "no prior row" (first attestation on a fresh
                 -- hypothesis) and "stored ``c_herd`` happens to be 0.0".
                 -- Both yield ``info = 1`` in the alignment math, so the
                 -- conflation is harmless. Anyone using ``c_herd_prior`` as

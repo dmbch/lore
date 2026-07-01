@@ -42,7 +42,7 @@ def _connect(dsn: str) -> sqlite3.Connection:
     path = strip_dsn(dsn)
     if path == ":memory:":
         msg = (
-            "SQLite :memory: is not supported — each connection gets a private"
+            "SQLite :memory: is not supported: each connection gets a private"
             " database, so migrations and runtime would see different DBs."
             " Please use a (tmp) file path, e.g. sqlite:////tmp/lore-dev.db"
         )

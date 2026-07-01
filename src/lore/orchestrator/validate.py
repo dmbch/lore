@@ -31,7 +31,7 @@ def validate_resolutions(
         msg = (
             f"archivist returned {resolution_count} resolutions for"
             f" {proposition_count} propositions"
-            " — exceeds the one-resolution-per-proposition contract"
+            " (exceeds the one-resolution-per-proposition contract)"
         )
         raise ArchivistResolutionError(msg)
 
@@ -47,7 +47,7 @@ def validate_resolutions(
             )
             msg = (
                 f"corroborates id {corroborates!r} not in retrieved set"
-                " — the Archivist may have hallucinated the ID"
+                ": the Archivist may have hallucinated the ID"
             )
             raise ArchivistResolutionError(msg)
         for h_id in resolution.contradicts:
@@ -60,6 +60,6 @@ def validate_resolutions(
                 )
                 msg = (
                     f"contradicts id {h_id!r} not in retrieved set"
-                    " — the Archivist may have hallucinated the ID"
+                    ": the Archivist may have hallucinated the ID"
                 )
                 raise ArchivistResolutionError(msg)

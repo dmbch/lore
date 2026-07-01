@@ -281,7 +281,7 @@ class TestRetrieveDoesNotShareConnectionConcurrently:
         # question + 2 propositions = 3 sources => 3 search calls.
         assert len(hypotheses.windows) == 3
         assert not _windows_overlap(hypotheses.windows), (
-            "search calls overlapped — concurrent work scheduled on the shared connection"
+            "search calls overlapped: concurrent work scheduled on the shared connection"
         )
 
     async def test_retrieve_with_single_source_completes(self) -> None:

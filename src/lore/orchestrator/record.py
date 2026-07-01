@@ -138,7 +138,7 @@ class Recorder:
         # IdP-claimed _* values; this is the domain-layer enforcement.
         if context.oracle_id == TRANSFER_ORACLE:
             msg = (
-                f"Recorder.context.oracle_id must not equal {TRANSFER_ORACLE!r} —"
+                f"Recorder.context.oracle_id must not equal {TRANSFER_ORACLE!r}:"
                 " that synthetic is reserved for _compute_transfer"
             )
             raise ValueError(msg)

@@ -22,7 +22,7 @@ async def test_decay_reduces_confidence(decay_system: Orchestrator) -> None:
     # Write a hypothesis with high confidence
     await consult(
         decay_system,
-        hypothesis="Decay test hypothesis — this claim should lose confidence over time",
+        hypothesis="Decay test hypothesis: this claim should lose confidence over time",
         confidence=0.9,
         oracle="oracle-decay",
         correlation_id="decay-01",
