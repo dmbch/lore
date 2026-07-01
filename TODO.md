@@ -12,9 +12,9 @@ Technical debt and findings discovered during work. Each entry: what, why it mat
 authoritative, current sources (vendor guides: Anthropic, Google/Gemini, OpenAI, not
 training-cutoff recall). Then apply the findings to every prompt Lore ships:
 
-- **FastMCP server `instructions`**: the assembled Scribe prompt (`prompts/scribe.md`,
-  plus optional `narrative`/`glossary`), built by `build_system_prompt` and surfaced at
-  `src/lore/adapter/mcp.py:111`. What a connecting Scribe model reads.
+- **FastMCP server `instructions`**: the Scribe prompt (`prompts/scribe.md`) alone, loaded
+  at `src/lore/adapter/mcp.py:106`. What a connecting Scribe model reads. Domain includes
+  (`narrative`/`glossary`) feed the core reasoning prompts, not this.
 - **`consult` tool description**: `prompts/consult.md`, loaded at `src/lore/adapter/mcp.py:198`.
 - **`consult` parameter descriptions**: `_PARAM_DESCRIPTIONS` in `src/lore/adapter/mcp.py`
   (question / context / hypothesis / reasoning / confidence).
