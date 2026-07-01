@@ -1,4 +1,4 @@
-"""Tests for lore.config section configs — loader integration.
+"""Tests for lore.config section configs: loader integration.
 
 Covers the Epistemics, Limits, Retrieval, Server, Prompts, Postgres, and Sqlite
 sections as they map through ``load_settings``. Pure model-construction tests
@@ -18,7 +18,7 @@ from lore.config.loader import (
     _resolve_prompts,  # pyright: ignore[reportPrivateUsage]
 )
 
-# Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
+# Minimal valid env for most tests. DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
 # Path to the test TOML fixture.
@@ -26,7 +26,7 @@ _TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore.toml"
 
 
 # ---------------------------------------------------------------------------
-# Epistemics section — loader integration (model construction tests live in
+# Epistemics section: loader integration (model construction tests live in
 # tests/math/test_config.py)
 # ---------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ def test_epistemics_attestation_half_life_independent_of_trust() -> None:
 
 
 # ---------------------------------------------------------------------------
-# LimitsConfig — character limits for pipeline payloads (loader integration;
+# LimitsConfig: character limits for pipeline payloads (loader integration;
 # model construction tests live in tests/adapter/test_config.py)
 # ---------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ def test_limits_bundled_defaults_match_spec() -> None:
 
 
 # ---------------------------------------------------------------------------
-# LimitsConfig — TOML integration
+# LimitsConfig: TOML integration
 # ---------------------------------------------------------------------------
 
 _LIMITS_TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore_limits.toml"
@@ -136,14 +136,14 @@ def test_load_settings_rejects_partial_weight_override(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# AuthConfig — loader integration (model construction tests live in
+# AuthConfig: loader integration (model construction tests live in
 # tests/adapter/test_config.py)
 # ---------------------------------------------------------------------------
 
 
 def test_auth_config_required_round_trips_from_toml(tmp_path: Path) -> None:
-    # ``required = true`` is only a valid load state with OIDC configured —
-    # the cross-section validator refuses ``required`` without ``oidc``.
+    # ``required = true`` is only a valid load state with OIDC configured.
+    # The cross-section validator refuses ``required`` without ``oidc``.
     toml_file = tmp_path / "auth.toml"
     toml_file.write_text(
         "[auth]\nrequired = true\n"
@@ -160,7 +160,7 @@ def test_auth_config_required_round_trips_from_toml(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# PromptsConfig — loader resolution (model construction tests live in
+# PromptsConfig: loader resolution (model construction tests live in
 # tests/prompts/test_prompts.py, alongside the layer that owns the model)
 # ---------------------------------------------------------------------------
 
@@ -191,7 +191,7 @@ def test_resolve_prompts_passes_non_string_values_through() -> None:
 
 
 # ---------------------------------------------------------------------------
-# PostgresConfig — pool sizing and timeouts
+# PostgresConfig: pool sizing and timeouts
 # ---------------------------------------------------------------------------
 
 _POSTGRES_TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore_postgres.toml"
@@ -238,7 +238,7 @@ def test_postgres_config_fulltext_config_default_english() -> None:
 
 
 # ---------------------------------------------------------------------------
-# SqliteConfig — FTS5 tokenize spec
+# SqliteConfig: FTS5 tokenize spec
 # ---------------------------------------------------------------------------
 
 

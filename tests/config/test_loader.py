@@ -1,4 +1,4 @@
-"""Tests for lore.config loader — load_settings, vendor detection, OIDC parsing."""
+"""Tests for lore.config loader: load_settings, vendor detection, OIDC parsing."""
 
 import os
 from pathlib import Path
@@ -12,13 +12,13 @@ from lore.adapter import OidcConfig
 from lore.config import load_settings, redact_dsn
 from lore.config.loader import discover_toml, parse_oidc_url
 
-# Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
+# Minimal valid env for most tests. DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
 # Path to the test TOML fixture.
 _TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore.toml"
 
-# A nonexistent path — forces vendor detection or error.
+# A nonexistent path: forces vendor detection or error.
 _NO_TOML = Path(__file__).parent.parent / "fixtures" / "nonexistent.toml"
 
 _30_DAYS = 30 * 86400.0
@@ -26,7 +26,7 @@ _90_DAYS = 90 * 86400.0
 
 
 # ---------------------------------------------------------------------------
-# DSN detection — DATABASE_URL only, scheme drives backend dispatch
+# DSN detection: DATABASE_URL only, scheme drives backend dispatch
 # ---------------------------------------------------------------------------
 
 
@@ -62,7 +62,7 @@ def test_settings_empty_dsn_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Version — LORE_VERSION baked into published images; dev marker otherwise
+# Version: LORE_VERSION baked into published images; dev marker otherwise
 # ---------------------------------------------------------------------------
 
 
@@ -88,7 +88,7 @@ def test_lore_version_empty_keeps_dev_marker() -> None:
 
 
 # ---------------------------------------------------------------------------
-# BASE_URL / OIDC_URL pairing — must be both or neither
+# BASE_URL / OIDC_URL pairing: must be both or neither
 # ---------------------------------------------------------------------------
 
 _OIDC_URL = "oidc://client:secret@auth.example.com/.well-known/openid-configuration"
@@ -147,7 +147,7 @@ def test_neither_set_returns_stdio_config() -> None:
 
 
 # ---------------------------------------------------------------------------
-# TOML discovery — ./lore.toml then /etc/lore.toml
+# TOML discovery: ./lore.toml then /etc/lore.toml
 # ---------------------------------------------------------------------------
 
 
@@ -291,7 +291,7 @@ def test_vendor_detection_bedrock() -> None:
 
 
 def test_vendor_detection_priority_lexical() -> None:
-    """Lexical order: bedrock < gemini — bedrock wins when both keys are set."""
+    """Lexical order: bedrock < gemini. Bedrock wins when both keys are set."""
     env = {
         **_BASE_ENV,
         "AWS_BEARER_TOKEN_BEDROCK": "fake-aws",
@@ -340,7 +340,7 @@ def test_embedding_section_without_model_raises() -> None:
 def test_nested_toml_value_passes_through_to_model_extra() -> None:
     """Model-role configs accept unknown sub-tables as pass-through extras.
 
-    Regression of the old ``extra='forbid'`` behavior — vendor-specific
+    Regression of the old ``extra='forbid'`` behavior: vendor-specific
     LiteLLM kwargs flow through ``model_dump`` without typed-field
     schema changes (see ``docs/architecture.md`` §LLM Providers).
     """
@@ -386,7 +386,7 @@ def test_parse_oidc_url_discovery_url_excludes_query_and_fragment() -> None:
 
 
 def test_parse_oidc_url_extracts_query_into_extra_authorize_params() -> None:
-    """OIDC_URL query becomes upstream authorize params — verbatim, no denylist."""
+    """OIDC_URL query becomes upstream authorize params: verbatim, no denylist."""
     url = "oidc://id:secret@host/path?hd=example.com&prompt=consent"
     result = parse_oidc_url(url)
     assert result.extra_authorize_params == {"hd": "example.com", "prompt": "consent"}
@@ -420,7 +420,7 @@ def test_oidc_url_from_env() -> None:
 
 
 # ---------------------------------------------------------------------------
-# DSN redaction — operator-facing diagnostic, never leaks creds
+# DSN redaction: operator-facing diagnostic, never leaks creds
 # ---------------------------------------------------------------------------
 
 
@@ -449,7 +449,7 @@ def test_redact_dsn_drops_query_and_fragment() -> None:
 
 
 # ---------------------------------------------------------------------------
-# bootstrap.env — the diagnostic dump
+# bootstrap.env: the diagnostic dump
 # ---------------------------------------------------------------------------
 
 

@@ -8,18 +8,18 @@ decay exponentially at rate λ; uncertainty fills the gap:
     u(t) = 1 − (1 − u₀) · e^(−λt)
 
 At t=0 the opinion is unchanged. As t→∞ it approaches vacuous. The b/d
-ratio is preserved — decay erodes conviction, not direction.
+ratio is preserved, decay erodes conviction, not direction.
 
 Decay is calculated at read time, never stored. λ is a global rate from
 the config. Half-life: t_½ = ln(2)/λ.
 
 Note on symbols: throughout this module, ``λ`` (``lambda_``) is the
-continuous rate constant — units of inverse time, ``λ = ln(2) / t_½``.
+continuous rate constant, units of inverse time: ``λ = ln(2) / t_½``.
 Jøsang & Ismail 2002, Eq. 12 defines decay on evidence counters using
 ``R_{τ+n} = λ_retention^n · R_τ``, where ``λ_retention ∈ [0, 1]`` is a
-per-step retention factor — a different quantity that shares the symbol
+per-step retention factor, a different quantity that shares the symbol
 in the literature. Lore decays opinions directly because hypothesis
-state is always computed from the ledger at read time — there are no
+state is always computed from the ledger at read time, so there are no
 persistent evidence counters to decay.
 """
 

@@ -1,4 +1,4 @@
-"""Transfer-attestation tests — contradicts, multi-contradict, transfer shape."""
+"""Transfer-attestation tests: contradicts, multi-contradict, transfer shape."""
 
 from lore.domain import (
     TRANSFER_ORACLE,
@@ -92,7 +92,7 @@ class TestWritePathTransferAttestationShape:
     async def test_transfer_is_negated_latest_c_herd_no_maturity(self) -> None:
         """Single contradict: c_transfer = -c_herd_latest, no maturity multiplier.
 
-        Regression for the corrected transfer math — c_herd already encodes
+        Regression for the corrected transfer math: c_herd already encodes
         source-level discounts; applying M(h₁) again would double-discount.
         """
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
@@ -288,7 +288,7 @@ class TestWritePathContributeBalancedContradictsSkipsTransfer:
         h2 = "660e8400-e29b-41d4-a716-446655440000"
         r1 = make_hypothesis_result(id=h1, content="claim 1")
         r2 = make_hypothesis_result(id=h2, content="claim 2")
-        # Symmetric herd opinions — fused result rounds to zero.
+        # Symmetric herd opinions: fused result rounds to zero.
         a1 = make_attestation(hypothesis_id=h1, oracle_id="oracle-a", c_herd=0.5)
         a2 = make_attestation(hypothesis_id=h2, oracle_id="oracle-b", c_herd=-0.5)
 
@@ -318,7 +318,7 @@ class TestWritePathContributeBalancedContradictsSkipsTransfer:
             for c in fixture.attestations.appended
             if c.hypothesis_id == novel_h_id and c.oracle_id == TRANSFER_ORACLE
         ]
-        # No transfer row written — fused result is ≈ 0.
+        # No transfer row written: fused result is ≈ 0.
         assert len(transfers) == 0
 
         # Oracle's attestation on the novel still lands.
@@ -357,7 +357,7 @@ class TestWritePathParaphraseWithContradicts:
             correlation_id="corr-1",
         )
 
-        # No new hypothesis stored — paraphrase, not novel.
+        # No new hypothesis stored: paraphrase, not novel.
         assert len(fixture.hypotheses.stored) == 0
 
         # +c on corroborated, -c on contradicted, NO transfer row anywhere.
@@ -377,8 +377,8 @@ class TestWritePathContradictedNOraclePriorFromFullList:
     async def test_n_oracle_prior_excludes_current_oracle_when_present(self) -> None:
         contradicted_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=contradicted_id, content="old claim")
-        # Three rows on contradicted: oracle-a (twice — should count once) and oracle-1
-        # (the current oracle — must be excluded from n_oracle_prior).
+        # Three rows on contradicted: oracle-a (twice, should count once) and oracle-1
+        # (the current oracle: must be excluded from n_oracle_prior).
         a1 = make_attestation(hypothesis_id=contradicted_id, oracle_id="oracle-a", c_herd=0.4)
         a2 = make_attestation(hypothesis_id=contradicted_id, oracle_id="oracle-a", c_herd=0.4)
         a3 = make_attestation(hypothesis_id=contradicted_id, oracle_id="oracle-1", c_herd=0.4)
@@ -407,7 +407,7 @@ class TestWritePathContradictedNOraclePriorFromFullList:
         # With t_oracle = 0.5 (default for empty trust history), P_effective = 1/3.
         # c_oracle_discounted = (1/3) * -0.8 ≈ -0.2667.
         # If n_oracle_prior were taken from a count proxy that did not exclude
-        # the current oracle, N_O would be 3 and M = 3/4 → -0.3 — not what we want.
+        # the current oracle, N_O would be 3 and M = 3/4 → -0.3, not what we want.
         disbelief = [
             c
             for c in fixture.attestations.appended

@@ -1,4 +1,4 @@
-"""Composition root — config, telemetry, and system wiring.
+"""Composition root: config, telemetry, and system wiring.
 
 ``configure()`` is sync (config + telemetry). ``setup()`` is an async CM
 scoping the pool lifetime (migrations + health check + connect; closes on
@@ -51,7 +51,7 @@ async def setup(settings: LoreSettings) -> AsyncGenerator[RepositoryPool]:
 
     The ``finally`` arm closes the pool on any exception from the yield
     or from caller code inside the scope. Steps added between
-    ``connect()`` and ``try:`` would not be guarded — keep new
+    ``connect()`` and ``try:`` would not be guarded; keep new
     post-connect work inside the try block.
     """
     dim = resolve_dimensions(settings)

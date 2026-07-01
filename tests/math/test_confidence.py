@@ -5,7 +5,7 @@ belief, negative values express disbelief, zero expresses ignorance. The forward
 mapping (c → Opinion) produces uncertainty-maximized opinions by construction.
 The inverse mapping (Opinion → c) projects through P: c = b − d.
 
-The mapping function is pure math — it maps scalars to opinions across the full
+The mapping function is pure math: it maps scalars to opinions across the full
 [-1, 1] domain. Trust discounting (P_effective < 1 for K >= 1) is the pipeline
 policy that prevents dogmatic opinions from reaching ECBF, not input validation.
 
@@ -72,7 +72,7 @@ class TestToOpinionHandCalculated:
 
 
 class TestToOpinionDogmaticBoundary:
-    """c = +/-1.0 produces dogmatic opinions — the mathematical boundary.
+    """c = +/-1.0 produces dogmatic opinions: the mathematical boundary.
 
     Trust discounting (P_effective < 1 for K >= 1) is the pipeline policy
     that prevents dogmatic opinions from reaching ECBF. The mapping function
@@ -147,7 +147,7 @@ class TestToConfidence:
     def test_near_dogmatic_opinion_returns_exact_confidence(self) -> None:
         """Trust discounting is the binding constraint, not output clamping.
 
-        An opinion with b=0.995 should produce c=0.995 — the inverse
+        An opinion with b=0.995 should produce c=0.995. The inverse
         mapping is c = b − d with no clamping. The pipeline (P_effective < 1
         for K >= 1) prevents dogmatic opinions from reaching ECBF.
         """
@@ -165,7 +165,7 @@ def test_bdu_sum_is_one(v: float) -> None:
 
 @given(v=confidence_strategy)
 def test_output_is_uncertainty_maximized(v: float) -> None:
-    """min(b, d) = 0 — always on the simplex boundary."""
+    """min(b, d) = 0: always on the simplex boundary."""
     opinion = to_opinion(v)
     assert min(opinion.b, opinion.d) < PROP_TOL
 

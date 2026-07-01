@@ -41,7 +41,7 @@ class TestAppend:
         )
         found = await attestations_repo.find_by_hypothesis(h_id)
         assert len(found) == 1
-        uuid.UUID(found[0].id)  # valid UUID — doesn't raise
+        uuid.UUID(found[0].id)  # valid UUID: doesn't raise
 
     async def test_append_and_find_by_hypothesis(
         self,
@@ -486,7 +486,7 @@ class TestCheckConstraints:
         attestations_repo: AttestationsRepository,
         request_repo: RequestRepository,
     ) -> None:
-        """t_oracle is bounded to [0, 1] — negative trust is non-sensical."""
+        """t_oracle is bounded to [0, 1]: negative trust is non-sensical."""
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         with pytest.raises(StorageError):
@@ -534,7 +534,7 @@ class TestTrustSignalReadValidation:
     """Malformed ledger rows surface as StorageError on the read path.
 
     Repositories now construct ``TrustSignal`` with full validation; a row
-    that violates an in-process invariant (e.g. negative timestamp — no DB
+    that violates an in-process invariant (e.g. negative timestamp: no DB
     CHECK enforces this) is wrapped as ``StorageError`` because the source
     of the malformed data is the database.
     """
@@ -552,7 +552,7 @@ class TestTrustSignalReadValidation:
             oracle_id="sub:oracle-A",
             timestamp=0,
         )
-        # Use a negative timestamp — passes column NOT NULL, has no CHECK,
+        # Use a negative timestamp: passes column NOT NULL, has no CHECK,
         # but TrustSignal._validate_timestamp rejects it. ``model_construct``
         # bypasses ``AttestationRecord._validate_timestamp`` so the negative
         # value reaches storage and the read-side validation can be exercised.

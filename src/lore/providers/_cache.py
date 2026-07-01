@@ -12,7 +12,7 @@ class CachedEmbedder:
     Cache key is ``(text, resolved_task_type)``. If the inner embedder exposes
     a ``resolve_task_type`` method, the semantic task_type_key is resolved to
     its vendor string before keying. Vendors without task types collapse all
-    keys to None — one cache entry. Satisfies ``Embedder`` structurally.
+    keys to None: one cache entry. Satisfies ``Embedder`` structurally.
     The cache lives and dies with the instance.
 
     Stores the in-flight ``asyncio.Task`` per key so concurrent callers with

@@ -50,7 +50,7 @@ class TestTransactionPropagatesNonDbExceptions:
     non-sqlite3 exception raised inside the orchestrator's transaction
     block. The wrapper must roll back, propagate the original exception
     class (not a wrapped ``StorageError``), and leave the connection
-    usable for follow-up queries — same behaviour on both backends.
+    usable for follow-up queries, same behaviour on both backends.
     """
 
     async def test_transaction_propagates_non_db_exception_with_clean_state(
@@ -72,7 +72,7 @@ class TestTransactionPropagatesNonDbExceptions:
 
         # The hypothesis from the aborted transaction must not be visible.
         # (The ``seed_hypothesis`` row was inside the rolled-back txn.)
-        # We assert via a second seed working — if rollback left stale state,
+        # We assert via a second seed working: if rollback left stale state,
         # this would deadlock or error on the wire.
 
 
@@ -147,7 +147,7 @@ class TestCheckViolationClassification:
         correlation_id = "00000000-0000-0000-0000-0000000c0c00"
         await seed_request(backend.requests, correlation_id=correlation_id)
         # c_oracle_raw=2.0 violates AttestationRecord's [-1, 1] validation
-        # before reaching storage — use model_construct to bypass and exercise
+        # before reaching storage: use model_construct to bypass and exercise
         # the CHECK constraint directly.
         with pytest.raises(IntegrityViolation):
             await backend.attestations.append(
@@ -184,7 +184,7 @@ class TestStorageRejectsNan:
         await seed_request(backend.requests, correlation_id=correlation_id)
         nan = float("nan")
         # NaN in any confidence field violates AttestationRecord's finiteness
-        # validation before reaching storage — use model_construct to bypass
+        # validation before reaching storage: use model_construct to bypass
         # and exercise the storage-layer NaN rejection directly.
         with pytest.raises(StorageError):
             await backend.attestations.append(
@@ -207,7 +207,7 @@ class TestSearchSurfacesProximity:
     """``HypothesisResult.proximity`` is the raw cosine similarity from the proximity lane.
 
     Both backends must populate it. Authority-only rows (those that
-    surfaced via FTS but not via the cosine lane) carry proximity 0.0 —
+    surfaced via FTS but not via the cosine lane) carry proximity 0.0,
     the honest "no signal" default. Proximity-lane rows carry a value
     in [-1, 1] derived from ``1 - cosine_distance``.
     """
@@ -232,7 +232,7 @@ class TestSearchSurfacesProximity:
         # Three rows whose embeddings equal the query → cosine distance 0;
         # they monopolize the proximity lane. With limit=1 and fan_out=2
         # the per-lane subquery LIMIT is 2, so only two of the three tied
-        # rows enter ``l1_ranked`` — and the fourth row, even though it
+        # rows enter ``l1_ranked``, and the fourth row, even though it
         # has a measurable cosine similarity, is shut out of the proximity
         # lane entirely.
         query_emb = [1.0] + [0.0] * (SCHEMA_DIM - 1)
@@ -255,7 +255,7 @@ class TestSearchSurfacesProximity:
         )
         assert len(results) == 1
         assert results[0].content == "vermillion archive"
-        # The row never entered ``l1_ranked`` — its ``proximity`` is the
+        # The row never entered ``l1_ranked``: its ``proximity`` is the
         # documented "no signal" default, not the latent cosine similarity.
         assert results[0].proximity == 0.0
 
@@ -338,7 +338,7 @@ class TestTrustAlignmentsDeterministicOrder:
         for h_id in hypothesis_ids:
             records = await backend.attestations.find_by_hypothesis(h_id)
             burst_records.append(next(r for r in records if r.oracle_id == oracle))
-        # Sort by attestation id ascending — the secondary key the outer
+        # Sort by attestation id ascending, the secondary key the outer
         # ORDER BY must apply on same-second ties.
         ordered = sorted(burst_records, key=lambda r: r.id)
         expected_sorted = [round(r.c_oracle_raw, 4) for r in ordered]
@@ -363,7 +363,7 @@ class TestFTSBehavioralParity:
     neither lexer folds ``ß ↔ ss`` out of the box, so a query for
     ``"strasse"`` against a stored ``"straße"`` must miss on both.
 
-    Every parity row runs strict on both backends — ``sqlite_match`` and
+    Every parity row runs strict on both backends: ``sqlite_match`` and
     ``postgres_match`` are independent observations.
 
     Both backends UNION the proximity and authority lanes into a single
@@ -377,16 +377,16 @@ class TestFTSBehavioralParity:
     @pytest.mark.parametrize(
         ("stored", "query", "sqlite_match", "postgres_match"),
         [
-            # Exact match — sanity. Both lexers must keep their own tokens.
+            # Exact match: sanity. Both lexers must keep their own tokens.
             ("running fast", "running", True, True),
-            # Punctuation alone — both lexers split on the hyphen.
+            # Punctuation alone: both lexers split on the hyphen.
             ("café-bar", "bar", True, True),
-            # Diacritic folding — unicode61 strips, english preserves
+            # Diacritic folding: unicode61 strips, english preserves
             # (without ``unaccent``).
             ("naïve approach", "naive", True, False),
             # Diacritic + punctuation combined.
             ("café-bar", "cafe", True, False),
-            # English stemming — both stem running→run, runs→run
+            # English stemming: both stem running→run, runs→run
             # (SQLite via porter, Postgres via Snowball).
             ("running fast", "runs", True, True),
         ],
@@ -412,10 +412,10 @@ class TestFTSBehavioralParity:
         assert matched is expected
 
     async def test_fts_recall_parity_on_eszett_documented(self, backend: BackendFixture) -> None:
-        # Eszett (ß) is not a combining diacritic — neither unicode61 nor the
+        # Eszett (ß) is not a combining diacritic: neither unicode61 nor the
         # english snowball stemmer folds ``ß ↔ ss``. A German deployment that
         # needs this would install ``unaccent`` (Postgres) or ship a custom
-        # tokenizer (SQLite). The expectation here is "both miss" — a future
+        # tokenizer (SQLite). The expectation here is "both miss", a future
         # change on either side will fail this test and surface the gap.
         record = await backend.hypotheses.store(
             content="straße", embedding=[0.1] * SCHEMA_DIM, created_at=0

@@ -39,7 +39,7 @@ class TestPoolScopes:
     async def test_session_yields_functional_repos(self, pool: RepositoryPool) -> None:
         async with pool.session() as repos:
             cid = await _store_request(repos, "00000000-0000-0000-0000-00000000fac7")
-            # Round-trip via PK uniqueness — re-storing the same id raises,
+            # Round-trip via PK uniqueness: re-storing the same id raises,
             # proving the first write persisted within the session.
             with pytest.raises(StorageError):
                 await _store_request(repos, cid)
@@ -180,7 +180,7 @@ class TestSqliteSessionValidation:
         await sqlite_pool._conn.close()  # pyright: ignore[reportPrivateUsage]
         with pytest.raises(StorageError):
             async with p.session():
-                pass  # pragma: no cover — guard raises before body runs
+                pass  # pragma: no cover, guard raises before body runs
         await p.close()
 
 
@@ -247,7 +247,7 @@ class TestConnectFailure:
 
 
 class TestMemoryDsnRejected:
-    """SQLite :memory: is rejected at bootstrap — each connection gets a private DB."""
+    """SQLite :memory: is rejected at bootstrap: each connection gets a private DB."""
 
     def test_run_migrations_rejects_memory_dsn(self) -> None:
         with pytest.raises(ValueError, match=re.escape("Please use a (tmp) file path")):
@@ -295,7 +295,7 @@ class TestMakeProbe:
         @asynccontextmanager
         async def _failing_session() -> AsyncGenerator[None]:
             raise StorageError("pool exhausted")
-            yield  # pragma: no cover — unreachable; keeps Pyright happy on AsyncGenerator type
+            yield  # pragma: no cover, unreachable; keeps Pyright happy on AsyncGenerator type
 
         fake_pool = MagicMock()
         fake_pool.session = _failing_session
@@ -331,7 +331,7 @@ class TestPostgresPoolCheckCallback:
     """The Postgres pool validates connections on borrow via ``check_connection``.
 
     The check callback is what lets the live-pool readiness probe trust
-    ``pool.session()`` without an additional roundtrip — every borrow,
+    ``pool.session()`` without an additional roundtrip: every borrow,
     probe or otherwise, returns a connection the pool has just verified.
     """
 
@@ -339,7 +339,7 @@ class TestPostgresPoolCheckCallback:
         """``create_pool`` sets ``check=AsyncConnectionPool.check_connection``.
 
         Pin the configuration by inspecting the pool's ``_check`` attribute
-        after construction — patching only ``open`` so ``create_pool`` runs
+        after construction, patching only ``open`` so ``create_pool`` runs
         without needing a reachable database. The behavioral cost (one
         ``SELECT 1`` per borrow) is documented in the architecture; the
         wire-up is what we want to catch in CI.

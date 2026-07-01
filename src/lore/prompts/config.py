@@ -1,4 +1,4 @@
-"""Prompts config type — frozen Pydantic model.
+"""Prompts config type: frozen Pydantic model.
 
 Owned by the prompts layer, which also handles loading and assembly. The loader
 resolves bundled defaults (``bundled:name``) into concrete paths before this

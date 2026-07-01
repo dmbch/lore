@@ -16,7 +16,7 @@ class TestMaximizeHandCalculated:
     """
 
     def test_belief_leaning(self) -> None:
-        """Opinion leaning toward belief — disbelief absorbed into uncertainty."""
+        """Opinion leaning toward belief: disbelief absorbed into uncertainty."""
         # P = 0.8 + 0.5*0.1 = 0.85
         # ü = 2*min(0.85, 0.15) = 0.3
         # b̈ = 0.85 - 0.15 = 0.7, d̈ = 0.15 - 0.15 = 0.0
@@ -26,7 +26,7 @@ class TestMaximizeHandCalculated:
         assert abs(result.u - 0.3) < EPSILON
 
     def test_disbelief_leaning(self) -> None:
-        """Opinion leaning toward disbelief — belief absorbed into uncertainty."""
+        """Opinion leaning toward disbelief: belief absorbed into uncertainty."""
         # P = 0.1 + 0.5*0.1 = 0.15
         # ü = 2*min(0.15, 0.85) = 0.3
         # b̈ = 0.15 - 0.15 = 0.0, d̈ = 0.85 - 0.15 = 0.7
@@ -73,7 +73,7 @@ class TestMaximizeHandCalculated:
         assert abs(result.u - 1.0) < EPSILON
 
     def test_dogmatic_belief_heavy(self) -> None:
-        """Dogmatic opinion with b > d — disbelief absorbed."""
+        """Dogmatic opinion with b > d: disbelief absorbed."""
         # P = 0.7 + 0 = 0.7
         # ü = 2*min(0.7, 0.3) = 0.6
         # b̈ = 0.7 - 0.3 = 0.4, d̈ = 0.3 - 0.3 = 0.0
@@ -86,7 +86,7 @@ class TestMaximizeHandCalculated:
 class TestMaximizePropertyBased:
     @given(opinion=opinion_strategy)
     def test_preserves_projected_probability(self, opinion: Opinion) -> None:
-        """P(maximize(a)) == P(a) — the defining property."""
+        """P(maximize(a)) == P(a): the defining property."""
         result = maximize_uncertainty(opinion)
         assert abs(result.projected_probability - opinion.projected_probability) < PROP_TOL
 

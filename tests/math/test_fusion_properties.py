@@ -6,7 +6,7 @@ to zero in IEEE 754. ``fuse`` uses ``functools.reduce`` for the
 non-all-dogmatic case, so for a borderline mix like
 ``u = [1e-200, 1e-200, 0.5]`` pairwise reduction can land on this
 fallback for the first pair, emit ``u = 0`` as an intermediate, then
-take Case I on the third pair. Order-dependent — the result is not the
+take Case I on the third pair. Order-dependent: the result is not the
 N-ary 1/3-weight average that the docstring promises for the all-
 dogmatic case.
 
@@ -19,7 +19,7 @@ The property: pairwise reduce vs. an explicit N-ary mean produce equal
 projected probabilities post-``maximize_uncertainty``. Any ECBF
 intermediate with ``u = 0`` from the underflow fallback is corrected by
 step 2 (uncertainty maximization), so we compare the final
-projected probability — that's what every downstream consumer sees.
+projected probability: that's what every downstream consumer sees.
 """
 
 from hypothesis import given, settings
@@ -31,7 +31,7 @@ from lore.math.opinion import Opinion
 
 
 def _non_dogmatic_opinion(b_share: float, d_share: float, u: float) -> Opinion:
-    """Build an opinion with ``u >= 1e-6`` — well above the underflow regime.
+    """Build an opinion with ``u >= 1e-6``: well above the underflow regime.
 
     ``b_share`` and ``d_share`` partition the remaining mass ``1 - u``; their
     relative magnitudes set the b/d split.
@@ -47,7 +47,7 @@ _non_dogmatic_strategy = st.builds(
     _non_dogmatic_opinion,
     b_share=st.floats(min_value=0.0, max_value=1.0),
     d_share=st.floats(min_value=0.0, max_value=1.0),
-    # u in [1e-6, 1.0] — comfortably above the underflow knee at ``u * u``
+    # u in [1e-6, 1.0]: comfortably above the underflow knee at ``u * u``
     # (the underflow regime starts around ``u ≈ 1e-162``).
     u=st.floats(min_value=1e-6, max_value=1.0),
 )
@@ -71,8 +71,8 @@ _borderline_strategy = st.builds(
 )
 
 
-# A handful of mid-uncertainty opinions to mix in with the borderline ones —
-# the audit's failure case is specifically a mix. Sample on the 2-simplex via
+# A handful of mid-uncertainty opinions to mix in with the borderline ones.
+# The audit's failure case is specifically a mix. Sample on the 2-simplex via
 # Dirichlet-style normalisation, biased toward ``u >= 0.4`` so we exercise
 # the "Case I lands here" branch alongside the borderline near-dogmatics.
 def _mid_opinion(b: float, d: float, u_extra: float) -> Opinion:
@@ -82,7 +82,7 @@ def _mid_opinion(b: float, d: float, u_extra: float) -> Opinion:
     # Subnormal ``total_bd`` triggers a multiply-then-divide ordering bug
     # (``(remainder * d) / total_bd`` underflows the intermediate, then
     # rounds the division to 1.0 of any subnormal). Treat anything below
-    # the lower normal range as effectively zero — uniformly split.
+    # the lower normal range as effectively zero: uniformly split.
     if total_bd < 1e-300:
         return Opinion(b=remainder / 2.0, d=remainder / 2.0, u=u)
     return Opinion(
@@ -104,7 +104,7 @@ _mid_strategy = st.builds(
 
 
 def _n_ary_mean(opinions: list[Opinion]) -> Opinion:
-    """Explicit equal-weight N-ary average — the all-dogmatic Case II formula."""
+    """Explicit equal-weight N-ary average: the all-dogmatic Case II formula."""
     n = len(opinions)
     return Opinion(
         b=sum(o.b for o in opinions) / n,
@@ -118,7 +118,7 @@ class TestAcbfPairwiseVsNAryEquivalence:
 
     No matter what order pairwise reduction produces ``u = 0`` for, the
     final projected probability after ``maximize_uncertainty`` matches
-    what a direct N-ary all-dogmatic mean would have produced — because
+    what a direct N-ary all-dogmatic mean would have produced, because
     both paths preserve ``P`` and ECBF step 2 maps ``P`` to a unique
     uncertainty-maximised opinion.
     """
@@ -150,7 +150,7 @@ class TestAcbfPairwiseVsNAryEquivalence:
         # a valid opinion with ``P in [0, 1]``.
         result = fuse([*borderline, *mid])
         assert 0.0 <= result.projected_probability <= 1.0
-        # Sum-to-1 invariant — should be enforced by Opinion construction
+        # Sum-to-1 invariant: should be enforced by Opinion construction
         # in any case, but the property scan covers ranges the
         # parameterized tests don't.
         assert abs(result.b + result.d + result.u - 1.0) < 1e-6
@@ -160,7 +160,7 @@ class TestUnderflowRegimeRouting:
     """Lock in that ``fuse`` routes by the algebraic underflow predicate.
 
     Audit S2.8: the IEEE-754 ``u * u == 0.0`` proxy at ``fusion.py:111``
-    is platform-dependent — FTZ/DAZ FP-environment flags and fast-math
+    is platform-dependent: FTZ/DAZ FP-environment flags and fast-math
     contexts can flush subnormals so that the predicate fires at
     different ``u`` than the algebra predicts. These tests pin the
     routing decisions to observable outputs so the algebraic helper
@@ -170,7 +170,7 @@ class TestUnderflowRegimeRouting:
     def test_fuse_routes_through_underflow_regime_when_all_u_subnormal_squared(
         self,
     ) -> None:
-        # Three asymmetric opinions, all with ``u = 1e-200`` — well past
+        # Three asymmetric opinions, all with ``u = 1e-200``, well past
         # the IEEE-754 underflow knee for ``u * u`` (2^-1074). With
         # asymmetric ``(b, d)`` the N-ary equal-weight mean (Case II,
         # ``fusion.py:112``) and the chained pairwise reduction produce
@@ -218,7 +218,7 @@ class TestUnderflowRegimeRouting:
     def test_fuse_mixed_underflow_and_moderate_u_partitions_to_underflow(self) -> None:
         # The S3.1 mix: one borderline-dogmatic and one moderate-``u``
         # opinion. ``fuse`` partitions on the underflow predicate before
-        # routing — with ``0 < dog_count < n`` the non-dogmatic minority
+        # routing: with ``0 < dog_count < n`` the non-dogmatic minority
         # is dropped and the result is the N-ary mean over the
         # dogmatic subset only (here, just the borderline).
         u_underflow = 1e-200
@@ -226,7 +226,7 @@ class TestUnderflowRegimeRouting:
         moderate = Opinion(b=0.2, d=0.3, u=0.5)
         # Partition: dogmatic subset = [borderline]; recurses into the
         # single-input path, which is ``maximize_uncertainty(borderline)``
-        # — projected probability is preserved at ``P ≈ 0.8``. A broken
+        # Projected probability is preserved at ``P ≈ 0.8``. A broken
         # router that took pairwise Case I across the mix would also
         # land near 0.8 here (the moderate ``u`` would carry the
         # borderline belief at full strength), so this test pins the

@@ -1,4 +1,4 @@
-"""Conflict metrics — Jøsang 2016 §4.8, Def. 4.20, Eqs. 4.61–4.63.
+"""Conflict metrics: Jøsang 2016 §4.8, Def. 4.20, Eqs. 4.61–4.63.
 
 Verified against:
   - Jøsang (2016), Def. 4.20, Eqs. 4.61–4.63
@@ -22,16 +22,16 @@ from tests.math.conftest import PROP_TOL, opinion_strategy
 
 
 # ---------------------------------------------------------------------------
-# Projected Distance (PD) — Eq. 4.61
+# Projected Distance (PD): Eq. 4.61
 # ---------------------------------------------------------------------------
 def test_pd_identical_opinions_is_zero() -> None:
-    """PD between identical opinions is 0 — no disagreement."""
+    """PD between identical opinions is 0: no disagreement."""
     omega = Opinion(b=0.7, d=0.1, u=0.2)
     assert abs(compute_projected_distance(omega, omega)) < EPSILON
 
 
 def test_pd_opposite_dogmatic_is_one() -> None:
-    """PD between (1,0,0) and (0,1,0) is 1 — maximal disagreement."""
+    """PD between (1,0,0) and (0,1,0) is 1: maximal disagreement."""
     full_belief = Opinion(b=1.0, d=0.0, u=0.0)
     full_disbelief = Opinion(b=0.0, d=1.0, u=0.0)
     assert abs(compute_projected_distance(full_belief, full_disbelief) - 1.0) < EPSILON
@@ -57,7 +57,7 @@ def test_pd_vacuous_pair_is_zero() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Conjunctive Certainty (CC) — Eq. 4.62
+# Conjunctive Certainty (CC): Eq. 4.62
 # ---------------------------------------------------------------------------
 def test_cc_both_dogmatic_is_one() -> None:
     """Both dogmatic → CC = (1-0)(1-0) = 1."""
@@ -73,18 +73,18 @@ def test_cc_one_vacuous_is_zero() -> None:
 
 
 def test_cc_hand_calculated() -> None:
-    """CC for §4.8 BDU values: (1−0.80)(1−0.10) = 0.18. Matches Jøsang exactly
-    — CC is base-rate-independent."""
+    """CC for §4.8 BDU values: (1−0.80)(1−0.10) = 0.18. Matches Jøsang exactly.
+    CC is base-rate-independent."""
     omega_b = Opinion(b=0.05, d=0.15, u=0.80)
     omega_c = Opinion(b=0.68, d=0.22, u=0.10)
     assert abs(compute_conjunctive_certainty(omega_b, omega_c) - 0.18) < 1e-6
 
 
 # ---------------------------------------------------------------------------
-# Degree of Conflict (DC) — Def. 4.20, Eq. 4.63
+# Degree of Conflict (DC): Def. 4.20, Eq. 4.63
 # ---------------------------------------------------------------------------
 def test_dc_equals_pd_times_cc() -> None:
-    """DC = PD · CC — Def. 4.20."""
+    """DC = PD · CC: Def. 4.20."""
     a = Opinion(b=0.8, d=0.1, u=0.1)
     b = Opinion(b=0.1, d=0.7, u=0.2)
     pd = compute_projected_distance(a, b)

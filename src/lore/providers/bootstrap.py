@@ -1,6 +1,6 @@
 """Bootstrap utilities for the provider layer.
 
-Dimension resolution for embedding models — sync, runs before migrations.
+Dimension resolution for embedding models: sync, runs before migrations.
 """
 
 from typing import TYPE_CHECKING

@@ -9,19 +9,19 @@ output before any downstream stage:
   paraphrase labeled novel, an orthogonal claim labeled contradiction)
   is absorbed by trust discounting, ECBF, and decay.
 - One resolution per proposition. The Archivist prompt commits to one
-  resolution per inbound proposition. Over-count is the cost-DoS vector
-  — each spurious ``contributes`` would fan out into the embed pipeline.
+  resolution per inbound proposition. Over-count is the cost-DoS vector:
+  each spurious ``contributes`` would fan out into the embed pipeline.
 
 This file exercises:
 
 - ``corroborates`` and ``contradicts`` IDs must appear in the retrieved
-  set — hallucinations are rejected.
+  set: hallucinations are rejected.
 - Real retrieved IDs are accepted regardless of cosine proximity. The
   Archivist saw the IDs in its input; semantic disagreement with the
   proximity ranking is not the validator's concern.
 - Resolution count must not exceed proposition count; under-count is a
   quality issue and is accepted.
-- The validator runs on every consult, read and write — an Archivist
+- The validator runs on every consult, read and write: an Archivist
   that returns resolutions on a read is misbehaving even though nothing
   would be persisted.
 """
@@ -61,7 +61,7 @@ from lore.repositories import (
 )
 
 # ---------------------------------------------------------------------------
-# Shared stubs — minimal shapes that satisfy the orchestrator's Protocols
+# Shared stubs: minimal shapes that satisfy the orchestrator's Protocols
 # ---------------------------------------------------------------------------
 
 _STUB_EMBEDDING: list[float] = [0.01, 0.02, 0.03]
@@ -85,7 +85,7 @@ class _StubCompletion:
 class _CandidatesHypotheses:
     """Returns the configured candidate set on retrieval search.
 
-    The validator no longer calls search — IDs are read from the retrieved
+    The validator no longer calls search: IDs are read from the retrieved
     (enriched) set the Archivist saw. This stub serves the upstream
     retrieval stage; the validator reads from its output transitively.
     """
@@ -263,14 +263,14 @@ class TestValidateResolutions:
 
         The Archivist saw the ID in its enriched input. The validator's
         only job is to reject IDs the Archivist could not have legitimately
-        seen — semantic disagreement with the proximity ranking is not
+        seen; semantic disagreement with the proximity ranking is not
         the validator's concern. This is the regression guard for the
         cross-task-type cosine asymmetry that broke the e2e suite under
         the old proximity floor.
         """
         retrieved = "00000000-0000-0000-0000-000000000aa2"
         orchestrator = _make_orchestrator(
-            # Proximity 0.5 — would have failed the old 0.9 floor.
+            # Proximity 0.5: would have failed the old 0.9 floor.
             candidates=[_result(retrieved, proximity=0.5)],
             archivist_output=ArchivistOutput(
                 reasoning="r",
@@ -278,7 +278,7 @@ class TestValidateResolutions:
                 resolutions=[Resolution(corroborates=retrieved)],
             ),
         )
-        # No exception — recorder is noop in these stubs, so consult returns.
+        # No exception: recorder is noop in these stubs, so consult returns.
         await orchestrator.consult(
             oracle_id=_IDENTITY, request=_write_request(), correlation_id="corr-1"
         )
@@ -305,7 +305,7 @@ class TestValidateResolutions:
         """A retrieved contradicts ID is accepted at any proximity.
 
         Contradicting claims are typically on-topic but vary widely in
-        surface form — a contradiction can sit at proximity 0.2 against
+        surface form: a contradiction can sit at proximity 0.2 against
         the inbound and still be a legitimate contradiction. The
         validator imposes no cosine threshold.
         """
@@ -322,7 +322,7 @@ class TestValidateResolutions:
                 resolutions=[Resolution(corroborates=ok, contradicts=[contradicted])],
             ),
         )
-        # No exception — low proximity is fine because the ID was retrieved.
+        # No exception: low proximity is fine because the ID was retrieved.
         await orchestrator.consult(
             oracle_id=_IDENTITY, request=_write_request(), correlation_id="corr-1"
         )
@@ -331,9 +331,9 @@ class TestValidateResolutions:
         """A hallucinated ID in a later resolution still raises.
 
         IDEA §Stage 4: a single ``consult`` call may produce multiple
-        writes. The validator iterates the full list — a regression that
+        writes. The validator iterates the full list (a regression that
         bails after the first resolution would let the second one's
-        hallucinated ID through to the recorder.
+        hallucinated ID through to the recorder).
         """
         ok = "00000000-0000-0000-0000-000000000aa6"
         hallucinated = "00000000-0000-0000-0000-00000000beef"
@@ -357,7 +357,7 @@ class TestValidateResolutions:
     async def test_validator_rejects_hallucinated_id_on_read_path(self) -> None:
         """A hallucinated ID is raised even when ``confidence`` is None.
 
-        The validator runs on every consult — an Archivist returning IDs
+        The validator runs on every consult: an Archivist returning IDs
         the retrieved set never contained is misbehaving regardless of
         whether the resolution would be persisted. Catching it on reads
         too means the same signal surfaces in the same place.
@@ -382,7 +382,7 @@ class TestValidateResolutions:
         """More resolutions than propositions violates the one-per-proposition contract.
 
         The Archivist prompt commits to one resolution per inbound
-        proposition. Over-count is the cost-DoS vector — each spurious
+        proposition. Over-count is the cost-DoS vector: each spurious
         ``contributes`` would fan out into the embed pipeline. The bound
         is derived from inputs the orchestrator already has; no guessed
         cap is needed.
@@ -425,7 +425,7 @@ class TestValidateResolutions:
         )
 
     async def test_validator_accepts_under_count_resolutions(self) -> None:
-        """Fewer resolutions than propositions is a quality issue, not safety — accepted."""
+        """Fewer resolutions than propositions is a quality issue, not safety: accepted."""
         retrieved = "00000000-0000-0000-0000-000000000ab3"
         orchestrator = _make_orchestrator(
             candidates=[_result(retrieved)],
@@ -445,7 +445,7 @@ class TestValidateResolutions:
 
         The Archivist prompt explicitly says: if no hypothesis is present,
         leave resolutions empty. This is the regression guard that proves
-        the validator runs on the read path — a read consult has zero
+        the validator runs on the read path: a read consult has zero
         propositions and any resolution at all is misbehavior.
         """
         retrieved = "00000000-0000-0000-0000-000000000ab4"

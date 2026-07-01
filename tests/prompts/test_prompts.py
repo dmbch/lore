@@ -93,7 +93,7 @@ def test_build_system_prompt_with_narrative_and_glossary(tmp_path: Path) -> None
 
 
 # ---------------------------------------------------------------------------
-# PromptsConfig — model construction
+# PromptsConfig: model construction
 # ---------------------------------------------------------------------------
 
 

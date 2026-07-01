@@ -1,6 +1,6 @@
 """Shared validation for repository methods.
 
-Pure parameter-contract checks called by both SQLite and PostgreSQL —
+Pure parameter-contract checks called by both SQLite and PostgreSQL:
 one implementation keeps the two backends from diverging.
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 def validate_embedding(embedding: Sequence[float]) -> None:
     """Reject non-finite or zero-magnitude embeddings.
 
-    Cosine distance on a zero-magnitude vector is NaN — undefined
-    direction — so a no-direction vector is not a meaningful embedding.
+    Cosine distance on a zero-magnitude vector is NaN: undefined
+    direction, so a no-direction vector is not a meaningful embedding.
     """
     if not all(math.isfinite(x) for x in embedding):
         msg = "embedding components must be finite"

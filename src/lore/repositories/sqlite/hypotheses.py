@@ -17,11 +17,11 @@ def _sanitize_fts5_query(query: str) -> str:
     """Force literal matching by double-quoting each token.
 
     FTS5 interprets query syntax (NOT, OR, AND, NEAR, +, *, ^, etc.).
-    PostgreSQL's plainto_tsquery strips all operators by design — to
+    PostgreSQL's plainto_tsquery strips all operators by design; to
     maintain parity, we quote every token so FTS5 treats them as literals.
 
     Internal double quotes are escaped by doubling (FTS5's convention,
-    same as SQL/CSV — not backslash escaping like JSON). No stdlib
+    same as SQL/CSV, not backslash escaping like JSON). No stdlib
     function provides FTS5 quoting.
     """
     tokens = query.split()
@@ -41,7 +41,7 @@ class SqliteHypothesisRepository:
         """Create a hypothesis with a generated UUIDv4 and persist it.
 
         Three tables (hypotheses + vec_hypotheses + fts_hypotheses) is a
-        SQLite idiosyncrasy — sqlite-vec and FTS5 each require separate
+        SQLite idiosyncrasy: sqlite-vec and FTS5 each require separate
         virtual tables. Must run inside ``pool.transaction()``: atomicity
         across the three inserts is provided by the outer transaction,
         not by an inner SAVEPOINT. Under ``pool.session()`` (autocommit)
@@ -92,10 +92,10 @@ class SqliteHypothesisRepository:
         limit: int,
         fan_out: int,
     ) -> list[HypothesisResult]:
-        """Two-lane retrieval — sqlite-vec proximity + FTS5 authority.
+        """Two-lane retrieval: sqlite-vec proximity + FTS5 authority.
 
         The authority lane is skipped when the query is empty (FTS5 MATCH
-        errors on an empty string — contrast Postgres, whose
+        errors on an empty string, contrast Postgres, whose
         ``plainto_tsquery`` is simply inert). Query tokens are double-quoted
         to force literal matching, matching Postgres's ``plainto_tsquery``
         which strips all operators.
@@ -104,7 +104,7 @@ class SqliteHypothesisRepository:
         w_prox, w_auth = weights
         per_lane_limit = fan_out * limit
 
-        # Lane 1: proximity — ranked by cosine distance (ascending).
+        # Lane 1: proximity, ranked by cosine distance (ascending).
         # ``distance`` is exposed alongside ``rank`` so the projection can
         # compute ``proximity = 1 - distance`` without re-querying the
         # virtual table. LIMIT-style vec0 KNN requires SQLite >= 3.41
@@ -125,7 +125,7 @@ class SqliteHypothesisRepository:
             per_lane_limit,
         ]
 
-        # Lane 2: authority — ranked by FTS5 BM25 (rank is negative, lower
+        # Lane 2: authority, ranked by FTS5 BM25 (rank is negative, lower
         # is better, so ORDER BY rank ASC).  Skipped when query is empty.
         safe_query = _sanitize_fts5_query(query) if query.strip() else ""
         if safe_query:

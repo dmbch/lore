@@ -1,4 +1,4 @@
-"""Interpreter stage — decompose request into propositions and keywords."""
+"""Interpreter stage: decompose request into propositions and keywords."""
 
 from typing import TYPE_CHECKING
 

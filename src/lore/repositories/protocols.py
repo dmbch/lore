@@ -1,7 +1,7 @@
-"""Repository Protocols — structural subtyping contracts for storage.
+"""Repository Protocols: structural subtyping contracts for storage.
 
 Protocols live alongside the layer they abstract. Implementations just
-match the shape — no inheritance required.
+match the shape: no inheritance required.
 
 See docs/architecture.md: "Single Protocol hides relational + vector."
 """
@@ -34,7 +34,7 @@ class HypothesisRepository(Protocol):
         inner SAVEPOINT. Under ``pool.session()`` a mid-store failure
         would leave the relational row orphaned.
 
-        On failure inside a transaction, the transaction is poisoned —
+        On failure inside a transaction, the transaction is poisoned:
         the orchestrator must rollback. Do not attempt further operations.
         """
         ...
@@ -66,7 +66,7 @@ class HypothesisRepository(Protocol):
         score is the weighted sum of per-lane RRF contributions.
 
         Each lane fetches ``fan_out * limit`` candidates before UNION
-        deduplication — wider fan-out raises recall at the cost of more
+        deduplication: wider fan-out raises recall at the cost of more
         rows scanned. ``weights`` must be non-negative and sum to 1.0
         (±0.001 tolerance). ``limit`` and ``fan_out`` must be >= 1.
         Raises ``ValueError`` for invalid weights, limit, or fan_out.
@@ -81,7 +81,7 @@ class AttestationsRepository(Protocol):
         """Append an attestation to the immutable ledger.
 
         ``record.n_oracle_prior`` is the distinct count of prior attesters
-        on the hypothesis at write time, excluding the current oracle — a
+        on the hypothesis at write time, excluding the current oracle: a
         snapshot the Recorder computes against the transaction's attestation
         map. Stored on the row so trust scans read the column rather than
         recomputing the count with a correlated subquery.
@@ -114,7 +114,7 @@ class AttestationsRepository(Protocol):
         Returns one row per attestation by ``oracle_id`` within the time
         window (5 * trust_half_life). Each row carries the oracle's raw
         confidence, timestamp, c_herd_prior (LAG), and c_herd_now
-        (FIRST_VALUE DESC) — derived from the immutable ledger via window
+        (FIRST_VALUE DESC): derived from the immutable ledger via window
         functions.
 
         Domain logic (alignment formula, decay weighting, averaging) lives
@@ -129,7 +129,7 @@ class RequestRepository(Protocol):
     async def store(self, record: RequestRecord) -> None:
         """Persist a structured request record.
 
-        Call before any attestation write that references ``record.id`` —
+        Call before any attestation write that references ``record.id``:
         the FK requires the request row to exist before any referencing
         attestation row. The orchestrator writes the request row autocommit
         at the top of ``consult()``, satisfying this ordering by
@@ -141,7 +141,7 @@ class RequestRepository(Protocol):
 class Repositories(NamedTuple):
     """Bundle of all repository Protocols. Yielded by the pool's scope CMs.
 
-    The orchestrator holds Protocol-typed references — no runtime
+    The orchestrator holds Protocol-typed references: no runtime
     indirection, no wrapper object.
     """
 
@@ -169,9 +169,9 @@ class RepositoryPool(Protocol):
         await pool.close()
 
     Single-statement writes (``requests.store``) and read-side fan-outs
-    are at home in ``session()``; multi-statement writes — anything
+    are at home in ``session()``; multi-statement writes: anything
     where partial application would corrupt invariants, including
-    ``hypotheses.store`` on SQLite — must run inside ``transaction()``.
+    ``hypotheses.store`` on SQLite, must run inside ``transaction()``.
     """
 
     def session(self) -> AbstractAsyncContextManager[Repositories]:

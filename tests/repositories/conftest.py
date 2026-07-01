@@ -1,6 +1,6 @@
 """Shared fixtures for repository tests.
 
-Backend-parametrized — tests run against SQLite (always) and PostgreSQL
+Backend-parametrized: tests run against SQLite (always) and PostgreSQL
 (via testcontainers or ``LORE_TEST_POSTGRES_DSN``). Tests import
 Protocol-typed fixtures, not implementations. Only this file knows about
 concrete backends.
@@ -51,7 +51,7 @@ from lore.repositories.sqlite.pool import SqlitePool
 from lore.repositories.sqlite.requests import SqliteRequestRepository
 from tests.repositories._orchestrator_fixtures import make_settings as _make_settings
 
-# Test PostgresConfig — defaults from PLAN.md locked positions, used wherever
+# Test PostgresConfig: defaults from PLAN.md locked positions, used wherever
 # a repository test instantiates the pool.
 TEST_POSTGRES_CONFIG: PostgresConfig = PostgresConfig(
     min_size=1, max_size=20, timeout=10.0, max_waiting=50
@@ -86,14 +86,14 @@ def make_settings(
 # No-decay half-life safe for both pure math and SQL (int(5 * inf) overflows).
 NO_DECAY_TRUST_HL: float = 1e12
 
-# Local float-comparison tolerance — avoids cross-package private import.
+# Local float-comparison tolerance: avoids cross-package private import.
 EPSILON: float = 1e-9
 
 # All domain tables, ordered for DELETE (children before parents).
 # attestations → requests (via correlation_id FK) and → hypotheses (via
 # hypothesis_id FK), so attestations must be deleted first.
 _DOMAIN_TABLES = ("attestations", "requests", "hypotheses")
-# SQLite virtual tables with their own storage — not cleaned by DELETE FROM hypotheses.
+# SQLite virtual tables with their own storage: not cleaned by DELETE FROM hypotheses.
 _SQLITE_VIRTUAL_TABLES = ("vec_hypotheses", "fts_hypotheses")
 
 
@@ -112,7 +112,7 @@ class BackendFixture(NamedTuple):
 
 @pytest.fixture(scope="session")
 def sqlite_dsn_session() -> Iterator[str]:
-    """Session-scoped SQLite DSN — one temp file, one migration run."""
+    """Session-scoped SQLite DSN: one temp file, one migration run."""
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     dsn = f"sqlite:///{path}"
@@ -220,7 +220,7 @@ async def backend(pool: RepositoryPool) -> AsyncGenerator[BackendFixture]:
     """Bind repos to a fixture-owned raw connection.
 
     Repository operations on ``backend.hypotheses`` etc. run autocommit on
-    the same connection as ``backend.raw_conn`` — so post-hoc raw reads see
+    the same connection as ``backend.raw_conn``, so post-hoc raw reads see
     fixture writes immediately. Tests that want to drive ``pool.session()`` /
     ``pool.transaction()`` use ``backend.pool`` (or the ``pool`` fixture
     directly).
@@ -333,16 +333,16 @@ async def append_attestation(
 ) -> None:
     """Append an attestation with storage-valid defaults for testing.
 
-    The parent request row must exist — see :func:`seed_request`. Defaults
+    The parent request row must exist (see :func:`seed_request`). Defaults
     are valid per record validation, not mathematically consistent.
     Repository tests verify persistence, not algebra. ``n_oracle_prior``
-    defaults to zero — the "fresh hypothesis" boundary — so trust-scan
+    defaults to zero (the "fresh hypothesis" boundary), so trust-scan
     fixtures that care about the value must pass it explicitly.
 
     Hardcoded inside the helper: ``correlation_id``, ``timestamp = 1000``,
     ``t_oracle = 0.5``, ``c_oracle_raw = 0.5``. ``timestamp`` and
-    ``c_oracle_raw`` are commonly varied — trust-scan tests are windowed
-    over time and aligned against raw confidence — and those callers
+    ``c_oracle_raw`` are commonly varied (trust-scan tests are windowed
+    over time and aligned against raw confidence) and those callers
     construct an ``AttestationRecord`` explicitly and call
     ``repo.append(record)`` directly. See ``test_oracle_trust.py`` for the
     pattern. The helper stays minimal so persistence tests (the majority,

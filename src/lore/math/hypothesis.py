@@ -1,4 +1,4 @@
-"""Hypothesis state computation — decay each attestation, then ECBF.
+"""Hypothesis state computation: decay each attestation, then ECBF.
 
 The epistemic state of a hypothesis at any time t is:
 

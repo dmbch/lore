@@ -1,4 +1,4 @@
-"""Config types — frozen Pydantic models."""
+"""Config types: frozen Pydantic models."""
 
 from typing import Self
 
@@ -43,7 +43,7 @@ class LoreSettings(BaseModel):
 
         Each partial validates within its own section; these three span sections
         (auth ↔ oidc, oidc ↔ base_url) and so live on the composer. They fire at
-        ``model_validate`` time, which is the genuine load-time boundary —
+        ``model_validate`` time, which is the genuine load-time boundary;
         ``model_copy(update=...)`` does not re-run them (pydantic v2).
         """
         if self.auth.required and self.oidc is None:

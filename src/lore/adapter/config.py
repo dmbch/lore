@@ -1,4 +1,4 @@
-"""Adapter-layer config models — server identity, OIDC credentials, payload limits.
+"""Adapter-layer config models: server identity, OIDC credentials, payload limits.
 
 Owned by the adapter layer (Protocols-live-with-their-layer) and composed into
 ``LoreSettings`` by ``lore.config``.

@@ -1,7 +1,7 @@
 """Tests for trust discounting: c_discounted = P_effective * c_raw.
 
 Scalar shortcut of Josang's Def. 14.6, valid for uncertainty-maximized opinions.
-See docs/logic.md §Trust Discounting — The Scalar Shortcut.
+See docs/logic.md §Trust Discounting: The Scalar Shortcut.
 """
 
 import pytest
@@ -24,7 +24,7 @@ p_effective_strategy = st.floats(min_value=0.0, max_value=1.0)
 
 
 def test_discount_p_effective_one_confidence_unchanged() -> None:
-    """P_effective=1.0 is transparent — no damping."""
+    """P_effective=1.0 is transparent: no damping."""
     result = discount(confidence=0.8, p_effective=1.0)
 
     assert abs(result - 0.8) < EPSILON
@@ -131,7 +131,7 @@ def test_discount_p_effective_above_one_rejected() -> None:
 
 
 def test_discount_p_effective_negative_rejected() -> None:
-    """Negative P_effective would flip the sign — nonsensical."""
+    """Negative P_effective would flip the sign: nonsensical."""
     with pytest.raises(ValueError, match="p_effective must be in"):
         discount(confidence=0.5, p_effective=-0.1)
 
@@ -198,7 +198,7 @@ def test_discount_magnitude_never_amplified(c: float, p: float) -> None:
 
 @given(c=confidence_strategy, p=p_effective_strategy)
 def test_discount_result_within_valid_range(c: float, p: float) -> None:
-    """Result stays within [-1, 1] — discount cannot amplify beyond input domain."""
+    """Result stays within [-1, 1]: discount cannot amplify beyond input domain."""
     result = discount(confidence=c, p_effective=p)
 
     assert result >= -1.0 - PROP_TOL

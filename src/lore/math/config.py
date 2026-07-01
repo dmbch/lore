@@ -1,4 +1,4 @@
-"""Epistemic hyperparameters — frozen config owned by the math layer."""
+"""Epistemic hyperparameters: frozen config owned by the math layer."""
 
 import re
 
@@ -43,7 +43,7 @@ class EpistemicsConfig(BaseModel):
     trust (see docs/logic.md).
 
     `transfer_threshold` is the epistemic-significance floor for the
-    consolidated transfer attestation — fused magnitudes below this value
+    consolidated transfer attestation: fused magnitudes below this value
     do not produce a row. Decoupled from ``Opinion.EPSILON`` (math-core
     IEEE noise floor) so that operators can tune what counts as
     "informationally meaningful" independently of float precision.

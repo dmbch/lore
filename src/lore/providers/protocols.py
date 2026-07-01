@@ -1,4 +1,4 @@
-"""Provider Protocols — structural subtyping contracts for inference."""
+"""Provider Protocols: structural subtyping contracts for inference."""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager

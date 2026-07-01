@@ -3,9 +3,9 @@
 Unattested knowledge drifts back toward ignorance. Belief and disbelief
 decay exponentially at rate λ; uncertainty fills the gap. At t=0 the
 opinion is unchanged; as t→∞ it approaches vacuous. The b/d ratio is
-preserved — decay erodes conviction, not direction.
+preserved: decay erodes conviction, not direction.
 
-Custom formula — Jøsang Ch. 16.2.2 decays evidence counters, not
+Custom formula: Jøsang Ch. 16.2.2 decays evidence counters, not
 opinions. Lore decays opinions directly (see decay.py module docstring).
 Cross-checked against reference implementation single-step erosion.
 """
@@ -42,7 +42,7 @@ def test_decay_at_large_time_approaches_vacuous() -> None:
 
 
 def test_decay_vacuous_opinion_stays_vacuous() -> None:
-    """Decaying a vacuous opinion is a no-op — nothing to erode."""
+    """Decaying a vacuous opinion is a no-op: nothing to erode."""
     result = decay(opinion=VACUOUS, lambda_=0.5, t=10.0)
     assert abs(result.b - 0.0) < EPSILON
     assert abs(result.d - 0.0) < EPSILON
@@ -50,7 +50,7 @@ def test_decay_vacuous_opinion_stays_vacuous() -> None:
 
 
 def test_decay_with_zero_lambda_returns_original() -> None:
-    """λ=0 means no decay — knowledge persists forever."""
+    """λ=0 means no decay: knowledge persists forever."""
     opinion = Opinion(b=0.7, d=0.2, u=0.1)
     result = decay(opinion=opinion, lambda_=0.0, t=1000.0)
     assert abs(result.b - opinion.b) < EPSILON
@@ -148,7 +148,7 @@ def test_reference_single_step_erosion_equivalence() -> None:
 
 # --- Error cases ---
 def test_decay_negative_time_raises() -> None:
-    """Negative time is nonsensical — reject it."""
+    """Negative time is nonsensical: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
     with pytest.raises(ValueError):
         decay(opinion=opinion, lambda_=0.1, t=-1.0)
@@ -162,28 +162,28 @@ def test_decay_negative_lambda_raises() -> None:
 
 
 def test_decay_rejects_nan_lambda() -> None:
-    """NaN λ cannot produce a meaningful decay factor — reject it."""
+    """NaN λ cannot produce a meaningful decay factor: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
     with pytest.raises(ValueError):
         decay(opinion=opinion, lambda_=float("nan"), t=1.0)
 
 
 def test_decay_rejects_inf_lambda() -> None:
-    """Infinite λ has no finite meaning on bounded elapsed time — reject it."""
+    """Infinite λ has no finite meaning on bounded elapsed time: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
     with pytest.raises(ValueError):
         decay(opinion=opinion, lambda_=float("inf"), t=1.0)
 
 
 def test_decay_rejects_nan_t() -> None:
-    """NaN elapsed time cannot produce a meaningful decay factor — reject it."""
+    """NaN elapsed time cannot produce a meaningful decay factor: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
     with pytest.raises(ValueError):
         decay(opinion=opinion, lambda_=0.1, t=float("nan"))
 
 
 def test_decay_rejects_inf_t() -> None:
-    """Infinite elapsed time has no finite meaning at read time — reject it."""
+    """Infinite elapsed time has no finite meaning at read time: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
     with pytest.raises(ValueError):
         decay(opinion=opinion, lambda_=0.1, t=float("inf"))
@@ -214,7 +214,7 @@ def test_decay_uncertainty_monotonically_increases(opinion: Opinion, t: float) -
 
 @given(opinion=opinion_strategy, t=st.floats(min_value=0.0, max_value=100.0))
 def test_decay_preserves_belief_disbelief_ratio(opinion: Opinion, t: float) -> None:
-    """Decay erodes conviction uniformly — the b/d ratio is preserved.
+    """Decay erodes conviction uniformly: the b/d ratio is preserved.
 
     Both b and d are multiplied by the same factor e^(-λt), so their
     ratio is invariant. Only check when both are large enough to avoid

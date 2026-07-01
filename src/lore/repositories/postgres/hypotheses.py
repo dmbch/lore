@@ -20,7 +20,7 @@ class PostgresHypothesisRepository:
         self._conn = conn
         # The same regconfig the schema's generated tsvector was built under
         # (enforced by check_health). Travels as a psycopg parameter cast to
-        # ::regconfig at query time — never interpolated into SQL.
+        # ::regconfig at query time: never interpolated into SQL.
         self._fulltext_config = fulltext_config
 
     async def store(
@@ -28,7 +28,7 @@ class PostgresHypothesisRepository:
     ) -> HypothesisRecord:
         """Create a hypothesis with a generated UUIDv4 and persist it.
 
-        Single INSERT — pgvector stores the embedding as a column on
+        Single INSERT: pgvector stores the embedding as a column on
         the hypotheses table, unlike SQLite's two-table virtual table
         approach. No SAVEPOINT needed.
         """
@@ -67,11 +67,11 @@ class PostgresHypothesisRepository:
         limit: int,
         fan_out: int,
     ) -> list[HypothesisResult]:
-        """Two-lane retrieval — pgvector proximity + tsvector authority.
+        """Two-lane retrieval: pgvector proximity + tsvector authority.
 
         ``plainto_tsquery`` of an empty string matches nothing under any
         regconfig, so the authority lane is naturally inert on an empty
-        query — unlike SQLite, whose FTS5 MATCH errors on empty input and
+        query, unlike SQLite, whose FTS5 MATCH errors on empty input and
         must be skipped explicitly.
         """
         validate_search_params(weights=weights, limit=limit, fan_out=fan_out)

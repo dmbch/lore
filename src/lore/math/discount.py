@@ -1,7 +1,7 @@
 """Trust discounting: c_discounted = P_effective * c_raw.
 
 Scalar shortcut of Josang's Def. 14.6, valid for uncertainty-maximized opinions.
-See docs/logic.md §Trust Discounting — The Scalar Shortcut.
+See docs/logic.md §Trust Discounting: The Scalar Shortcut.
 """
 
 import math

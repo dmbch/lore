@@ -39,7 +39,7 @@ class TestFuseHandCalculated:
     # --- Two-source ECBF (ACBF Def. 12.5 Case I + Eq. 3.27) ---
 
     def test_two_agreeing_opinions(self) -> None:
-        """Two opinions that mostly agree — evidence accumulates.
+        """Two opinions that mostly agree: evidence accumulates.
 
         ACBF: κ=0.44, (0.75, 5/44, 3/22). P = 9/11.
         Maximize: ü=4/11, b̈=7/11, d̈=0.
@@ -53,7 +53,7 @@ class TestFuseHandCalculated:
         assert abs(result.u - 4.0 / 11.0) < EPSILON
 
     def test_two_contradictory_cancel(self) -> None:
-        """Contradicting testimonies cancel — the defining ECBF behavior.
+        """Contradicting testimonies cancel: the defining ECBF behavior.
 
         ACBF: symmetric, P = 0.5. Maximize: vacuous.
         'Two contradicting testimonies cancel each other out' (Jøsang §12.3.2).
@@ -67,7 +67,7 @@ class TestFuseHandCalculated:
         assert abs(result.u - 1.0) < EPSILON
 
     def test_two_both_dogmatic(self) -> None:
-        """Both dogmatic — Case II: average, then maximize.
+        """Both dogmatic: Case II: average, then maximize.
 
         ACBF Case II (Eq. 12.15, γ=0.5): (0.7, 0.3, 0.0). P=0.7.
         Maximize: ü=0.6, b̈=0.4, d̈=0.0.
@@ -81,7 +81,7 @@ class TestFuseHandCalculated:
         assert abs(result.u - 0.6) < EPSILON
 
     def test_three_all_dogmatic(self) -> None:
-        """Three dogmatic opinions — N-ary equal weights (γ=1/3 each).
+        """Three dogmatic opinions: N-ary equal weights (γ=1/3 each).
 
         ACBF Case II (Eq. 12.15): b = (0.9+0.9+0.3)/3 = 0.7, d = 0.3, u = 0.
         Maximize: P=0.7, ü=0.6, b̈=0.4, d̈=0.0.
@@ -135,7 +135,7 @@ class TestFuseHandCalculated:
         assert abs(result.u - 1.0) < EPSILON
 
     def test_fuse_single_vacuous_returns_vacuous(self) -> None:
-        """fuse([VACUOUS]) == VACUOUS — guards the single-opinion path.
+        """fuse([VACUOUS]) == VACUOUS: guards the single-opinion path.
 
         maximize_uncertainty(VACUOUS) is VACUOUS; a regression here would
         signal a maximize_uncertainty drift, since fuse([a]) routes through
@@ -151,7 +151,7 @@ class TestFuseHandCalculated:
 
         Jøsang Eq. 12.15 (Aggregatio reading): when ≥1 input is dogmatic and
         ≥1 is non-dogmatic, the N-ary equal-weight mean runs over the
-        dogmatic subset only. Same-direction is the strict pin — the
+        dogmatic subset only. Same-direction is the strict pin: the
         cancelling-pair case would coincidentally pass via uncertainty
         maximization to VACUOUS.
         """
@@ -187,7 +187,7 @@ class TestFuseHandCalculated:
         assert abs(full.u - subset.u) < EPSILON
 
     def test_vacuous_does_not_add_info(self) -> None:
-        """fuse([a, VACUOUS]) == fuse([a]) — vacuous carries no evidence."""
+        """fuse([a, VACUOUS]) == fuse([a]): vacuous carries no evidence."""
         a = Opinion(b=0.7, d=0.2, u=0.1)
         with_vacuous = fuse([a, VACUOUS])
         without = fuse([a])
@@ -203,7 +203,7 @@ class TestFuseHandCalculated:
 
         ACBF N-ary: dem=0.344, (28/43, 9/43, 6/43). P=31/43.
         Maximize: ü=24/43, b̈=19/43 ≈ 0.442, d̈=0.
-        Pairwise reduction matches N-ary — ACBF associativity confirmed.
+        Pairwise reduction matches N-ary: ACBF associativity confirmed.
         """
         c1 = Opinion(b=0.1, d=0.3, u=0.6)
         c2 = Opinion(b=0.4, d=0.2, u=0.4)
@@ -233,7 +233,7 @@ class TestFuseHandCalculated:
     # --- Non-idempotency (ECBF compounds duplicate evidence) ---
 
     def test_not_idempotent(self) -> None:
-        """fuse([a, a]) ≠ fuse([a]) — duplicate evidence compounds.
+        """fuse([a, a]) ≠ fuse([a]): duplicate evidence compounds.
 
         This is the property that makes settlement possible.
         """
@@ -253,7 +253,7 @@ class TestAcbfPairUnderflow:
 
         Two opinions with u = 1e-160 are non-dogmatic (u >> EPSILON). Their
         product 1e-320 is a subnormal double but does not underflow to zero.
-        Case I handles this correctly — the result must have u > 0.
+        Case I handles this correctly: the result must have u > 0.
         """
         near_dogmatic = Opinion(b=1 - 1e-160, d=0, u=1e-160)
 
@@ -283,7 +283,7 @@ class TestAcbfPairUnderflow:
         u-product underflows but their average has P=0.5. Uncertainty
         maximization corrects the u=0 intermediate to u=1.0 (vacuous).
 
-        Same-direction underflow (both b≈1.0) produces P=1.0 in float —
+        Same-direction underflow (both b≈1.0) produces P=1.0 in float,
         functionally dogmatic, correctly stays dogmatic after ECBF.
         """
         pos = Opinion(b=1 - 1e-162, d=0, u=1e-162)
@@ -291,7 +291,7 @@ class TestAcbfPairUnderflow:
 
         ecbf_result = fuse([pos, neg])
 
-        # Contradicting near-dogmatic opinions cancel — returns to vacuous.
+        # Contradicting near-dogmatic opinions cancel, returning to vacuous.
         assert ecbf_result.u > 0.99
 
     def test_both_dogmatic_uses_case_two_equal_weight_average(self) -> None:

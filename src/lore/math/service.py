@@ -1,7 +1,7 @@
-"""Math service — orchestrator-facing API for the math engine.
+"""Math service: orchestrator-facing API for the math engine.
 
 Accepts scalar confidences and timestamps. Returns computed epistemic fields.
-Opinion never crosses this boundary — it is an implementation detail of the
+Opinion never crosses this boundary: it is an implementation detail of the
 algebra.
 
 MathService wraps all orchestrator-facing math: hypothesis-level operations
@@ -30,11 +30,11 @@ class MathService:
 
     Takes attestation decay config (c_half_life, maturity_k) and trust decay
     config (t_half_life) at construction. Converts to internal rate constants.
-    Methods accept scalar confidences and timestamps — Opinion never leaks out.
+    Methods accept scalar confidences and timestamps; Opinion never leaks out.
 
     c_half_life=float("inf") is valid and produces λ=0 (no decay). This is a
     legitimate deployment mode for archives where knowledge never expires.
-    t_half_life=float("inf") is valid symmetrically — oracle trust scans
+    t_half_life=float("inf") is valid symmetrically; oracle trust scans
     every prior row with uniform weight.
 
     The oracle trust computation uses an adaptive blend between write-time and
@@ -132,7 +132,7 @@ class MathService:
           discounted toward the base rate (0.5) in proportion to the herd's
           prior certainty. Agreement with a settled herd resolves no
           uncertainty and earns little trust credit.
-        - **Conviction.** |c_oracle_raw| — vacuous attestations contribute
+        - **Conviction.** |c_oracle_raw|: vacuous attestations contribute
           nothing. Saying nothing is not evidence of alignment.
         - **Temporal decay.** Exponential over timestamp age.
 
@@ -169,7 +169,7 @@ class MathService:
             den = conviction * weight
             return effective_align * den, den
 
-        # math.fsum is Shewchuk-exact and order-independent — t_oracle stays
+        # math.fsum is Shewchuk-exact and order-independent, so t_oracle stays
         # bit-stable across row reorderings even when contributions mix
         # magnitudes that would drift under naive ``+=``.
         contributions = [_row_contributions(row) for row in rows]
@@ -182,7 +182,7 @@ class MathService:
         if denominator == 0.0:
             return BASE_RATE
 
-        # Clamp IEEE 754 noise to [0, 1] — same defensive pattern as decay and
+        # Clamp IEEE 754 noise to [0, 1], same defensive pattern as decay and
         # maximize_uncertainty. The algebra guarantees the range but division
         # can produce values like 1.0000000000000002 from accumulated rounding.
         return max(0.0, min(1.0, numerator / denominator))

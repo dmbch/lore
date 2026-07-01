@@ -37,7 +37,7 @@ def _check_confidence(*, value: float, field_name: str | None) -> float:
 
 
 class ConsultLoreRequest(BaseModel):
-    """MCP input for consult — all fields optional."""
+    """MCP input for consult, all fields optional."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -69,7 +69,7 @@ class ConsultLoreRequest(BaseModel):
 
 
 class ConsultLoreResponse(BaseModel):
-    """MCP output — the Archivist's synthesized answer."""
+    """MCP output: the Archivist's synthesized answer."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -91,7 +91,7 @@ class InterpreterInput(BaseModel):
 
 
 class InterpreterOutput(BaseModel):
-    """Interpreter result — normalized question, decomposed propositions, keywords."""
+    """Interpreter result: normalized question, decomposed propositions, keywords."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -163,7 +163,7 @@ class SearchResult(BaseModel):
 
 
 class ArchivistInput(BaseModel):
-    """Archivist input — unified for both read and write paths."""
+    """Archivist input, unified for both read and write paths."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -176,13 +176,13 @@ class ArchivistInput(BaseModel):
 
 
 class Resolution(BaseModel):
-    """Proposition-centric resolution — one per inbound proposition.
+    """Proposition-centric resolution: one per inbound proposition.
 
     Exactly one primary is set:
     - `corroborates`: paraphrase of an existing hypothesis (its ID).
     - `contributes`: novel content entering the archive.
 
-    `contradicts` may pair with either form — IDs of existing hypotheses
+    `contradicts` may pair with either form: IDs of existing hypotheses
     the proposition is mutually exclusive with.
     """
 
@@ -240,7 +240,7 @@ class Resolution(BaseModel):
 
 
 class ArchivistOutput(BaseModel):
-    """Archivist output — unified for both read and write paths."""
+    """Archivist output, unified for both read and write paths."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -283,7 +283,7 @@ class ArchivistOutput(BaseModel):
     def _disjoint_resolution_novels(self) -> Self:
         """Reject literally-identical contributes strings across resolutions.
 
-        Exact-match only — whitespace and case differences are not normalized.
+        Exact-match only: whitespace and case differences are not normalized.
         Near-duplicates surface naturally as two embeddings in retrieval; the
         validator catches the trivial collapse failure mode, not semantic
         near-equality.

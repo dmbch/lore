@@ -1,4 +1,4 @@
-"""LiteLLM completion provider — Instructor-backed structured output."""
+"""LiteLLM completion provider: Instructor-backed structured output."""
 
 from typing import Any
 
@@ -21,7 +21,7 @@ class CompletionProvider:
         self._config = config
         # ``async_client=True`` returns an ``AsyncInstructor`` patched
         # client. Instructor ships ``py.typed`` so pyright resolves the
-        # full ``.chat.completions.create`` chain — no Any annotation
+        # full ``.chat.completions.create`` chain: no Any annotation
         # needed.
         self._client = instructor.from_provider(
             f"litellm/{config.model}",
@@ -38,7 +38,7 @@ class CompletionProvider:
         # client via ``model_dump``. ModelConfig is a pass-through container
         # by design (see ``docs/architecture.md`` §LLM Providers); typed
         # fields are typed for code-side ergonomics, not because Lore
-        # interprets them — they round-trip unchanged.
+        # interprets them; they round-trip unchanged.
         extra: dict[str, Any] = self._config.model_dump(exclude={"model"}, exclude_none=True)
 
         try:

@@ -1,6 +1,6 @@
 """Tests for repository-layer config models.
 
-Covers Retrieval, Postgres, Sqlite — pure construction and validation. The
+Covers Retrieval, Postgres, Sqlite: pure construction and validation. The
 section→field loader mapping for these types lives in tests/config/test_sections.py.
 """
 
@@ -55,7 +55,7 @@ def test_retrieval_config_weights_property_returns_lane_tuple() -> None:
 
 
 # ---------------------------------------------------------------------------
-# PostgresConfig — pool sizing and timeouts
+# PostgresConfig: pool sizing and timeouts
 # ---------------------------------------------------------------------------
 
 
@@ -154,7 +154,7 @@ def test_postgres_config_fulltext_config_accepts_valid_regconfigs(value: str) ->
 
 
 # ---------------------------------------------------------------------------
-# SqliteConfig — FTS5 tokenize spec
+# SqliteConfig: FTS5 tokenize spec
 # ---------------------------------------------------------------------------
 
 

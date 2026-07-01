@@ -1,4 +1,4 @@
-"""Reason stage — Archivist call."""
+"""Reason stage: Archivist call."""
 
 from typing import TYPE_CHECKING
 

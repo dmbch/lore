@@ -1,4 +1,4 @@
-"""Hypothesis state computation — decay each attestation, then ECBF.
+"""Hypothesis state computation: decay each attestation, then ECBF.
 
 The epistemic state of a hypothesis at time t is:
 
@@ -92,7 +92,7 @@ def test_agrees_with_manual_decay_then_fuse() -> None:
     t_now = 100, λ = 0.1.
 
     Δt₁ = 10, Δt₂ = 5.
-    Decay each, then fuse — result must match compute_hypothesis_state.
+    Decay each, then fuse. Result must match compute_hypothesis_state.
     """
     o1 = Opinion(b=0.6, d=0.3, u=0.1)
     o2 = Opinion(b=0.4, d=0.1, u=0.5)
@@ -133,7 +133,7 @@ def test_single_decayed_attestation() -> None:
 # Zero lambda (no decay)
 # ---------------------------------------------------------------------------
 def test_contradicting_attestations_yield_high_uncertainty() -> None:
-    """Evenly opposed attestations cancel — the hypothesis returns to ignorance.
+    """Evenly opposed attestations cancel: the hypothesis returns to ignorance.
 
     Two fresh attestations with symmetric confidence (one believes, one disbelieves)
     fuse to near-vacuous. This is the hypothesis-level analog of ECBF's
@@ -216,7 +216,7 @@ def test_corroborating_attestation_reduces_uncertainty(
 ) -> None:
     """Adding a corroborating (identical) attestation reduces uncertainty.
 
-    fuse([a, a]) has less uncertainty than fuse([a]) — ECBF is non-idempotent.
+    fuse([a, a]) has less uncertainty than fuse([a]): ECBF is non-idempotent.
     Both attestations are fresh (dt=0) to isolate the fusion effect from decay.
     """
     assume(not opinion.is_vacuous)

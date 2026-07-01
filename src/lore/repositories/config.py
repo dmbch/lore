@@ -1,4 +1,4 @@
-"""Repository-layer config models — pool tunables, FTS specs, retrieval weights.
+"""Repository-layer config models: pool tunables, FTS specs, retrieval weights.
 
 These are owned by the repository layer (Protocols-live-with-their-layer) and
 composed into ``LoreSettings`` by ``lore.config``. The two module-level regexes
@@ -43,7 +43,7 @@ class RetrievalConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_weight_sum(self) -> Self:
-        # Tolerance matches repositories/_validation.py — the Protocol-boundary
+        # Tolerance matches repositories/_validation.py; the Protocol-boundary
         # check stays as defense in depth; this one fails at startup instead of
         # first consult (deep-merge partial overrides are the landmine).
         if abs(self.proximity + self.authority - 1.0) > 0.001:
@@ -57,7 +57,7 @@ class RetrievalConfig(BaseModel):
 
     @property
     def weights(self) -> tuple[float, float]:
-        """Lane weights in ``(proximity, authority)`` order — the search Protocol shape."""
+        """Lane weights in ``(proximity, authority)`` order: the search Protocol shape."""
         return (self.proximity, self.authority)
 
 

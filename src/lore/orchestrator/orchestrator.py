@@ -1,7 +1,7 @@
-"""Orchestrator — the consult execution loop.
+"""Orchestrator: the consult execution loop.
 
-One method (``consult``) wires the five stages — interpret, retrieve,
-reason, validate, record — each implemented in its own module.
+One method (``consult``) wires the five stages: interpret, retrieve,
+reason, validate, record, each implemented in its own module.
 """
 
 import asyncio
@@ -70,7 +70,7 @@ class Orchestrator:
 
         The request row is written autocommit before any downstream stage
         opens, so a failure in interpret/embed/reason/validate/record leaves
-        provenance behind with no joining attestations — an orphan row by
+        provenance behind with no joining attestations: an orphan row by
         intent. See docs/architecture.md, "Orphan request rows are evidence,
         not garbage."
         """

@@ -1,4 +1,4 @@
-"""Record stage — transaction-scoped writes."""
+"""Record stage: transaction-scoped writes."""
 
 import hashlib
 from typing import TYPE_CHECKING
@@ -33,7 +33,7 @@ async def record(
     context: WriteContext,
     settings: LoreSettings,
 ) -> None:
-    """Trust scan, attestation refetch, and writes — all inside the caller's
+    """Trust scan, attestation refetch, and writes, all inside the caller's
     ``pool.transaction()``. The trust pipeline (maturity, ECBF) needs a
     snapshot-consistent attestation map; the read-path ``enrich`` snapshot
     feeds only the Archivist."""
@@ -69,7 +69,7 @@ def _resolution_target_ids(resolutions: list[Resolution]) -> set[str]:
 
     A `corroborates` resolution targets its corroborated ID plus any
     contradicted IDs. A `contributes` resolution targets its contradicted
-    IDs only — the novel itself is created inside the transaction and has
+    IDs only: the novel itself is created inside the transaction and has
     no prior state to fetch.
     """
     target_ids: set[str] = set()
@@ -96,7 +96,7 @@ def _latest_row(records: list[AttestationRecord]) -> AttestationRecord | None:
 
     Matches the ``ORDER BY timestamp, id`` in ``find_by_hypotheses`` so
     transfer-attestation reads see the same row the trust scan sees. UUIDv4
-    ids tiebreak deterministically but not causally — readers must not
+    ids tiebreak deterministically but not causally; readers must not
     infer event ordering from the tiebreak when timestamps collide.
     """
     if not records:
@@ -115,7 +115,7 @@ class Recorder:
     The single validated precondition the Recorder relies on is
     ``ArchivistOutput._disjoint_resolution_ids``: across all resolutions, every
     hypothesis ID appears in at most one ``corroborates`` or ``contradicts``
-    slot. That invariant is what makes the per-resolution dispatch safe — the
+    slot. That invariant is what makes the per-resolution dispatch safe: the
     oracle attests on each existing hypothesis at most once per consult, so the
     snapshot-uniqueness guarantee on ``c_herd`` holds.
     """
@@ -259,7 +259,7 @@ class Recorder:
     async def _attest_existing(self, *, hypothesis_id: str, confidence: float) -> None:
         existing = self._attestation_map.get(hypothesis_id, [])
         # ``n_oracle_prior`` is stored on the row at write time and read back
-        # unchanged by the trust scan — the column is the single source of
+        # unchanged by the trust scan: the column is the single source of
         # truth. The semantics ("distinct oracles other than self") live here;
         # changing this helper changes the meaning for *new* rows only, so any
         # change must consider that historical rows preserve the old semantics.
@@ -282,8 +282,8 @@ class Recorder:
         computed: AttestationComputed,
         n_oracle_prior: int,
     ) -> None:
-        """The transfer path in ``_contribute`` stays inline — its values are
-        pinned, not computed — rather than routing through this helper."""
+        """The transfer path in ``_contribute`` stays inline (its values are
+        pinned, not computed) rather than routing through this helper."""
         log.debug(
             "recorder.attestation",
             hypothesis_id=hypothesis_id,

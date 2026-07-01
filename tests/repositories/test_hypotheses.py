@@ -55,12 +55,12 @@ class TestStore:
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
         """Atomicity: neither table is modified if the vec insert fails."""
-        wrong_dim = [1.0] * 10  # wrong dimension — backend rejects it
+        wrong_dim = [1.0] * 10  # wrong dimension: backend rejects it
         with pytest.raises(StorageError):
             await hypothesis_repo.store(content="test claim", embedding=wrong_dim, created_at=1000)
 
         # A successful store after the failure must be the only record.
-        # Verifies both vector and relational tables are clean — a leaked
+        # Verifies both vector and relational tables are clean: a leaked
         # relational row from the failed store would be an orphan (no vector
         # entry) invisible to search but visible to find_by_id.
         good = await hypothesis_repo.store(
@@ -122,7 +122,7 @@ class TestSearch:
         self,
         hypothesis_repo: HypothesisRepository,
     ) -> None:
-        """Empty query string degrades gracefully — results still returned via proximity."""
+        """Empty query string degrades gracefully, results still returned via proximity."""
         await hypothesis_repo.store(
             content="redis cache invalidation strategy",
             embedding=_embedding(seed=5),
@@ -142,7 +142,7 @@ class TestSearch:
     async def test_search_whitespace_only_query_degrades_gracefully(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
-        """Whitespace-only query is treated as empty — authority=0.0, no error."""
+        """Whitespace-only query is treated as empty: authority=0.0, no error."""
         await hypothesis_repo.store(
             content="redis cache invalidation strategy",
             embedding=_embedding(seed=5),
@@ -197,7 +197,7 @@ class TestSearch:
             fan_out=2,
         )
 
-        # Assert: h1 ranks first — multi-lane convergence outscores single-lane presence
+        # Assert: h1 ranks first, multi-lane convergence outscores single-lane presence
         assert len(results) >= 2
         assert results[0].id == h1.id
 
@@ -237,7 +237,7 @@ class TestSearch:
             created_at=2000,
         )
 
-        # Authority-only search — h1 should rank first (FTS match on content)
+        # Authority-only search: h1 should rank first (FTS match on content)
         authority_results = await hypothesis_repo.search(
             embedding=_embedding(seed=50),
             query="kubernetes deployment",
@@ -246,7 +246,7 @@ class TestSearch:
             fan_out=2,
         )
 
-        # Proximity-only search — seed=50 is closer to seed=2 than seed=1
+        # Proximity-only search: seed=50 is closer to seed=2 than seed=1
         proximity_results = await hypothesis_repo.search(
             embedding=_embedding(seed=2),
             query="kubernetes deployment",
@@ -393,7 +393,7 @@ class TestSearch:
         """``fan_out`` sets the per-lane LIMIT inside each subquery.
 
         With ``limit=1, fan_out=1`` each lane fetches its top-1 row only.
-        Hypothesis C — proximity rank 2, authority rank 2 — never enters
+        Hypothesis C (proximity rank 2, authority rank 2) never enters
         either lane, so it cannot win.
 
         With ``limit=1, fan_out=3`` each lane fetches its top-3. C now
@@ -413,7 +413,7 @@ class TestSearch:
         b_emb = [0.01, 1.0] + [0.0] * (dim - 2)  # cos ≈ 0.01 → prox rank ≥ 4
 
         # FTS: only B and C carry the rare keyword. B repeats it twice and
-        # C once — both BM25 (SQLite) and ts_rank (Postgres) reward higher
+        # C once, both BM25 (SQLite) and ts_rank (Postgres) reward higher
         # term frequency, so B is unambiguously auth rank 1 and C auth rank 2.
         await hypothesis_repo.store(content="filler one alpha", embedding=f1_emb, created_at=1000)
         c = await hypothesis_repo.store(
@@ -492,7 +492,7 @@ class TestSearch:
     async def test_search_negative_weight_raises(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
-        """Negative weights are rejected — they would invert a lane's ranking signal."""
+        """Negative weights are rejected: they would invert a lane's ranking signal."""
         with pytest.raises(ValueError, match="weights must be non-negative"):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),

@@ -1,6 +1,6 @@
-"""Retrieve stage — embed sources, search per-source, deduplicate, enrich with epistemic state.
+"""Retrieve stage: embed sources, search per-source, deduplicate, enrich with epistemic state.
 
-Also hosts ``embed_novels`` — the write-path counterpart of ``embed_sources``. Both
+Also hosts ``embed_novels``, the write-path counterpart of ``embed_sources``. Both
 are pre-transaction LLM embedding calls keyed by ``task_type``; co-locating them
 keeps the embedding surface in one file.
 """
@@ -25,7 +25,7 @@ async def embed_sources(
     interpreted: InterpreterOutput,
     question: str,
 ) -> list[list[float]]:
-    """Embed the per-source texts. Pure LLM — must run outside any DB scope."""
+    """Embed the per-source texts. Pure LLM: must run outside any DB scope."""
     with start_span("lore.embed_sources"):
         # Questions are queries; propositions are facts to verify. Vendors that
         # distinguish task types (Gemini) need them tagged separately.
@@ -44,7 +44,7 @@ async def embed_novels(
     session: Providers,
     novels: list[str],
 ) -> dict[str, list[float]]:
-    """Embed novel hypotheses for the write path. Pure LLM — must run outside the transaction."""
+    """Embed novel hypotheses for the write path. Pure LLM: must run outside the transaction."""
     with start_span("lore.embed_novels"):
         if not novels:
             return {}
@@ -61,7 +61,7 @@ async def search_candidates(
     source_embeddings: list[list[float]],
     settings: LoreSettings,
 ) -> list[HypothesisResult]:
-    """Search per-source and dedup. Pure DB — runs inside a session scope."""
+    """Search per-source and dedup. Pure DB: runs inside a session scope."""
     with start_span("lore.search_candidates"):
         query = " ".join(interpreted.keywords[: settings.retrieval.max_keywords])
         weights = settings.retrieval.weights

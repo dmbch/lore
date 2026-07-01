@@ -11,13 +11,13 @@ constructs ``OIDCProxy``:
   structlog stderr line or span attribute emitted during construction.
 
 ``OIDCProxy`` is patched with ``MagicMock`` so the real discovery flow never
-executes — that path's logging is FastMCP's contract, not Lore's, and
+executes. That path's logging is FastMCP's contract, not Lore's, and
 exercising it would require a fake OIDC server (``respx`` / ``pytest-httpx``)
 for marginal coverage on third-party code.
 
 The test installs an SDK ``TracerProvider`` as the global tracer provider with
-an ``InMemorySpanExporter`` attached — mirroring what ``opentelemetry-instrument``
-does at process start in production — then calls ``configure_telemetry()`` so the
+an ``InMemorySpanExporter`` attached, mirroring what ``opentelemetry-instrument``
+does at process start in production. Then calls ``configure_telemetry()`` so the
 facade and structlog stack bind to that recording provider. It drives
 ``create_server`` in HTTP mode with a sentinel client_secret. Downstream
 OIDCProxy logging is out of scope.
@@ -71,7 +71,7 @@ def captured_spans(
     ``TracerProvider`` with an ``InMemorySpanExporter`` attached is patched
     onto ``otel_trace.get_tracer_provider`` for the test's duration. We patch
     rather than calling ``set_tracer_provider`` because the OTel API's global
-    setter is ``Once()`` — it cannot be reassigned across tests, so patching
+    setter is ``Once()``: it cannot be reassigned across tests, so patching
     the lookup is the only way to keep tests isolated.
 
     Suite-wide invariant: no test in this run may call
@@ -79,7 +79,7 @@ def captured_spans(
     the installed SDK provider for the rest of the process and every later
     test sees it through ``get_tracer_provider()`` regardless of teardown.
 
-    structlog stderr is captured by pytest's ``capsys`` — module-level loggers
+    structlog stderr is captured by pytest's ``capsys``. Module-level loggers
     in the adapter materialize against the wrapper class ``configure_telemetry``
     installed, so adapter log lines land in capsys.
     """
@@ -99,7 +99,7 @@ def test_oidc_client_secret_does_not_leak_to_stderr_or_spans(
 
     Observable surfaces under test: the structlog stderr stream and every
     attribute on every span emitted during ``create_server``. The DB-bound
-    ``OidcConfig.client_secret`` field is exempt — secrets must reach the
+    ``OidcConfig.client_secret`` field is exempt: secrets must reach the
     OIDCProxy constructor; what we forbid is them being written to telemetry.
     """
     span_exporter = captured_spans
@@ -117,13 +117,13 @@ def test_oidc_client_secret_does_not_leak_to_stderr_or_spans(
         }
     )
 
-    # Patch OIDCProxy so we don't make real discovery calls — we still want to
+    # Patch OIDCProxy so we don't make real discovery calls. We still want to
     # observe what create_server writes to telemetry around the construction.
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
         mock_proxy.return_value = MagicMock()
         server = create_server(settings=settings, system=_noop_system())
 
-    # OIDCProxy must have received the raw secret — the leak we forbid is in
+    # OIDCProxy must have received the raw secret. The leak we forbid is in
     # telemetry, not the auth path itself. The adapter unwraps the SecretStr
     # exactly once at the OIDCProxy boundary.
     mock_proxy.assert_called_once()
@@ -149,7 +149,7 @@ def test_oidc_client_secret_does_not_leak_to_stderr_or_spans(
 def test_oidc_config_repr_and_model_dump_mask_client_secret() -> None:
     """``repr`` and ``model_dump`` paths render the secret as ``'**********'``.
 
-    Pinned via ``pydantic.SecretStr`` — closes the structural leak surface
+    Pinned via ``pydantic.SecretStr``: closes the structural leak surface
     a future debug log of ``settings`` or a stray ``model_dump()`` would
     otherwise open. Callers that genuinely need the value must call
     ``.get_secret_value()`` explicitly.

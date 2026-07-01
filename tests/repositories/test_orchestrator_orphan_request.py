@@ -2,14 +2,14 @@
 
 The orchestrator writes the request row autocommit at the top of ``consult()``,
 **before** entering the providers session or the attestation transaction.
-If any downstream step fails — in particular an error raised **inside**
-``conn.transaction()`` — the request row must remain as evidence that the
+If any downstream step fails, in particular an error raised **inside**
+``conn.transaction()``: the request row must remain as evidence that the
 consult was attempted.
 
 This test wraps the real ``AttestationsRepository`` so that ``append()``
 raises inside the transaction body. The transaction's ``BEGIN`` has
 already run; the wrapper's error triggers ``ROLLBACK``. The
-autocommitted request row — written before the transaction opens —
+autocommitted request row (written before the transaction opens)
 must survive.
 """
 
@@ -50,7 +50,7 @@ from tests.repositories.conftest import BackendFixture
 class _FailingAttestationsRepo:
     """Wraps a real AttestationsRepository; ``append()`` raises.
 
-    All reads delegate to the inner repository — ``record()`` calls
+    All reads delegate to the inner repository: ``record()`` calls
     ``fetch_trust_alignments`` and needs real data to proceed to the
     failing ``append()``. The failure occurs **inside**
     ``conn.transaction()``, forcing the transaction to roll back.
@@ -88,7 +88,7 @@ class _RealBackendPool:
     """Wraps the real backend pool with failing attestations injected.
 
     Each ``session()`` and ``transaction()`` call delegates to the real pool
-    so transactions get genuine BEGIN / ROLLBACK semantics — and substitutes
+    so transactions get genuine BEGIN / ROLLBACK semantics, and substitutes
     the failing attestations repo into the bundle.
     """
 
@@ -121,7 +121,7 @@ class _RealBackendPool:
 async def _read_request_row(
     raw_conn: aiosqlite.Connection | psycopg.AsyncConnection[Any], id: str
 ) -> tuple[Any, ...] | None:
-    """Raw-SQL read bypassing the Protocol layer — test infrastructure only."""
+    """Raw-SQL read bypassing the Protocol layer: test infrastructure only."""
     if isinstance(raw_conn, aiosqlite.Connection):
         cursor = await raw_conn.execute(
             "SELECT id, oracle_id, question, hypothesis FROM requests WHERE id = ?",
@@ -157,13 +157,13 @@ async def test_write_path_attestation_failure_inside_transaction_preserves_reque
 
     The write path proceeds as follows: the request row is stored
     autocommit at the top of ``consult()``, then ``conn.transaction()``
-    opens (BEGIN), then ``record()`` calls ``attestations.append()`` —
+    opens (BEGIN), then ``record()`` calls ``attestations.append()``,
     which here raises. The transaction rolls back. The request row,
     written outside the transaction, must still exist.
     """
     correlation_id = "00000000-0000-0000-0000-00000000c0fa"
 
-    # Seed a real hypothesis so classify can resolve an agreement on it —
+    # Seed a real hypothesis so classify can resolve an agreement on it:
     # that routes through ``attestations.append()`` directly, without the
     # novel-embedding branch.
     existing = await _seed_retrievable_hypothesis(backend)
@@ -215,7 +215,7 @@ async def test_write_path_attestation_failure_inside_transaction_preserves_reque
             correlation_id=correlation_id,
         )
 
-    # The request row — autocommitted *before* the transaction opened —
+    # The request row (autocommitted *before* the transaction opened)
     # must survive the rollback.
     row = await _read_request_row(backend.raw_conn, correlation_id)
     assert row is not None
@@ -223,7 +223,7 @@ async def test_write_path_attestation_failure_inside_transaction_preserves_reque
     assert row[1] == "oracle-1"
     assert row[2] == "What is X?"
     assert row[3] == "X is a service"
-    # And — crucially — no attestation was appended for this correlation_id,
+    # And, crucially, no attestation was appended for this correlation_id,
     # proving the transaction actually rolled back.
     attestations = await backend.attestations.find_by_hypothesis(existing.id)
     assert all(a.correlation_id != correlation_id for a in attestations)

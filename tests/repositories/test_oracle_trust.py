@@ -31,10 +31,10 @@ from tests.repositories.conftest import (
 )
 from tests.repositories.conftest import NO_DECAY_TRUST_HL as _NO_DECAY_HL
 
-# Attestation decay is irrelevant for trust tests — use no-decay.
+# Attestation decay is irrelevant for trust tests: use no-decay.
 _TRUST_SVC = MathService(c_half_life=1e12, t_half_life=_NO_DECAY_HL)
 
-# The default correlation_id on append_attestation — every trust test uses
+# The default correlation_id on append_attestation: every trust test uses
 # the helper, so we pre-seed its parent request row per test via autouse.
 # Visible here at module top instead of buried in a shared fixture.
 _DEFAULT_CORRELATION_ID = "00000000-0000-0000-0000-000000000099"
@@ -255,7 +255,7 @@ class TestFetchTrustAlignments:
 
         H1: A attests (ts=100), then D attests (ts=200).
         c_herd_now for A should be D's c_herd (0.8), not A's own (0.4).
-        The herd moved after A spoke — read-time alignment captures this.
+        The herd moved after A spoke. Read-time alignment captures this.
 
         n_oracle_prior = 0 (D came after, A self-excluded), N_O = 1, M_write = 0.5.
         align_write = 1 - 0.5*|0.4 - 0.0| = 0.8
@@ -524,7 +524,7 @@ class TestFetchTrustAlignments:
         hypothesis_repo: HypothesisRepository,
         attestations_repo: AttestationsRepository,
     ) -> None:
-        """trust_half_life=inf is the "no decay" mode — no time floor.
+        """trust_half_life=inf is the "no decay" mode: no time floor.
 
         Regression: int(5 * inf) used to raise OverflowError at the SQL
         boundary. An ancient (timestamp=1) attestation that would be
@@ -578,7 +578,7 @@ class TestFetchTrustAlignments:
         """The trust scan returns the ``n_oracle_prior`` the Recorder stored.
 
         Only one oracle has ever attested on the hypothesis, so a derived
-        count would be 0. The fixture stores 99 — a value impossible under
+        count would be 0. The fixture stores 99, a value impossible under
         derivation. The assertion that 99 comes back proves the SQL reads
         the stored column rather than recomputing it.
         """

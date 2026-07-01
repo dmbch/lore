@@ -1,4 +1,4 @@
-"""Prompts module — load and assemble actor system prompts."""
+"""Prompts module: load and assemble actor system prompts."""
 
 from pathlib import Path
 

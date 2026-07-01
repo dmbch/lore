@@ -1,4 +1,4 @@
-"""Configuration package — public API."""
+"""Configuration package: public API."""
 
 from lore.config.loader import load_settings, redact_dsn
 from lore.config.types import LoreSettings

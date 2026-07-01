@@ -1,11 +1,11 @@
-"""Telemetry — structlog + OTel glue.
+"""Telemetry: structlog + OTel glue.
 
 `configure_telemetry()` is the one-shot wiring; `start_span()` is the
 seam that binds the same context to a span and to structlog's
 contextvars so traces and logs share identity.
 
 SDK provider wiring is delegated to `opentelemetry-instrument`; without
-the wrapper, the global providers are OTel API proxies — spans are
+the wrapper, the global providers are OTel API proxies, so spans are
 non-recording, logs still flow.
 
 `LOG_LEVEL` (default `INFO`) controls stderr verbosity and is mirrored
@@ -15,7 +15,7 @@ defaulted to `"true"` the same way: litellm then records each LLM call
 on its own child span instead of decorating Lore's (already ended)
 stage spans. FastMCP and LiteLLM attach their own handlers at import;
 `_configure_logging` resets those loggers so records propagate to the
-root structlog handler — one gate covers everyone.
+root structlog handler, so one gate covers everyone.
 """
 
 import logging
@@ -135,7 +135,7 @@ def configure_telemetry() -> None:
         _configure_logging(log_level)
         # litellm's async OTel handlers otherwise decorate the inherited
         # parent span, which in Lore's stage-span shape has always ended by
-        # the time they run — the SDK warns per attribute and records
+        # the time they run, so the SDK warns per attribute and records
         # nothing. Request-span mode opens a child span per LLM call
         # instead; setdefault keeps the operator override.
         os.environ.setdefault("USE_OTEL_LITELLM_REQUEST_SPAN", "true")

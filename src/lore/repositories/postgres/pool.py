@@ -1,4 +1,4 @@
-"""PostgreSQL connection pool — RepositoryPool implementation.
+"""PostgreSQL connection pool: RepositoryPool implementation.
 
 PostgreSQL concurrency model: psycopg_pool.AsyncConnectionPool. Each scope
 checks out a connection on entry and returns it on exit. ``transaction()``
@@ -71,7 +71,7 @@ class PostgresPool:
     async def transaction(self) -> AsyncGenerator[Repositories]:
         # SERIALIZABLE is set once per connection in ``_configure_connection``;
         # every transaction here inherits it. The orchestrator catches
-        # RetryableTransactionError and re-runs on a fresh snapshot — see
+        # RetryableTransactionError and re-runs on a fresh snapshot; see
         # docs/architecture.md, write path.
         raw = await self._acquire()
         try:
@@ -89,5 +89,5 @@ class PostgresPool:
         await self._pool.close()
 
 
-# Static Protocol verification — catches signature drift at type-check time.
+# Static Protocol verification: catches signature drift at type-check time.
 _pool_check: type[RepositoryPool] = PostgresPool

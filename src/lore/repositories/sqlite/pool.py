@@ -1,9 +1,9 @@
-"""SQLite connection pool — RepositoryPool implementation.
+"""SQLite connection pool: RepositoryPool implementation.
 
 SQLite concurrency model: single connection + asyncio.Lock. Each scope
 acquires the lock on entry and releases on exit. ``transaction()`` issues
 explicit BEGIN / COMMIT / ROLLBACK around the yield, mirroring psycopg's
-native transaction CM behavior. ``session()`` runs autocommit — each
+native transaction CM behavior. ``session()`` runs autocommit: each
 statement commits independently because ``aiosqlite.connect`` was opened
 with ``isolation_level=None``.
 """
@@ -92,5 +92,5 @@ class SqlitePool:
         await self._conn.close()
 
 
-# Static Protocol verification — catches signature drift at type-check time.
+# Static Protocol verification: catches signature drift at type-check time.
 _pool_check: type[RepositoryPool] = SqlitePool

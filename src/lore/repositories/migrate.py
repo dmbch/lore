@@ -21,7 +21,7 @@ def read_migrations(package: str) -> list[Migration]:
     """Read migration files from *package*, sorted by name.
 
     Only files matching ``NNNN_*.sql`` are included. Uses
-    ``importlib.resources`` — works with editable installs and built
+    ``importlib.resources``: works with editable installs and built
     distributions. Requires the migration directory to be a Python package
     (``__init__.py`` must exist).
     """

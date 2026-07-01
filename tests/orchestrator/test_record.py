@@ -1,9 +1,9 @@
-"""Recorder unit tests — transfer-row threshold sourced from settings.
+"""Recorder unit tests: transfer-row threshold sourced from settings.
 
 The Recorder writes a consolidated transfer attestation on a novel hypothesis
 when an orthogonal-novel resolution carries contradicted IDs. If the fused
-magnitude falls below ``settings.epistemics.transfer_threshold`` — an
-epistemic-significance floor decoupled from the math core's IEEE epsilon — no
+magnitude falls below ``settings.epistemics.transfer_threshold`` (an
+epistemic-significance floor decoupled from the math core's IEEE epsilon), no
 row is written.
 
 These tests drive ``_compute_transfer`` by handing the Recorder an
@@ -197,7 +197,7 @@ class TestComputeTransferLogsSkipWhenFusedRoundsToZero:
     """The skip path emits a ``recorder.transfer_skipped`` INFO event.
 
     Symmetric counterpart to the ``recorder.attestation`` DEBUG event the
-    non-skip branch already emits — operators need to see when contradictions
+    non-skip branch already emits: operators need to see when contradictions
     cancel and no transfer row lands.
     """
 
@@ -217,7 +217,7 @@ class TestComputeTransferLogsSkipWhenFusedRoundsToZero:
 class TestComputeTransferReturnsNoneBelowThreshold:
     """A fused-result below ``settings.epistemics.transfer_threshold`` writes no row.
 
-    Engineered scalar: ``c_herd = 1e-4`` — five orders of magnitude above
+    Engineered scalar: ``c_herd = 1e-4``, five orders of magnitude above
     ``Opinion.EPSILON`` (math-core noise floor) but an order below the
     epistemic-significance threshold ``1e-3``. Proves the threshold (not
     EPSILON) is what gates the transfer row.
@@ -237,7 +237,7 @@ class TestComputeTransferReturnsNoneBelowThreshold:
 class TestComputeTransferWritesAboveThreshold:
     """A fused-result clearly above ``settings.epistemics.transfer_threshold`` writes one row.
 
-    Engineered scalar: ``c_herd = 0.1`` — two orders of magnitude above the
+    Engineered scalar: ``c_herd = 0.1``, two orders of magnitude above the
     default threshold so floating-point drift inside ECBF + maximize_uncertainty
     cannot push the value across the gate. The transfer scalar is ``-c_herd``;
     one TRANSFER_ORACLE row is appended on the novel.
@@ -284,7 +284,7 @@ class TestComputeTransferBalancedContradictionsSkipsTransfer:
     threshold ``1e-3``; the transfer attestation must be skipped.
 
     Without the threshold, this would land a near-zero ``c_herd`` row on the
-    novel that the math would then propagate through subsequent fusions —
+    novel that the math would then propagate through subsequent fusions:
     spurious epistemic content from algebraic noise.
     """
 
@@ -428,7 +428,7 @@ class TestRecorderRejectsTransferOracleSynthetic:
 
 
 class TestRecorderIsDictBacked:
-    """Recorder is constructed once per write transaction — __slots__ is premature."""
+    """Recorder is constructed once per write transaction (__slots__ is premature)."""
 
     def test_recorder_class_has_no_slots(self) -> None:
         assert not hasattr(Recorder, "__slots__")
@@ -457,7 +457,7 @@ def _attestation_for_oracle(*, hypothesis_id: str, oracle_id: str) -> Attestatio
 class TestRecorderPassesDistinctOracleCountToAppend:
     """The Recorder hands ``n_oracle_prior = |distinct oracles| - {self}`` to ``append()``.
 
-    The trust scan reads this column verbatim — there is no longer a SQL
+    The trust scan reads this column verbatim: there is no longer a SQL
     derivation to fall back on. Round-trip tests verify the column survives
     storage; this test verifies the Recorder writes the right value in the
     first place. Together they pin both halves of the contract.

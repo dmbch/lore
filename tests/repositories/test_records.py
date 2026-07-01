@@ -1,7 +1,7 @@
 """Tests for repository record types.
 
 Record types are Pydantic models (frozen) that mirror the database schema.
-They validate on construction — mirroring DB constraints so corrupt data
+They validate on construction, mirroring DB constraints so corrupt data
 fails loudly at record construction, not downstream.
 """
 
@@ -226,10 +226,10 @@ class TestRecordImmutability:
 
 
 class TestModelConstruct:
-    """model_construct() creates records without validation — hot path for DB reads."""
+    """model_construct() creates records without validation, hot path for DB reads."""
 
     def test_build_attestation_records_skips_validation(self) -> None:
-        # Arrange: row with t_oracle outside [0, 1] — fails validation
+        # Arrange: row with t_oracle outside [0, 1], fails validation
         row: dict[str, Any] = {
             "id": "00000000-0000-0000-0000-000000000001",
             "hypothesis_id": "00000000-0000-0000-0000-000000000002",
@@ -293,7 +293,7 @@ def _valid_result(**overrides: object) -> HypothesisResult:
 class TestHypothesisResultConstruction:
     """HypothesisResult extends HypothesisRecord with retrieval scores from two-lane search.
 
-    Construction does not validate score/proximity bounds — those are enforced by
+    Construction does not validate score/proximity bounds: those are enforced by
     the SQL RRF formula and DB CHECK constraints. The hot path uses
     ``model_construct()``, so field validators here would be dead code.
     """

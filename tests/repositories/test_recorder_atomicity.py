@@ -56,7 +56,7 @@ class _FailingOnSecondCallAttestationsRepo:
 
     Reads and the first ``append`` delegate to the transaction-bound inner
     repository so the surviving write is the one the rollback must revert.
-    Exposes ``calls`` so the test can assert the failure actually fired —
+    Exposes ``calls`` so the test can assert the failure actually fired:
     otherwise a future change that drops below two ``append`` calls would
     make the rollback assertion vacuous.
     """
@@ -97,7 +97,7 @@ class _RealBackendPool:
     """Wraps the real pool, substituting the transaction-scoped attestations repo.
 
     The failing wrapper must delegate to the connection bound to the active
-    ``pool.transaction()`` scope — otherwise the first ``append`` lands on
+    ``pool.transaction()`` scope: otherwise the first ``append`` lands on
     a different connection and the rollback under test has nothing to undo.
     ``last_wrapper`` exposes the most recently constructed wrapper so the
     test can assert how many ``append`` calls actually fired.
@@ -130,7 +130,7 @@ class _RealBackendPool:
 async def _count_hypotheses_with_content(
     raw_conn: aiosqlite.Connection | psycopg.AsyncConnection[Any], content: str
 ) -> int:
-    """Raw-SQL read bypassing the Protocol layer — test infrastructure only."""
+    """Raw-SQL read bypassing the Protocol layer (test infrastructure only)."""
     if isinstance(raw_conn, aiosqlite.Connection):
         cursor = await raw_conn.execute(
             "SELECT COUNT(*) FROM hypotheses WHERE content = ?", (content,)
@@ -148,7 +148,7 @@ async def test_recorder_failure_rolls_back_attestations(
     """A mid-batch ``append`` failure rolls back every write the transaction made.
 
     Two resolutions: one corroborate on a seeded hypothesis, one contribute
-    on a novel (``hypotheses.store`` + a second ``append`` — which raises).
+    on a novel (``hypotheses.store`` + a second ``append``, which raises).
     After rollback, the seeded hypothesis carries only its prior
     attestation, and the novel never existed.
     """

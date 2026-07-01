@@ -1,4 +1,4 @@
-"""Tests for lore.providers.config — model-role config models."""
+"""Tests for lore.providers.config: model-role config models."""
 
 import pytest
 from pydantic import ValidationError
@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from lore.providers.config import EmbeddingModelConfig, ModelConfig, TaskTypeConfig
 
 # ---------------------------------------------------------------------------
-# Embedding config — dimensions
+# Embedding config: dimensions
 # ---------------------------------------------------------------------------
 
 
@@ -80,7 +80,7 @@ def test_model_config_accepts_extras_as_pass_through() -> None:
     """ModelConfig admits arbitrary keys; they round-trip via model_dump.
 
     Model-role configs are pass-through containers (see
-    ``docs/architecture.md`` §LLM Providers). Unknown keys are not typos —
+    ``docs/architecture.md`` §LLM Providers). Unknown keys are not typos:
     they are vendor-specific LiteLLM kwargs Lore commits to forwarding
     unchanged. Constructed via ``model_validate`` so the dynamic-key
     contract does not need a typed-call escape hatch.

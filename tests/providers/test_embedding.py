@@ -1,4 +1,4 @@
-"""Tests for EmbeddingProvider — LiteLLM-backed embedding provider."""
+"""Tests for EmbeddingProvider: LiteLLM-backed embedding provider."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -218,7 +218,7 @@ class TestEmbedPassThroughExtras:
     """``EmbeddingModelConfig`` is a pass-through container for LiteLLM kwargs.
 
     Vendor-specific keys beyond what Lore types itself flow into the
-    LiteLLM call unchanged. The provider does not enumerate them — that is
+    LiteLLM call unchanged. The provider does not enumerate them. That is
     the design commitment (see ``docs/architecture.md`` §LLM Providers).
     """
 
@@ -250,6 +250,6 @@ class TestEmbedPassThroughExtras:
 
         call_args = mock_litellm.aembedding.call_args
         # ``model`` is the only allowed positional/keyword binding for the
-        # field — we forbid double-binding (TypeError on real call).
+        # field. We forbid double-binding (TypeError on real call).
         all_kwargs = list(call_args.kwargs.keys())
         assert all_kwargs.count("model") == 1

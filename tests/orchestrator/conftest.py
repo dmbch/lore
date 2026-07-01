@@ -1,6 +1,6 @@
 """Shared stubs, helpers, and fixtures for orchestrator tests.
 
-Uses Protocol-satisfying stubs for providers and repositories — the
+Uses Protocol-satisfying stubs for providers and repositories: the
 orchestrator tests verify wiring, not backend behavior. The sole
 pyright suppression is reportReturnType on StubCompletion.complete
 (generic Protocol methods cannot be satisfied by fixed-type stubs).
@@ -42,7 +42,7 @@ from lore.repositories import (
 )
 
 # ---------------------------------------------------------------------------
-# Stub providers — external services, mocking is appropriate
+# Stub providers: external services, mocking is appropriate
 # ---------------------------------------------------------------------------
 
 STUB_EMBEDDING = [0.1, 0.2, 0.3]
@@ -63,7 +63,7 @@ class StubCompletion:
     """Fixed-response completion stub. Satisfies Completer Protocol shape.
 
     Returns the pre-set output regardless of response_model. The orchestrator
-    always passes the correct model type — the stub trusts this for testing.
+    always passes the correct model type: the stub trusts this for testing.
     """
 
     def __init__(self, output: BaseModel) -> None:
@@ -76,7 +76,7 @@ class StubCompletion:
 
 
 # ---------------------------------------------------------------------------
-# Stub repositories — in-memory, Protocol-satisfying
+# Stub repositories: in-memory, Protocol-satisfying
 # ---------------------------------------------------------------------------
 
 
@@ -92,7 +92,7 @@ class StubHypotheses:
         self, *, content: str, embedding: Sequence[float], created_at: int
     ) -> HypothesisRecord:
         self.stored.append((content, embedding, created_at))
-        # Deterministic but valid UUID — first segment is exactly 8 hex chars.
+        # Deterministic but valid UUID: first segment is exactly 8 hex chars.
         record_id = f"aaa{self._next_id:05d}-e29b-41d4-a716-446655440000"
         self._next_id += 1
         return HypothesisRecord.model_construct(
