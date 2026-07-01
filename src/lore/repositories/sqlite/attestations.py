@@ -22,7 +22,6 @@ class SqliteAttestationsRepository:
         self._conn = conn
 
     async def append(self, record: AttestationRecord) -> None:
-        """Append an attestation to the immutable ledger."""
         try:
             await self._conn.execute(
                 """INSERT INTO attestations
@@ -49,7 +48,6 @@ class SqliteAttestationsRepository:
             raise StorageError(str(e)) from e
 
     async def find_by_hypothesis(self, hypothesis_id: str) -> list[AttestationRecord]:
-        """Return all attestations for a hypothesis, ordered by timestamp."""
         try:
             cursor = await self._conn.execute(
                 """SELECT id, hypothesis_id, oracle_id, correlation_id,
@@ -69,7 +67,6 @@ class SqliteAttestationsRepository:
     async def find_by_hypotheses(
         self, hypothesis_ids: Sequence[str]
     ) -> dict[str, list[AttestationRecord]]:
-        """Batch fetch attestations for multiple hypotheses."""
         result: dict[str, list[AttestationRecord]] = {hid: [] for hid in hypothesis_ids}
         if not hypothesis_ids:
             return result
@@ -98,12 +95,6 @@ class SqliteAttestationsRepository:
         t_now: int,
         trust_half_life: float,
     ) -> list[TrustSignal]:
-        """Fetch raw alignment data for oracle trust computation.
-
-        SQL derives c_herd_prior (LAG) and c_herd_now (FIRST_VALUE DESC)
-        via window functions over the immutable ledger. Domain logic lives
-        in the math service.
-        """
         # math.isfinite guards the SQL boundary: MathService accepts
         # t_half_life=inf as the "no decay" mode, but int(5 * inf) raises
         # OverflowError; int(5 * nan) raises ValueError. Either way the

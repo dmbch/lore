@@ -1,7 +1,4 @@
-"""Repository layer — Protocols, record types, and the pool factory.
-
-Exports the public API for consumers (orchestrator, bootstrap).
-"""
+"""Repository layer — Protocols, record types, and the pool factory."""
 
 from lore.repositories.config import PostgresConfig, RetrievalConfig, SqliteConfig
 from lore.repositories.factory import check_health, connect, make_probe, run_migrations

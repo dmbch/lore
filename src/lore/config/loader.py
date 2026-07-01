@@ -85,7 +85,6 @@ def _deep_merge(*, base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, A
 
 
 def _load_bundled_toml(*, package: str, name: str) -> dict[str, Any]:
-    """Load a bundled TOML file from a package via importlib.resources."""
     files = importlib.resources.files(package)
     resource = files.joinpath(f"{name}.toml")
     return tomllib.loads(resource.read_text(encoding="utf-8"))

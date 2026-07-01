@@ -40,8 +40,6 @@ from tests.orchestrator.conftest import (
 
 
 class TestWritePathPersistsStructuredRequest:
-    """The write path writes a structured request row with all submitted fields."""
-
     async def test_write_path_persists_structured_request_all_fields(self) -> None:
         fixture = make_orchestrator()
 
@@ -112,8 +110,6 @@ class TestWritePathPersistsStructuredRequest:
 
 
 class TestWritePathStoresNovelHypothesis:
-    """New proposition (content, no relations) stores hypothesis + initial attestation."""
-
     async def test_write_path_novel_no_relations(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(
@@ -144,8 +140,6 @@ class TestWritePathStoresNovelHypothesis:
 
 
 class TestWritePathIdentityMatchAttestsExisting:
-    """Identity match (hypothesis_id set) appends positive attestation to existing."""
-
     async def test_write_path_identity_match_attests_existing(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id, content="existing claim")
@@ -178,8 +172,6 @@ class TestWritePathIdentityMatchAttestsExisting:
 
 
 class TestWritePathContributeNegativeConfidence:
-    """Negative confidence on contribute writes a negatively-signed oracle attestation."""
-
     async def test_contribute_negative_confidence(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(
@@ -301,8 +293,6 @@ class TestRecordUsesPostTransactionAttestationState:
 
 
 class TestWritePathEmbedsNovelsWithDocumentTaskType:
-    """Novel hypotheses are embedded with 'document' task type."""
-
     async def test_write_path_embeds_novels_with_document_task_type(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(
@@ -325,8 +315,6 @@ class TestWritePathEmbedsNovelsWithDocumentTaskType:
 
 
 class TestWritePathComputesTrustAndMaturity:
-    """fetch_trust_alignments is called and trust computation runs."""
-
     async def test_write_path_computes_trust_and_maturity(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(
@@ -350,8 +338,6 @@ class TestWritePathComputesTrustAndMaturity:
 
 
 class TestWritePathReadThenWrite:
-    """The full unified flow returns an answer from the archivist."""
-
     async def test_write_path_read_then_write(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(
@@ -402,8 +388,6 @@ class TestWritePathVacuousConfidence:
 
 
 class TestWritePathNonColdStartTrust:
-    """Oracle with prior alignment history gets a trust score != 0.5."""
-
     async def test_write_path_trust_from_alignment_history(self) -> None:
         # Oracle who agreed perfectly with the herd on a prior attestation
         alignment = TrustSignal(
@@ -436,8 +420,6 @@ class TestWritePathNonColdStartTrust:
 
 
 class TestWritePathOrthogonalProducesNoWrites:
-    """Archivist classifies everything as orthogonal — no resolutions, no writes."""
-
     async def test_write_path_orthogonal_produces_no_writes(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(
@@ -458,8 +440,6 @@ class TestWritePathOrthogonalProducesNoWrites:
 
 
 class TestWritePathMultipleNovels:
-    """Composite hypothesis decomposed into 3 novel propositions as Resolutions."""
-
     async def test_write_path_stores_all_novels_with_distinct_ids(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(

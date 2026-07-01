@@ -31,8 +31,6 @@ from tests.orchestrator.conftest import (
 
 
 class TestReadPathReturnsAnswer:
-    """Question-only request returns a synthesized answer."""
-
     async def test_read_path_returns_answer(self) -> None:
         fixture = make_orchestrator(
             archivist_output=ArchivistOutput(
@@ -50,8 +48,6 @@ class TestReadPathReturnsAnswer:
 
 
 class TestReadPathCallsInterpreter:
-    """Interpreter receives the question and context."""
-
     async def test_read_path_calls_interpreter(self) -> None:
         fixture = make_orchestrator()
 
@@ -67,8 +63,6 @@ class TestReadPathCallsInterpreter:
 
 
 class TestReadPathEmbedsNormalizedQuestion:
-    """Embedding is called with the interpreter's normalized question."""
-
     async def test_read_path_embeds_normalized_question(self) -> None:
         fixture = make_orchestrator(
             interpreter_output=make_interpreter_output(question="normalized question text"),
@@ -87,8 +81,6 @@ class TestReadPathEmbedsNormalizedQuestion:
 
 
 class TestReadPathEnrichesWithEpistemicState:
-    """Retrieved hypotheses carry computed c_herd and attestation_count."""
-
     async def test_read_path_enriches_with_epistemic_state(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id)
@@ -114,8 +106,6 @@ class TestReadPathEnrichesWithEpistemicState:
 
 
 class TestReadPathPersistsStructuredRequest:
-    """The read path writes a structured request row with all submitted fields."""
-
     async def test_read_path_persists_structured_request_all_fields(self) -> None:
         fixture = make_orchestrator()
 
@@ -163,8 +153,6 @@ class TestOracleIdLiteralPassthrough:
 
 
 class TestRequestStoreErrorPropagates:
-    """A failing requests.store() surfaces as StorageError — no swallowing."""
-
     async def test_request_store_error_propagates_as_storage_error(self) -> None:
         embedder = StubEmbedder()
         interpreter = StubCompletion(make_interpreter_output())
@@ -216,8 +204,6 @@ class TestReadPathNoResults:
 
 
 class TestReadPathValidation:
-    """consult rejects requests with neither question nor hypothesis."""
-
     def test_no_question_no_hypothesis_raises(self) -> None:
         from pydantic import ValidationError
 

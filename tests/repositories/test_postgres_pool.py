@@ -18,8 +18,6 @@ from tests.repositories.conftest import SCHEMA_DIM, TEST_POSTGRES_CONFIG
 
 
 class TestPostgresPoolSession:
-    """``session()`` translates psycopg pool errors to StorageError."""
-
     async def test_pool_exhaustion_on_session_raises_storage_error(self, pg_dsn: str) -> None:
         """Pool exhaustion (PoolTimeout) surfaces as StorageError, not psycopg.Error.
 
@@ -74,8 +72,6 @@ class TestPostgresPoolSession:
 
 
 class TestPostgresPoolIsolation:
-    """pool.transaction() runs at SERIALIZABLE — the write-path concurrency contract."""
-
     async def test_postgres_transaction_runs_at_serializable(self, pg_dsn: str) -> None:
         config = PostgresConfig(min_size=1, max_size=1, timeout=10.0, max_waiting=50)
         pool = await PostgresPool.create(dsn=pg_dsn, config=config)
@@ -301,8 +297,6 @@ class TestPostgresPoolSerializationFailureTranslation:
 
 
 class TestCreatePoolThreadsConfig:
-    """create_pool() applies the configured PostgresConfig values to AsyncConnectionPool."""
-
     async def test_create_pool_applies_config(self, pg_dsn: str) -> None:
         config = PostgresConfig(min_size=2, max_size=7, timeout=3.5, max_waiting=11)
         pool = await create_pool(dsn=pg_dsn, config=config)

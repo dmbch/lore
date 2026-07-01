@@ -199,5 +199,4 @@ def build_math(settings: LoreSettings) -> MathService:
 def _to_opinion_at_times(
     attestations: Sequence[EvidenceInput],
 ) -> list[OpinionAtTime]:
-    """Convert evidence inputs to OpinionAtTime pairs."""
     return [OpinionAtTime(to_opinion(a.c_oracle_discounted), a.timestamp) for a in attestations]

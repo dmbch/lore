@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 
 def _unsupported_dsn(dsn: str) -> ValueError:
-    """Build a ValueError for an unrecognized DSN scheme."""
     msg = (
         f"Unsupported DSN: {dsn!r}. Expected 'postgresql://...',"
         " 'postgres://...', or 'sqlite:///<path>'."
@@ -40,7 +39,6 @@ def _unsupported_dsn(dsn: str) -> ValueError:
 
 
 def _fulltext_config(settings: LoreSettings) -> str:
-    """Pick the backend-appropriate fulltext config."""
     if is_postgres(settings.dsn):
         return settings.postgres.fulltext_config
     if is_sqlite(settings.dsn):

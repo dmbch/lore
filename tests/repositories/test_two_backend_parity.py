@@ -140,8 +140,6 @@ class TestUuidCollisionRaisesDuplicateRecord:
 
 
 class TestCheckViolationClassification:
-    """Out-of-bounds CHECK violations classify as ``IntegrityViolation`` on both backends."""
-
     async def test_check_violation_surfaces_as_integrity_violation(
         self, backend: BackendFixture
     ) -> None:

@@ -61,8 +61,6 @@ class _SequentialSearchHypotheses(StubHypotheses):
 
 
 class TestFanOutEmbedsAllPropositionsInParallel:
-    """N propositions produce N+1 embed calls (question + each proposition)."""
-
     async def test_fan_out_embeds_all_propositions_in_parallel(self) -> None:
         fixture = make_orchestrator(
             interpreter_output=InterpreterOutput(
@@ -92,8 +90,6 @@ class TestFanOutEmbedsAllPropositionsInParallel:
 
 
 class TestRetrieveTaskTypeBySource:
-    """The question text and hypothesis-derived propositions use distinct task types."""
-
     async def test_retrieve_uses_question_key_for_question_and_verification_key_for_propositions(
         self,
     ) -> None:
@@ -125,8 +121,6 @@ class TestRetrieveTaskTypeBySource:
 
 
 class TestFanOutDeduplicatesByHypothesisId:
-    """Same hypothesis found by two search calls appears once with higher score."""
-
     async def test_fan_out_deduplicates_by_hypothesis_id(self) -> None:
         shared_id = "550e8400-e29b-41d4-a716-446655440000"
         unique_id = "660e8400-e29b-41d4-a716-446655440000"
@@ -193,8 +187,6 @@ class TestFanOutDeduplicatesByHypothesisId:
 
 
 class TestFanOutEmbeddingFailureFailsEntireRequest:
-    """Exception in any embed call propagates — no partial results."""
-
     async def test_fan_out_embedding_failure_fails_entire_request(self) -> None:
 
         class _FailingEmbedder:
@@ -248,8 +240,6 @@ class TestFanOutEmbeddingFailureFailsEntireRequest:
 
 
 class TestFanOutSearchPerEmbedding:
-    """Each embedding triggers its own search() call."""
-
     async def test_fan_out_search_per_embedding(self) -> None:
         hypotheses = _SequentialSearchHypotheses([[], [], []])
 
@@ -293,8 +283,6 @@ class TestFanOutSearchPerEmbedding:
 
 
 class TestMaxKeywordsTruncation:
-    """Retrieval truncates keywords to settings.retrieval.max_keywords."""
-
     async def test_keywords_truncated_to_max(self) -> None:
         hypotheses = _SequentialSearchHypotheses([[]])
 
@@ -350,8 +338,6 @@ class TestMaxKeywordsTruncation:
 
 
 class TestOrchestratorForwardsFanOutToSearch:
-    """``retrieval.fan_out`` from settings reaches every ``search()`` call."""
-
     async def test_orchestrator_forwards_fan_out_to_search(self) -> None:
         hypotheses = _SequentialSearchHypotheses([[], [], []])
         embedder = StubEmbedder()

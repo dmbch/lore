@@ -19,8 +19,6 @@ from lore.math.opinion import VACUOUS, Opinion
 
 
 class OpinionAtTime(NamedTuple):
-    """An opinion paired with its attestation timestamp."""
-
     opinion: Opinion
     timestamp: int
 

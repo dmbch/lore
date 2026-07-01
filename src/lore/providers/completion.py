@@ -1,9 +1,4 @@
-"""LiteLLM completion provider — Instructor-backed structured output.
-
-Wraps instructor.from_provider with LiteLLM for vendor-neutral structured
-completion. Catches openai.OpenAIError, instructor errors, and pydantic
-validation errors, mapping them all to InferenceError.
-"""
+"""LiteLLM completion provider — Instructor-backed structured output."""
 
 from typing import Any
 
@@ -22,8 +17,6 @@ from lore.providers.config import ModelConfig
 
 
 class CompletionProvider:
-    """Structured LLM completion via Instructor and LiteLLM."""
-
     def __init__(self, config: ModelConfig) -> None:
         self._config = config
         # ``async_client=True`` returns an ``AsyncInstructor`` patched

@@ -19,8 +19,6 @@ from lore.repositories.sqlite.connection import connect
 
 
 class TestConnectExtensionLoadFailure:
-    """``connect()`` cleans up the connection on extension-load failure."""
-
     async def test_extension_load_failure_propagates_and_closes_connection(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -1,9 +1,4 @@
-"""Record stage — transaction-scoped writes.
-
-``record`` is the orchestrator-facing entry point: it runs trust grading,
-fetches a snapshot-consistent attestation map, and dispatches each Resolution
-to a ``Recorder`` instance bound to the caller's transaction.
-"""
+"""Record stage — transaction-scoped writes."""
 
 import hashlib
 from typing import TYPE_CHECKING
@@ -86,7 +81,6 @@ def _resolution_target_ids(resolutions: list[Resolution]) -> set[str]:
 
 
 def _to_evidence(records: list[AttestationRecord]) -> list[EvidenceInput]:
-    """Map attestation records to math service inputs."""
     return [
         EvidenceInput(c_oracle_discounted=a.c_oracle_discounted, timestamp=a.timestamp)
         for a in records
@@ -94,7 +88,6 @@ def _to_evidence(records: list[AttestationRecord]) -> list[EvidenceInput]:
 
 
 def _count_distinct_oracles(*, records: list[AttestationRecord], exclude: str) -> int:
-    """Count distinct oracle IDs, excluding the current oracle."""
     return len({a.oracle_id for a in records} - {exclude})
 
 
@@ -159,12 +152,9 @@ class Recorder:
         self._settings = settings
 
     async def dispatch(self) -> None:
-        """Write attestations for every resolution in ``self._reasoned``.
-
-        Iterates the validated ``ArchivistOutput`` in order; each resolution
-        sets exactly one of ``corroborates`` or ``contributes`` (enforced by
-        ``Resolution._validate_shape``).
-        """
+        """Each resolution sets exactly one of ``corroborates`` or
+        ``contributes`` (``Resolution._validate_shape``), so the branch below
+        is exhaustive."""
         for resolution in self._reasoned.resolutions:
             if (corroborates := resolution.corroborates) is not None:
                 await self._corroborate(corroborates, contradicts=resolution.contradicts)
@@ -172,7 +162,6 @@ class Recorder:
                 await self._contribute(contributes, contradicts=resolution.contradicts)
 
     async def _corroborate(self, corroborates: str, *, contradicts: list[str]) -> None:
-        """Positive attestation on the paraphrased hypothesis; negatives on contradicted."""
         log.info("resolution.paraphrase", corroborates=corroborates, contradicts=contradicts)
         await self._attest_existing(hypothesis_id=corroborates, confidence=self._context.confidence)
         for h_id in contradicts:
@@ -268,7 +257,6 @@ class Recorder:
         return c_transfer
 
     async def _attest_existing(self, *, hypothesis_id: str, confidence: float) -> None:
-        """Write an attestation (positive or negative) on an existing hypothesis."""
         existing = self._attestation_map.get(hypothesis_id, [])
         # ``n_oracle_prior`` is stored on the row at write time and read back
         # unchanged by the trust scan — the column is the single source of
@@ -294,8 +282,8 @@ class Recorder:
         computed: AttestationComputed,
         n_oracle_prior: int,
     ) -> None:
-        """Log + append for the oracle-attestation pair. The transfer path stays
-        inline above — its values are pinned, not computed."""
+        """The transfer path in ``_contribute`` stays inline — its values are
+        pinned, not computed — rather than routing through this helper."""
         log.debug(
             "recorder.attestation",
             hypothesis_id=hypothesis_id,

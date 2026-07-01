@@ -74,7 +74,6 @@ def _by_seed(rows: list[dict[str, Any]], seed_id: str, *, oracle: str) -> list[d
 async def test_paraphrase_aggregation_yields_at_most_one_positive_per_seed(
     system: Orchestrator,
 ) -> None:
-    """Composite paraphrasing one seed three times → at most one positive on the seed."""
     seed_id = await _seed(
         system,
         "agg-scen1-seed",
@@ -107,7 +106,6 @@ async def test_paraphrase_aggregation_yields_at_most_one_positive_per_seed(
 async def test_multi_contradict_writes_consolidated_transfer(
     system: Orchestrator,
 ) -> None:
-    """Novel contradicting two seeds → exactly one transfer + ≤1 negative per seed."""
     seed_a = await _seed(
         system,
         "agg-scen2-seed-a",
@@ -159,7 +157,6 @@ async def test_multi_contradict_writes_consolidated_transfer(
 async def test_ambiguous_composite_emits_consult_notes_log(
     captured_system: tuple[Orchestrator, list[EventDict]],
 ) -> None:
-    """Deliberately ambiguous input → Archivist exercises the notes channel."""
     system, cap = captured_system
 
     await _seed(

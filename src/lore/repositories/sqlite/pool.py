@@ -34,7 +34,6 @@ class SqlitePool:
 
     @classmethod
     async def create(cls, dsn: str) -> SqlitePool:
-        """Create a pool from a SQLite DSN (``sqlite:///path`` or ``sqlite:///:memory:``)."""
         conn = await sqlite_connect(strip_dsn(dsn))
         return cls(conn=conn, lock=asyncio.Lock())
 

@@ -117,7 +117,6 @@ class TestProvidersSession:
             assert scoped.archivist is archivist
 
     async def test_session_memoizes_embeddings(self) -> None:
-        """Same (text, task_type_key) returns cached vector without second call."""
         call_count = 0
 
         class _CountingEmbedder:
@@ -140,7 +139,6 @@ class TestProvidersSession:
             assert call_count == 1
 
     async def test_session_different_keys_not_cached(self) -> None:
-        """Different (text, task_type_key) pairs are separate cache entries."""
         call_count = 0
 
         class _CountingEmbedder:
@@ -163,7 +161,6 @@ class TestProvidersSession:
             assert call_count == 2
 
     async def test_session_deduplicates_when_resolver_collapses_keys(self) -> None:
-        """Different task_type_keys that resolve to the same value share one cache entry."""
         call_count = 0
 
         class _CountingEmbedderWithResolver:
@@ -189,7 +186,6 @@ class TestProvidersSession:
             assert call_count == 1
 
     async def test_session_cache_scoped_to_context(self) -> None:
-        """Cache is empty after exiting — second session re-embeds."""
         call_count = 0
 
         class _CountingEmbedder:

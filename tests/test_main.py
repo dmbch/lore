@@ -33,7 +33,6 @@ def bootstrap_env() -> Generator[None]:
 
 
 async def test_setup_and_bootstrap_complete_without_error(tmp_path: Path) -> None:
-    """setup() scopes the pool; bootstrap() wires the orchestrator over it."""
     from lore.__main__ import bootstrap, setup
     from lore.config import load_settings
 
@@ -69,7 +68,6 @@ def test_configure_loads_settings_and_wires_telemetry(bootstrap_env: None) -> No
 
 
 def test_main_runs_amain_via_asyncio_run() -> None:
-    """main() is the thin sync wrapper around asyncio.run(amain())."""
     from lore.__main__ import main
 
     # ``new=MagicMock(...)`` overrides the autouse AsyncMock for an
@@ -100,9 +98,7 @@ def _fake_setup_cm(
 
 
 async def test_amain_wires_live_pool_probe(bootstrap_env: None) -> None:
-    """amain() builds the probe via make_probe(pool) and passes it to create_server.
-
-    Pins the live-pool contract: the probe and the orchestrator share the
+    """Pins the live-pool contract: the probe and the orchestrator share the
     same pool, so ``/ready`` answers the question ``consult`` would face.
     """
     from lore.__main__ import amain
@@ -126,11 +122,9 @@ async def test_amain_wires_live_pool_probe(bootstrap_env: None) -> None:
 
 
 async def test_setup_closes_pool_when_caller_raises(bootstrap_env: None) -> None:
-    """``setup`` calls ``pool.close()`` when the scope body raises.
-
-    Mock-level: verifies ``setup`` invokes the close. See
-    ``test_setup_releases_real_pool_when_caller_raises`` for the
-    behavioural variant that confirms the underlying connection is gone.
+    """Mock-level variant: verifies ``setup`` invokes ``pool.close()``. See
+    ``test_setup_releases_real_pool_when_caller_raises`` for the behavioural
+    variant that confirms the underlying connection is gone.
     """
     from lore.__main__ import setup
 
@@ -148,11 +142,7 @@ async def test_setup_closes_pool_when_caller_raises(bootstrap_env: None) -> None
 
 
 async def test_setup_releases_real_pool_when_caller_raises(tmp_path: Path) -> None:
-    """Behavioural variant of the mock test: real SQLite pool, real release.
-
-    Opens a real pool via ``setup``, raises inside the scope, then
-    confirms the underlying aiosqlite connection has been closed.
-    """
+    """Behavioural variant of the mock test: real SQLite pool, real release."""
     from lore.__main__ import setup
     from lore.config import load_settings
     from lore.repositories.sqlite.pool import SqlitePool
@@ -178,11 +168,9 @@ async def test_setup_releases_real_pool_when_caller_raises(tmp_path: Path) -> No
 
 
 async def test_amain_closes_pool_when_server_raises(bootstrap_env: None) -> None:
-    """If server.run_async raises, ``setup``'s CM still closes the pool.
-
-    The scope-bound CM contract is what keeps the pool from leaking on a
-    server crash. Pin it explicitly so a future refactor that re-arranges
-    the cleanup path breaks loudly.
+    """The scope-bound CM contract keeps the pool from leaking on a server
+    crash. Pin it explicitly so a future refactor that re-arranges the
+    cleanup path breaks loudly.
     """
     from lore.__main__ import amain
 
@@ -239,7 +227,6 @@ def test_configure_refuses_when_auth_required_and_oidc_missing(tmp_path: Path) -
 
 
 def test_configure_boots_when_auth_required_with_oidc(tmp_path: Path) -> None:
-    """[auth] required=true with OIDC_URL + BASE_URL boots normally."""
     from lore.__main__ import configure
 
     toml_file = _toml_with_auth_required(tmp_path)

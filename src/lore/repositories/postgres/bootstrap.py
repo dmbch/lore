@@ -23,12 +23,10 @@ log = structlog.get_logger(__name__)
 
 
 def is_postgres(dsn: str) -> bool:
-    """Return True if *dsn* uses a ``postgresql://`` or ``postgres://`` scheme."""
     return dsn.startswith(_POSTGRES_PREFIXES)
 
 
 def _connect(dsn: str) -> psycopg.Connection[tuple[Any, ...]]:
-    """Open a sync PostgreSQL connection in autocommit mode."""
     return psycopg.connect(dsn, autocommit=True)
 
 

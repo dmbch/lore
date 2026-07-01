@@ -47,8 +47,6 @@ def _make_existing(c_oracle_discounted: float, timestamp: int) -> EvidenceInput:
 
 # --- prepare_attestation: hand-calculated ---
 class TestPrepareAttestationHandCalculated:
-    """Verify prepare_attestation against manual calculations."""
-
     def test_first_attestation_cold_start(self) -> None:
         """No existing attestations, cold-start trust (t_oracle=0.5, K=1).
 
@@ -177,8 +175,6 @@ class TestPrepareAttestationHandCalculated:
 
 # --- prepare_attestation: property-based ---
 class TestPrepareAttestationPropertyBased:
-    """Mathematical guarantees for all valid inputs."""
-
     @given(c=confidence_strategy, half_life=half_life_strategy)
     def test_c_herd_in_range(self, c: float, half_life: float) -> None:
         """Herd consensus is strictly non-dogmatic — ECBF with discounted inputs."""
@@ -269,8 +265,6 @@ class TestPrepareAttestationPropertyBased:
 
 # --- compute_confidence ---
 class TestComputeConfidenceHandCalculated:
-    """Verify compute_confidence against manual calculations."""
-
     def test_empty_returns_zero(self) -> None:
         """No attestations → vacuous → c=0.0."""
         svc = MathService(c_half_life=_FAST_DECAY_HL, t_half_life=_NO_DECAY_HL)

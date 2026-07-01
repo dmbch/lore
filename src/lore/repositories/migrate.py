@@ -13,8 +13,6 @@ _MIGRATION_RE = re.compile(r"^\d{4}_.*\.sql$")
 
 
 class Migration(NamedTuple):
-    """A single migration file: name and SQL content."""
-
     name: str
     sql: str
 

@@ -17,15 +17,12 @@ from tests.repositories.conftest import seed_hypothesis, seed_request
 
 
 class TestAppend:
-    """append() adds attestations to the immutable ledger."""
-
     async def test_append_generates_attestation_id(
         self,
         hypothesis_repo: HypothesisRepository,
         attestations_repo: AttestationsRepository,
         request_repo: RequestRepository,
     ) -> None:
-        """The ledger assigns its own identifiers."""
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
@@ -155,7 +152,6 @@ class TestNOraclePriorRoundTrip:
         attestations_repo: AttestationsRepository,
         request_repo: RequestRepository,
     ) -> None:
-        """A non-zero ``n_oracle_prior`` survives the storage round-trip."""
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         await attestations_repo.append(
@@ -205,8 +201,6 @@ class TestNOraclePriorRoundTrip:
 
 
 class TestFindByHypothesis:
-    """find_by_hypothesis() retrieves ordered attestations."""
-
     async def test_find_by_hypothesis_returns_ordered_by_timestamp(
         self,
         hypothesis_repo: HypothesisRepository,
@@ -243,8 +237,6 @@ class TestFindByHypothesis:
 
 
 class TestFindByHypotheses:
-    """find_by_hypotheses() batch-fetches attestations grouped by hypothesis."""
-
     async def test_find_by_hypotheses_returns_grouped_results(
         self,
         hypothesis_repo: HypothesisRepository,
@@ -328,7 +320,6 @@ class TestFindByHypotheses:
         attestations_repo: AttestationsRepository,
         request_repo: RequestRepository,
     ) -> None:
-        """Within each group, attestations are ordered by timestamp."""
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
         for ts in (3000, 1000, 2000):
@@ -352,8 +343,6 @@ class TestFindByHypotheses:
 
 
 class TestStorageError:
-    """All methods raise StorageError when the connection is unavailable."""
-
     async def test_append_raises(
         self,
         sabotage_connection: Callable[[], Awaitable[None]],

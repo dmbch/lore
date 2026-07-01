@@ -21,12 +21,10 @@ log = structlog.get_logger(__name__)
 
 
 def is_sqlite(dsn: str) -> bool:
-    """Return True if *dsn* uses the ``sqlite:///`` scheme."""
     return dsn.startswith(_SQLITE_PREFIX)
 
 
 def strip_dsn(dsn: str) -> str:
-    """Strip the ``sqlite:///`` scheme prefix, returning the file path."""
     return dsn[len(_SQLITE_PREFIX) :]
 
 

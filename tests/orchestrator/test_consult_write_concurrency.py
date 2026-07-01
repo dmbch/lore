@@ -88,10 +88,7 @@ def _make_orchestrator_with_pool(pool: _RetryingStubPool) -> Orchestrator:
 
 
 class TestOrchestratorRecordRetry:
-    """The orchestrator retries ``record()`` on ``RetryableTransactionError``."""
-
     async def test_consult_succeeds_after_one_retryable_failure(self) -> None:
-        """One transient SerializationFailure → one retry → write commits."""
         request_store = StubRequests()
         hypotheses = StubHypotheses()
         attestations = StubAttestations()
@@ -124,7 +121,6 @@ class TestOrchestratorRecordRetry:
         assert len(attestations.appended) == 1
 
     async def test_consult_succeeds_after_two_retryable_failures(self) -> None:
-        """Two transient failures → two retries with 10ms + 20ms backoff → commit."""
         request_store = StubRequests()
         hypotheses = StubHypotheses()
         attestations = StubAttestations()
@@ -156,7 +152,6 @@ class TestOrchestratorRecordRetry:
         assert len(attestations.appended) == 1
 
     async def test_consult_propagates_after_max_attempts_exhausted(self) -> None:
-        """Consecutive failures exhaust ``RECORD_MAX_ATTEMPTS``; raise."""
         request_store = StubRequests()
         hypotheses = StubHypotheses()
         attestations = StubAttestations()

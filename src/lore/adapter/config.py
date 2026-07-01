@@ -1,8 +1,7 @@
 """Adapter-layer config models — server identity, OIDC credentials, payload limits.
 
-These are owned by the adapter layer (Protocols-live-with-their-layer) and
-composed into ``LoreSettings`` by ``lore.config``. ``OidcConfig.client_secret``
-is ``SecretStr`` so accidental serialisation prints ``'**********'``.
+Owned by the adapter layer (Protocols-live-with-their-layer) and composed into
+``LoreSettings`` by ``lore.config``.
 """
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator

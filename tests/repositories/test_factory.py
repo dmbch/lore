@@ -36,8 +36,6 @@ async def _store_request(repos: Repositories, correlation_id: str) -> str:
 
 
 class TestPoolScopes:
-    """``session()`` and ``transaction()`` scope-bound CMs over both backends."""
-
     async def test_session_yields_functional_repos(self, pool: RepositoryPool) -> None:
         async with pool.session() as repos:
             cid = await _store_request(repos, "00000000-0000-0000-0000-00000000fac7")
@@ -119,8 +117,6 @@ class TestPoolScopes:
 
 
 class TestSqliteTransactionErrors:
-    """SQLite transaction error paths — BEGIN, COMMIT, and ROLLBACK failures."""
-
     async def test_begin_failure_wraps_as_storage_error(self, sqlite_dsn_session: str) -> None:
         p = await connect(make_settings(dsn=sqlite_dsn_session))
         sqlite_pool = cast("SqlitePool", p)
@@ -151,7 +147,6 @@ class TestSqliteTransactionErrors:
     async def test_rollback_failure_preserves_original_exception(
         self, sqlite_dsn_session: str
     ) -> None:
-        """When rollback fails, the original body exception still propagates."""
         p = await connect(make_settings(dsn=sqlite_dsn_session))
         sqlite_pool = cast("SqlitePool", p)
         with (
@@ -179,7 +174,6 @@ class TestSqliteSessionValidation:
     async def test_session_raises_storage_error_when_validation_fails(
         self, sqlite_dsn_session: str
     ) -> None:
-        """A closed underlying connection trips the ``SELECT 1`` guard."""
         p = await connect(make_settings(dsn=sqlite_dsn_session))
         sqlite_pool = cast("SqlitePool", p)
         # Sabotage the raw connection so the validating SELECT 1 fails.
@@ -191,8 +185,6 @@ class TestSqliteSessionValidation:
 
 
 class TestPostgresTransactionErrors:
-    """PostgreSQL transaction error wrapping."""
-
     async def test_psycopg_error_on_acquire_wraps_as_storage_error(self, pg_dsn: str) -> None:
         p = await connect(make_settings(dsn=pg_dsn))
         pg_pool = cast("PostgresPool", p)
@@ -229,8 +221,6 @@ class TestPostgresTransactionErrors:
 
 
 class TestConnectFailure:
-    """connect() failures are wrapped in StorageError."""
-
     async def test_postgres_pool_failure_wraps_as_storage_error(self, pg_dsn: str) -> None:
         with (
             patch(
@@ -267,8 +257,6 @@ class TestMemoryDsnRejected:
 
 
 class TestUnsupportedDsnRouting:
-    """run_migrations / check_health refuse unknown DSN schemes."""
-
     def test_run_migrations_rejects_unsupported_dsn(self) -> None:
         with pytest.raises(ValueError, match="Unsupported DSN"):
             run_migrations(
@@ -293,7 +281,6 @@ class TestMakeProbe:
     """
 
     async def test_probe_succeeds_against_live_pool(self, pool: RepositoryPool) -> None:
-        """A healthy pool yields a connection within the timeout."""
         probe = make_probe(pool)
         await probe()  # no raise
 

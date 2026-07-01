@@ -19,7 +19,6 @@ pytestmark = pytest.mark.e2e
 
 
 async def test_decay_reduces_confidence(decay_system: Orchestrator) -> None:
-    """Stored c_herd is immutable; computed confidence decreases over time."""
     # Write a hypothesis with high confidence
     await consult(
         decay_system,
