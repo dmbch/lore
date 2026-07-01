@@ -1,7 +1,7 @@
 """Shared validation for repository methods.
 
-Pure validation logic used by both SQLite and PostgreSQL backends.
-No I/O, no domain logic — just parameter contracts.
+Pure parameter-contract checks called by both SQLite and PostgreSQL —
+one implementation keeps the two backends from diverging.
 """
 
 import math
@@ -9,11 +9,10 @@ from collections.abc import Sequence
 
 
 def validate_embedding(embedding: Sequence[float]) -> None:
-    """Validate embedding() input. Raises ValueError on invalid input.
+    """Reject non-finite or zero-magnitude embeddings.
 
-    All elements must be finite; at least one must be non-zero. Cosine
-    distance on a zero-magnitude vector is NaN — undefined direction —
-    so a no-direction vector is not a meaningful embedding.
+    Cosine distance on a zero-magnitude vector is NaN — undefined
+    direction — so a no-direction vector is not a meaningful embedding.
     """
     if not all(math.isfinite(x) for x in embedding):
         msg = "embedding components must be finite"
@@ -24,12 +23,10 @@ def validate_embedding(embedding: Sequence[float]) -> None:
 
 
 def validate_search_params(*, weights: tuple[float, float], limit: int, fan_out: int) -> None:
-    """Validate search() parameters. Raises ValueError on invalid input.
+    """Single source of truth for the search() parameter contract.
 
-    Both backends must enforce identical constraints — this function is
-    the single source of truth for the Protocol contract:
-    "weights must sum to 1.0 (±0.001 tolerance). limit and fan_out must
-    be >= 1."
+    Both backends call this so SQLite and PostgreSQL enforce identical
+    constraints: weights sum to 1.0 (±0.001), limit and fan_out >= 1.
     """
     if limit < 1:
         msg = f"limit must be >= 1, got {limit}"

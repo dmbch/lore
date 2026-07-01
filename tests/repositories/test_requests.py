@@ -67,8 +67,6 @@ async def _fetch_row(
 
 
 class TestStore:
-    """store() persists structured request rows."""
-
     async def test_store_persists_all_fields(
         self,
         request_repo: RequestRepository,
@@ -133,8 +131,6 @@ class TestStore:
 
 
 class TestAttestationForeignKey:
-    """attestations.correlation_id FK references requests.id."""
-
     async def test_attestation_fk_rejects_unknown_correlation_id(
         self,
         hypothesis_repo: HypothesisRepository,
@@ -186,8 +182,6 @@ class TestAttestationForeignKey:
 
 
 class TestStorageError:
-    """store() raises StorageError when the connection is unavailable."""
-
     async def test_store_on_closed_connection_raises(
         self,
         sabotage_connection: Callable[[], Awaitable[None]],

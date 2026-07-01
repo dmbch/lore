@@ -6,9 +6,6 @@ construction — mirroring DB constraints (NOT NULL, type ranges, value
 domains) so corrupt data fails loudly at construction, not downstream.
 Hot-path reads use ``model_construct()`` to skip validation since the
 database already enforces the same constraints.
-
-Also owns record construction from raw DB rows (build_attestation_records)
-and ID generation (generate_id).
 """
 
 import math
@@ -216,7 +213,6 @@ class RequestRecord(BaseModel):
 
 
 def generate_id() -> str:
-    """Generate a UUIDv4 string for record primary keys."""
     return str(uuid.uuid4())
 
 

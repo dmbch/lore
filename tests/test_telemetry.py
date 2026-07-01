@@ -50,7 +50,6 @@ def test_configure_telemetry_does_not_replace_global_tracer_provider(
 def test_configure_telemetry_does_not_replace_global_meter_provider(
     isolated_configure: None,
 ) -> None:
-    """configure_telemetry() never swaps the global MeterProvider."""
     before = otel_metrics.get_meter_provider()
     telemetry.configure_telemetry()
     after = otel_metrics.get_meter_provider()
@@ -74,7 +73,6 @@ def test_configure_telemetry_no_op_when_run_outside_wrapper(
 
 
 def test_configure_telemetry_double_call_raises(isolated_configure: None) -> None:
-    """Calling configure_telemetry() twice raises RuntimeError."""
     telemetry.configure_telemetry()
     with pytest.raises(RuntimeError, match="exactly once"):
         telemetry.configure_telemetry()
@@ -83,7 +81,6 @@ def test_configure_telemetry_double_call_raises(isolated_configure: None) -> Non
 def test_configure_telemetry_invalid_log_level_raises(
     isolated_configure: None,
 ) -> None:
-    """An unrecognized LOG_LEVEL raises ValueError."""
     with (
         patch.dict(os.environ, {"LOG_LEVEL": "POTATO"}),
         pytest.raises(ValueError, match="invalid LOG_LEVEL"),
@@ -99,7 +96,6 @@ def test_configure_telemetry_invalid_log_level_raises(
 def test_log_level_warning_suppresses_info(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """LOG_LEVEL=WARNING suppresses info() from both structlog and stdlib."""
     with patch.dict(os.environ, {"LOG_LEVEL": "WARNING"}):
         telemetry.configure_telemetry()
 
@@ -147,14 +143,12 @@ def test_configure_telemetry_reroutes_litellm_loggers(isolated_configure: None, 
 def test_fastmcp_logger_records_flow_to_root_renderer(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """End-to-end: a record emitted on the fastmcp logger renders through structlog."""
     telemetry.configure_telemetry()
     logging.getLogger("fastmcp").info("from fastmcp")
     assert "from fastmcp" in capsys.readouterr().err
 
 
 def test_configure_telemetry_mirrors_log_level_to_otel(isolated_configure: None) -> None:
-    """LOG_LEVEL flows through to OTEL_LOG_LEVEL so the OTel SDK shares the gate."""
     with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}):
         telemetry.configure_telemetry()
         assert os.environ["OTEL_LOG_LEVEL"] == "DEBUG"
@@ -163,7 +157,6 @@ def test_configure_telemetry_mirrors_log_level_to_otel(isolated_configure: None)
 def test_configure_telemetry_preserves_explicit_otel_log_level(
     isolated_configure: None,
 ) -> None:
-    """An explicit OTEL_LOG_LEVEL wins over LOG_LEVEL — operator override stands."""
     with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG", "OTEL_LOG_LEVEL": "ERROR"}):
         telemetry.configure_telemetry()
         assert os.environ["OTEL_LOG_LEVEL"] == "ERROR"
@@ -180,7 +173,6 @@ def test_configure_telemetry_defaults_litellm_to_request_span_mode(
 def test_configure_telemetry_preserves_explicit_litellm_span_mode(
     isolated_configure: None,
 ) -> None:
-    """An explicit USE_OTEL_LITELLM_REQUEST_SPAN wins — operator override stands."""
     with patch.dict(os.environ, {"USE_OTEL_LITELLM_REQUEST_SPAN": "false"}):
         telemetry.configure_telemetry()
         assert os.environ["USE_OTEL_LITELLM_REQUEST_SPAN"] == "false"
@@ -218,7 +210,6 @@ def test_trace_id_injected_into_log_events_when_sdk_is_installed(
 def test_trace_id_absent_without_active_span(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Log events outside a span do not carry trace_id."""
     telemetry.configure_telemetry()
     log = structlog.get_logger("test.notrace")
     log.info("no span")
@@ -234,7 +225,6 @@ def test_trace_id_absent_without_active_span(
 def test_logger_with_bound_context_appears_in_output(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Bound context keys appear in log output."""
     telemetry.configure_telemetry()
     log = structlog.get_logger("test.bind").bind(component="test_comp")
     log.info("bound message")
@@ -246,7 +236,6 @@ def test_logger_with_bound_context_appears_in_output(
 def test_stdlib_bridge_with_info_flows_through_renderer(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """stdlib logging routes through structlog to stderr."""
     telemetry.configure_telemetry()
 
     logging.getLogger("test.bridge").info("bridge test message")
@@ -368,7 +357,6 @@ def _patched_sdk_provider() -> tuple[InMemorySpanExporter, TracerProvider]:
 
 
 def test_module_start_span_creates_named_span() -> None:
-    """The module-level start_span() exports a span with the given name."""
     span_exporter, provider = _patched_sdk_provider()
     with (
         patch("lore.telemetry.otel_trace.get_tracer_provider", return_value=provider),
@@ -384,7 +372,6 @@ def test_module_start_span_creates_named_span() -> None:
 def test_module_start_span_binds_kwargs_to_log_context_and_clears_on_exit(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Kwargs appear in log events emitted within the span and clear on exit."""
     telemetry.configure_telemetry()
     log = structlog.get_logger("test.span_ctx")
 
@@ -404,7 +391,6 @@ def test_module_start_span_binds_kwargs_to_log_context_and_clears_on_exit(
 
 
 def test_module_start_span_sets_span_attributes() -> None:
-    """Module-level start_span() kwargs are set as OTel span attributes."""
     span_exporter, provider = _patched_sdk_provider()
     with (
         patch("lore.telemetry.otel_trace.get_tracer_provider", return_value=provider),
@@ -420,7 +406,6 @@ def test_module_start_span_sets_span_attributes() -> None:
 
 
 def test_module_start_span_creates_child_under_active_parent() -> None:
-    """Nested under start_as_current_span('parent'), the child's parent matches."""
     span_exporter, provider = _patched_sdk_provider()
     with patch("lore.telemetry.otel_trace.get_tracer_provider", return_value=provider):
         tracer = provider.get_tracer("test_parent")
@@ -442,7 +427,6 @@ def test_module_start_span_creates_child_under_active_parent() -> None:
 
 
 def test_module_start_span_no_active_trace_creates_root() -> None:
-    """start_span() without an active trace creates a root span."""
     span_exporter, provider = _patched_sdk_provider()
     with (
         patch("lore.telemetry.otel_trace.get_tracer_provider", return_value=provider),

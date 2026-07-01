@@ -70,7 +70,6 @@ class SqliteHypothesisRepository:
         return HypothesisRecord(id=hypothesis_id, content=content, created_at=created_at)
 
     async def find_by_id(self, id: str) -> HypothesisRecord | None:
-        """Retrieve a hypothesis by ID, or None if not found."""
         try:
             cursor = await self._conn.execute(
                 "SELECT id, content, created_at FROM hypotheses WHERE id = ?", (id,)
@@ -93,20 +92,13 @@ class SqliteHypothesisRepository:
         limit: int,
         fan_out: int,
     ) -> list[HypothesisResult]:
-        """Two-lane retrieval with Weighted Reciprocal Rank Fusion.
+        """Two-lane retrieval — sqlite-vec proximity + FTS5 authority.
 
-        Lane 1 (proximity): sqlite-vec cosine distance on vec_hypotheses.
-        Lane 2 (authority): FTS5 BM25 rank on fts_hypotheses. Skipped when
-        query is empty (FTS5 MATCH errors on empty string). Query tokens
-        are double-quoted to force literal matching — parity with
-        PostgreSQL's plainto_tsquery which strips all operators.
-
-        Each lane ranks candidates via RANK(). Per-lane RRF scores
-        are ``1 / (60 + rank)`` (Cormack et al. 2009). The composite is
-        the weighted sum. Docs absent from a lane contribute 0.0.
-
-        Each lane fetches ``fan_out * limit`` candidates before UNION
-        deduplicates them into a single pool.
+        The authority lane is skipped when the query is empty (FTS5 MATCH
+        errors on an empty string — contrast Postgres, whose
+        ``plainto_tsquery`` is simply inert). Query tokens are double-quoted
+        to force literal matching, matching Postgres's ``plainto_tsquery``
+        which strips all operators.
         """
         validate_search_params(weights=weights, limit=limit, fan_out=fan_out)
         w_prox, w_auth = weights

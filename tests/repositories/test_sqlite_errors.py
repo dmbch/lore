@@ -7,8 +7,6 @@ from lore.repositories.sqlite._errors import classify_integrity_error
 
 
 class TestClassifyIntegrityError:
-    """classify_integrity_error maps sqlite3.IntegrityError to repository exceptions."""
-
     def test_unique_constraint_returns_duplicate_record(self) -> None:
         err = sqlite3.IntegrityError("UNIQUE constraint failed: hypotheses.id")
         result = classify_integrity_error(err)

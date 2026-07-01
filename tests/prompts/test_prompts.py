@@ -75,7 +75,6 @@ def test_build_system_prompt_with_narrative_and_glossary(tmp_path: Path) -> None
     glossary.write_text("Term definitions.")
 
     settings = _load_test_settings()
-    # Build a new PromptsConfig with narrative/glossary overlays.
     config = PromptsConfig(
         narrative=narrative,
         glossary=glossary,

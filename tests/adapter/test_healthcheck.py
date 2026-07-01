@@ -103,7 +103,6 @@ def test_health_returns_ok_unconditionally(settings: LoreSettings) -> None:
 
 
 def test_ready_returns_ok_when_probe_succeeds(settings: LoreSettings) -> None:
-    """`/ready` returns 200 when the injected probe completes without raising."""
     client = _client(_server(settings, health_probe=_ok_probe))
     response = _get(client, "/ready")
     assert response.status_code == 200

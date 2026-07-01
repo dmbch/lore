@@ -52,8 +52,6 @@ def _valid_hypothesis(**overrides: object) -> HypothesisRecord:
 
 
 class TestAttestationRecordValidation:
-    """AttestationRecord validates on construction, mirroring DB constraints."""
-
     def test_attestation_record_accepts_valid_data(self) -> None:
         r = _valid_attestation()
         assert r.id == "00000000-0000-0000-0000-000000000001"
@@ -189,8 +187,6 @@ class TestAttestationRecordValidation:
 
 
 class TestHypothesisRecordValidation:
-    """HypothesisRecord validates on construction, mirroring DB constraints."""
-
     def test_hypothesis_record_accepts_valid_data(self) -> None:
         r = _valid_hypothesis()
         assert r.id == "00000000-0000-0000-0000-000000000001"
@@ -218,8 +214,6 @@ class TestHypothesisRecordValidation:
 
 
 class TestRecordImmutability:
-    """All record types are frozen — mutation raises ValidationError."""
-
     def test_hypothesis_record_is_frozen(self) -> None:
         r = _valid_hypothesis()
         with pytest.raises(ValidationError, match="frozen"):
@@ -354,8 +348,6 @@ def _valid_request(**overrides: object) -> RequestRecord:
 
 
 class TestRequestRecordValidation:
-    """RequestRecord validates on construction, mirroring DB constraints."""
-
     def test_request_record_accepts_valid_data(self) -> None:
         r = _valid_request()
         assert r.id == "req-1"

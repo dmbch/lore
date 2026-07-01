@@ -84,8 +84,6 @@ class TestMaximizeHandCalculated:
 
 
 class TestMaximizePropertyBased:
-    """Property-based tests for uncertainty maximization invariants."""
-
     @given(opinion=opinion_strategy)
     def test_preserves_projected_probability(self, opinion: Opinion) -> None:
         """P(maximize(a)) == P(a) — the defining property."""

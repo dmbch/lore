@@ -242,10 +242,7 @@ _IDENTITY = "oracle-1"
 
 
 class TestValidateResolutions:
-    """The validator runs between Reason and Record on the write path."""
-
     async def test_validator_rejects_id_not_in_retrieved_set(self) -> None:
-        """A corroborates ID the Archivist invented is rejected as a hallucination."""
         retrieved = "00000000-0000-0000-0000-000000000aa1"
         hallucinated = "00000000-0000-0000-0000-00000000beef"
         orchestrator = _make_orchestrator(
@@ -287,7 +284,6 @@ class TestValidateResolutions:
         )
 
     async def test_validator_rejects_contradicts_id_not_in_retrieved_set(self) -> None:
-        """A contradicts ID the Archivist invented is rejected as a hallucination."""
         retrieved = "00000000-0000-0000-0000-000000000aa3"
         hallucinated = "00000000-0000-0000-0000-00000000beef"
         orchestrator = _make_orchestrator(
@@ -410,7 +406,6 @@ class TestValidateResolutions:
             )
 
     async def test_validator_accepts_equal_resolution_and_proposition_count(self) -> None:
-        """N propositions, N resolutions is the contract — accepted."""
         first = "00000000-0000-0000-0000-000000000ab2"
         second = "00000000-0000-0000-0000-000000000ab5"
         orchestrator = _make_orchestrator(

@@ -166,7 +166,7 @@ def test_user_toml_epistemics_override_merges_with_defaults() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Chunk 3: extra="forbid"
+# extra="forbid"
 # ---------------------------------------------------------------------------
 
 
@@ -185,7 +185,7 @@ def test_top_level_toml_typo_raises(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Chunk 6: Vendor defaults as base layer
+# Vendor defaults as base layer
 # ---------------------------------------------------------------------------
 
 _PARTIAL_FAST_TOML = Path(__file__).parent.parent / "fixtures" / "lore_partial_fast_override.toml"

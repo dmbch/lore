@@ -15,8 +15,6 @@ from tests.orchestrator.conftest import (
 
 
 class TestWritePathNovelWithContradicts:
-    """New proposition with contradicts: transfer + disbelief on contradicted, belief on new."""
-
     async def test_write_path_novel_with_contradicts(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id, content="old claim")
@@ -62,8 +60,6 @@ class TestWritePathNovelWithContradicts:
 
 
 class TestWritePathTransferAttestationShape:
-    """Transfer carries full trust, bypasses discount, maturity-scaled per formalism."""
-
     async def test_transfer_bypasses_discount_and_is_sole_attestation(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id, content="old claim")
@@ -133,7 +129,6 @@ class TestWritePathTransferAttestationShape:
         assert abs(transfer.c_oracle_raw - (-0.21)) > 1e-3
 
     async def test_transfer_and_oracle_share_timestamp_with_transfer_first(self) -> None:
-        """Transfer and oracle attestations share t_now; insertion order distinguishes them."""
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id, content="old claim")
         attestation = make_attestation(hypothesis_id=hypothesis_id, oracle_id="oracle-2")
@@ -166,8 +161,6 @@ class TestWritePathTransferAttestationShape:
 
 
 class TestWritePathOracleFusesAgainstTransfer:
-    """Oracle's c_herd on novel reflects fusion with negative transfer evidence."""
-
     async def test_oracle_cherd_reflects_transfer(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id, content="old claim")
@@ -202,8 +195,6 @@ class TestWritePathOracleFusesAgainstTransfer:
 
 
 class TestWritePathVacuousContradictionSkipsTransfer:
-    """No transfer when contradicted hypothesis has vacuous state (c_herd ≈ 0)."""
-
     async def test_vacuous_contradiction_skips_transfer(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id, content="vacuous claim")
@@ -233,8 +224,6 @@ class TestWritePathVacuousContradictionSkipsTransfer:
 
 
 class TestWritePathContributeMultiContradictConsolidated:
-    """Multi-contradict yields exactly one transfer row, value = -ECBF over latest c_herds."""
-
     async def test_multi_contradict_writes_one_consolidated_transfer(self) -> None:
         h1 = "550e8400-e29b-41d4-a716-446655440000"
         h2 = "660e8400-e29b-41d4-a716-446655440000"
@@ -294,8 +283,6 @@ class TestWritePathContributeMultiContradictConsolidated:
 
 
 class TestWritePathContributeBalancedContradictsSkipsTransfer:
-    """Balanced contradicts (ECBF ≈ 0) write no transfer row — novel starts vacuous."""
-
     async def test_balanced_contradicts_skip_transfer(self) -> None:
         h1 = "550e8400-e29b-41d4-a716-446655440000"
         h2 = "660e8400-e29b-41d4-a716-446655440000"
@@ -344,8 +331,6 @@ class TestWritePathContributeBalancedContradictsSkipsTransfer:
 
 
 class TestWritePathParaphraseWithContradicts:
-    """Paraphrase with contradicts: +c on corroborated, -c on each contradicted, no transfer."""
-
     async def test_paraphrase_with_contradicts(self) -> None:
         corroborated_id = "550e8400-e29b-41d4-a716-446655440000"
         contradicted_id = "660e8400-e29b-41d4-a716-446655440000"
@@ -389,8 +374,6 @@ class TestWritePathParaphraseWithContradicts:
 
 
 class TestWritePathContradictedNOraclePriorFromFullList:
-    """Negative attestation on contradicted uses distinct-oracle membership for n_oracle_prior."""
-
     async def test_n_oracle_prior_excludes_current_oracle_when_present(self) -> None:
         contradicted_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=contradicted_id, content="old claim")

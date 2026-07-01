@@ -313,8 +313,6 @@ class TestAcbfPairUnderflow:
 
 
 class TestFusePropertyBased:
-    """Property-based tests verifying ECBF's mathematical guarantees."""
-
     @given(data=st.data())
     def test_commutativity_two(self, data: st.DataObject) -> None:
         """fuse([a, b]) == fuse([b, a])."""

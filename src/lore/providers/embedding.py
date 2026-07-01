@@ -1,8 +1,4 @@
-"""LiteLLM embedding provider — vendor-neutral text embedding.
-
-Wraps litellm.aembedding with internal task type resolution.
-Catches openai.OpenAIError and maps to InferenceError.
-"""
+"""LiteLLM embedding provider — vendor-neutral text embedding."""
 
 from typing import Any
 
@@ -38,8 +34,6 @@ async def _call_litellm_embedding(
 
 
 class EmbeddingProvider:
-    """Embed text via LiteLLM with optional dimensions and task type passthrough."""
-
     def __init__(self, config: EmbeddingModelConfig) -> None:
         self._config = config
 

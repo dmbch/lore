@@ -27,7 +27,6 @@ TRANSFER_ORACLE = "_transfer"
 
 
 def _check_confidence(*, value: float, field_name: str | None) -> float:
-    """Validate a scalar confidence value is finite and in [-1, 1]."""
     if not math.isfinite(value) or value < -1.0 or value > 1.0:
         msg = f"{field_name} must be in [-1, 1], got {value}"
         raise ValueError(msg)

@@ -185,8 +185,6 @@ def _transfer_rows(attestations: _StubAttestations) -> list[AttestationRecord]:
 
 
 class TestComputeTransferReturnsNoneAtExactlyZero:
-    """A fused-result of exactly zero writes no TRANSFER_ORACLE row."""
-
     async def test_compute_transfer_returns_none_at_exactly_zero(self) -> None:
         recorder, attestations = _make_recorder(c_herd_of_contradicted=0.0)
 

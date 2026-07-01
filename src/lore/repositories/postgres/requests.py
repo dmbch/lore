@@ -15,7 +15,6 @@ class PostgresRequestRepository:
         self._conn = conn
 
     async def store(self, record: RequestRecord) -> None:
-        """Persist a structured request record."""
         try:
             await self._conn.execute(
                 "INSERT INTO requests"

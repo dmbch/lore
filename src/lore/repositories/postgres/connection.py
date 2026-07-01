@@ -31,11 +31,10 @@ async def _configure_connection(conn: psycopg.AsyncConnection[Any]) -> None:
 async def create_pool(
     *, dsn: str, config: PostgresConfig
 ) -> AsyncConnectionPool[psycopg.AsyncConnection[Any]]:
-    """Create a connection pool with pgvector registered.
+    """Create the AsyncConnectionPool.
 
-    The ``configure`` callback registers pgvector on every new connection
-    the pool creates. Schema is applied by ``run_migrations()`` in the
-    factory before this function is called.
+    Schema is applied by ``run_migrations()`` in the factory before this
+    function is called — the pool assumes the tables already exist.
     """
     pool: AsyncConnectionPool[psycopg.AsyncConnection[Any]] = AsyncConnectionPool(
         dsn,

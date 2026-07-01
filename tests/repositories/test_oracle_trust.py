@@ -47,8 +47,6 @@ async def seed_default_request(request_repo: RequestRepository) -> None:
 
 
 class TestFetchTrustAlignments:
-    """fetch_trust_alignments returns correct alignment rows from the ledger."""
-
     async def test_no_history_returns_empty(
         self,
         attestations_repo: AttestationsRepository,

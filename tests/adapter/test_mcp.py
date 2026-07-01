@@ -51,7 +51,6 @@ def server(settings: LoreSettings) -> FastMCP[Orchestrator]:
 
 
 def test_bundled_logo_returns_png_data_uri() -> None:
-    """_bundled_logo() encodes the packaged Lore mark as a data URI."""
     import base64
 
     from lore.adapter.mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
@@ -87,7 +86,6 @@ def test_server_version_defaults_to_dev_marker(
 
 
 def test_server_reports_configured_version(settings: LoreSettings) -> None:
-    """create_server surfaces settings.version as serverInfo.version."""
     versioned = create_server(
         settings=settings.model_copy(update={"version": "1.2.3"}),
         system=_noop_system(),
@@ -96,7 +94,6 @@ def test_server_reports_configured_version(settings: LoreSettings) -> None:
 
 
 def test_create_server_uses_configured_icon_url(settings: LoreSettings) -> None:
-    """When server.icon_url is set, the FastMCP server's icons list carries it."""
     configured = settings.model_copy(
         update={
             "server": settings.server.model_copy(
@@ -111,7 +108,6 @@ def test_create_server_uses_configured_icon_url(settings: LoreSettings) -> None:
 
 
 def test_create_server_falls_back_to_bundled_logo(settings: LoreSettings) -> None:
-    """When server.icon_url is unset, the bundled logo bytes round-trip through icons[0]."""
     from lore.adapter.mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
 
     # settings has icon_url=None by default (fixture uses base TOML).
@@ -262,7 +258,6 @@ async def test_correlation_id_falls_back_to_uuid_hex_without_otel_sdk(
 async def test_storage_error_scrubs_to_generic_tool_error_with_correlation_id(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """StorageError from orchestrator surfaces as a generic ToolError + correlation_id."""
     from fastmcp.exceptions import ToolError
 
     from lore.domain.errors import StorageError
@@ -298,7 +293,6 @@ async def test_storage_error_does_not_leak_constraint_name_to_client(
 async def test_inference_error_scrubs_to_generic_tool_error_with_correlation_id(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """InferenceError from orchestrator surfaces as a generic ToolError + correlation_id."""
     from fastmcp.exceptions import ToolError
 
     from lore.domain.errors import InferenceError
@@ -316,7 +310,6 @@ async def test_inference_error_scrubs_to_generic_tool_error_with_correlation_id(
 
 
 def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
-    """When OidcConfig is present, the server has an auth provider."""
     sentinel = MagicMock()
     with patch("lore.adapter.mcp._build_auth", return_value=sentinel):
         oidc_server = create_server(settings=settings, system=_noop_system())
@@ -324,19 +317,16 @@ def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
 
 
 def test_server_without_oidc_has_no_auth(server: FastMCP[Orchestrator]) -> None:
-    """Without OidcConfig, the server has no auth (stdio mode)."""
     assert server.auth is None
 
 
 def test_build_auth_returns_none_without_oidc(settings: LoreSettings) -> None:
-    """No OIDC config means no auth provider."""
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
     assert _build_auth(settings) is None
 
 
 def test_build_auth_returns_none_without_base_url(settings: LoreSettings) -> None:
-    """OIDC config without base_url means no auth provider."""
     from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
@@ -406,7 +396,6 @@ def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None
 def test_build_auth_forwards_verify_id_token_from_auth_section(
     settings: LoreSettings, *, verify: bool
 ) -> None:
-    """settings.auth.verify_id_token flows through to OIDCProxy verbatim."""
     from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
@@ -484,7 +473,6 @@ async def test_serve_in_http_mode_passes_uvicorn_log_config_none() -> None:
 async def test_server_lifespan_delegates_to_system_cm(
     settings: LoreSettings,
 ) -> None:
-    """The server lifespan wraps the system CM and yields the orchestrator."""
     sentinel = MagicMock()
 
     @asynccontextmanager
@@ -500,7 +488,6 @@ async def test_server_lifespan_delegates_to_system_cm(
 async def test_token_without_sub_claim_raises_tool_error(
     wired_server: FastMCP[Orchestrator],
 ) -> None:
-    """Access token present but missing 'sub' claim raises a scrubbed ToolError."""
     from fastmcp.exceptions import ToolError
 
     fake_token = MagicMock()
@@ -515,7 +502,6 @@ async def test_token_without_sub_claim_raises_tool_error(
 async def test_token_with_non_string_sub_claim_raises_tool_error(
     wired_server: FastMCP[Orchestrator],
 ) -> None:
-    """A non-string 'sub' claim is rejected at the boundary with a scrubbed message."""
     from fastmcp.exceptions import ToolError
 
     fake_token = MagicMock()
@@ -589,7 +575,7 @@ def test_fastmcp_exposes_lifespan_result_attribute(
 
     If FastMCP renames or removes this internal attribute, this test fails
     before the wired_server fixture silently stops working. Validated against
-    fastmcp 2.x — check on upgrade.
+    fastmcp 3.x — check on upgrade.
     """
     assert hasattr(server, "_lifespan_result"), (
         "FastMCP no longer exposes _lifespan_result — update wired_server fixture"
@@ -599,7 +585,6 @@ def test_fastmcp_exposes_lifespan_result_attribute(
 async def test_confidence_out_of_range_raises_validation_error(
     wired_server: FastMCP[Orchestrator],
 ) -> None:
-    """Confidence outside [-1, 1] is rejected at the tool boundary."""
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError, match="less than or equal to 1"):
@@ -609,7 +594,6 @@ async def test_confidence_out_of_range_raises_validation_error(
 async def test_question_exceeds_max_length_raises_validation_error(
     wired_server: FastMCP[Orchestrator],
 ) -> None:
-    """Question exceeding max_length is rejected at the tool boundary."""
     from pydantic import ValidationError
 
     # limits.question is the configured max — exceed it by a wide margin.
@@ -633,7 +617,6 @@ async def test_fully_empty_consult_does_not_reach_orchestrator(
 async def test_hypothesis_without_confidence_does_not_reach_orchestrator(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """A hypothesis without a confidence scalar never reaches the orchestrator."""
     with pytest.raises(ToolError, match=r"invalid consult input \(correlation_id="):
         await _call_tool(wired_server, "consult", {"hypothesis": "a claim"})
     mock_orchestrator.consult.assert_not_called()
@@ -642,7 +625,6 @@ async def test_hypothesis_without_confidence_does_not_reach_orchestrator(
 async def test_question_only_reaches_orchestrator(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """A bare question-only call is the happy-path read signal."""
     await _call_tool(wired_server, "consult", {"question": "what?"})
     mock_orchestrator.consult.assert_called_once()
 
@@ -722,7 +704,6 @@ async def test_archivist_resolution_error_scrubs_to_generic_tool_error(
 async def test_consult_auth_error_logs_correlation_id(
     wired_server: FastMCP[Orchestrator],
 ) -> None:
-    """AuthenticationError path binds ``correlation_id`` on the structlog event."""
     fake_token = MagicMock()
     fake_token.claims = {"aud": "some-audience"}  # missing 'sub' claim
     with (
@@ -740,7 +721,6 @@ async def test_consult_auth_error_logs_correlation_id(
 async def test_consult_validation_error_logs_correlation_id(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """ValidationError path binds ``correlation_id`` on the structlog event."""
     with (
         structlog.testing.capture_logs() as cap,
         pytest.raises(ToolError, match=r"invalid consult input \(correlation_id="),
@@ -758,7 +738,6 @@ async def test_consult_validation_error_logs_correlation_id(
 async def test_consult_internal_error_logs_correlation_id(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """The catch-all branch binds ``correlation_id`` on the structlog event."""
     mock_orchestrator.consult.side_effect = StorageError("disk full at /var/lib/postgres")
     with (
         structlog.testing.capture_logs() as cap,

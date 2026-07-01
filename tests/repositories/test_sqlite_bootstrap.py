@@ -13,8 +13,6 @@ from lore.repositories.sqlite.bootstrap import _connect  # pyright: ignore[repor
 
 
 class TestConnectJournalMode:
-    """``_connect()`` opens the DB file in WAL journal mode."""
-
     def test_connect_enables_wal_journal_mode(self) -> None:
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = Path(f.name)

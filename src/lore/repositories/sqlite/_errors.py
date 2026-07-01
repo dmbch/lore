@@ -22,7 +22,6 @@ from lore.domain import DuplicateRecord, IntegrityViolation, StorageError
 
 
 def classify_integrity_error(e: sqlite3.IntegrityError) -> StorageError:
-    """Map sqlite3.IntegrityError to the matching repository-layer exception."""
     msg = str(e)
     if "UNIQUE constraint failed" in msg:
         return DuplicateRecord(msg)

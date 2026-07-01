@@ -23,8 +23,6 @@ def _embedding(seed: int) -> list[float]:
 
 
 class TestStore:
-    """store() persists a hypothesis with its embedding and returns the record."""
-
     async def test_store_returns_record_with_generated_id(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
@@ -113,8 +111,6 @@ class TestStoreEmbeddingValidation:
 
 
 class TestFindById:
-    """find_by_id() retrieves by ID or returns None."""
-
     async def test_find_by_id_missing_returns_none(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
@@ -122,8 +118,6 @@ class TestFindById:
 
 
 class TestSearch:
-    """search() returns hypotheses with composite scores from two-lane retrieval."""
-
     async def test_search_empty_query_degrades_gracefully(
         self,
         hypothesis_repo: HypothesisRepository,
@@ -232,7 +226,6 @@ class TestSearch:
         self,
         hypothesis_repo: HypothesisRepository,
     ) -> None:
-        """Same data, two searches with different weights produce different ranking."""
         h1 = await hypothesis_repo.store(
             content="kubernetes deployment orchestration",
             embedding=_embedding(seed=1),
@@ -289,7 +282,6 @@ class TestSearch:
         assert results[0].content == "PostgreSQL migration failed on Tuesday"
 
     async def test_search_respects_limit(self, hypothesis_repo: HypothesisRepository) -> None:
-        """Store 5 hypotheses, search with limit=2, get exactly 2 results."""
         for seed in range(1, 6):
             await hypothesis_repo.store(
                 content=f"hypothesis number {seed} about distinct topic {seed}",
@@ -310,7 +302,6 @@ class TestSearch:
     async def test_search_proximity_and_authority_both_contribute(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
-        """A hypothesis reachable via both proximity and authority is found."""
         await hypothesis_repo.store(
             content="PostgreSQL vacuum analysis performance",
             embedding=_embedding(seed=10),
@@ -332,7 +323,6 @@ class TestSearch:
     async def test_search_returns_hypothesis_results_with_scores(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
-        """Search results carry per-lane and composite retrieval scores."""
         await hypothesis_repo.store(
             content="gRPC migration reduced latency",
             embedding=_embedding(seed=1),
@@ -355,7 +345,6 @@ class TestSearch:
     async def test_search_proximity_only_has_positive_score(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
-        """A hypothesis found only by proximity still carries a positive composite score."""
         await hypothesis_repo.store(
             content="alpha beta gamma",
             embedding=_embedding(seed=42),
@@ -466,7 +455,6 @@ class TestSearch:
     async def test_search_invalid_limit_raises(
         self, hypothesis_repo: HypothesisRepository, bad_limit: int
     ) -> None:
-        """Zero and negative limits are rejected with ValueError."""
         with pytest.raises(ValueError, match="limit must be >= 1"):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
@@ -480,7 +468,6 @@ class TestSearch:
     async def test_search_invalid_fan_out_raises(
         self, hypothesis_repo: HypothesisRepository, bad_fan_out: int
     ) -> None:
-        """Zero and negative fan_out values are rejected with ValueError."""
         with pytest.raises(ValueError, match="fan_out must be >= 1"):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
@@ -493,7 +480,6 @@ class TestSearch:
     async def test_search_weights_must_sum_to_one(
         self, hypothesis_repo: HypothesisRepository
     ) -> None:
-        """Weights that don't sum to 1.0 are rejected with ValueError."""
         with pytest.raises(ValueError, match=re.escape("weights must sum to 1.0")):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
@@ -518,8 +504,6 @@ class TestSearch:
 
 
 class TestStorageError:
-    """All methods raise StorageError when the connection is unavailable."""
-
     async def test_store_raises(
         self,
         sabotage_connection: Callable[[], Awaitable[None]],

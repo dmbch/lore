@@ -17,8 +17,6 @@ from tests.orchestrator.conftest import (
 
 
 class TestConsultProducesStageSpans:
-    """Orchestrator stages produce named spans with parent-child relationships."""
-
     async def test_read_path_produces_stage_spans(self) -> None:
         with instrumented() as (fixture, spans, _):
             await fixture.orchestrator.consult(
@@ -68,8 +66,6 @@ class TestConsultProducesStageSpans:
 
 
 class TestConsultSpanAttributes:
-    """The root consult span carries a path attribute."""
-
     async def test_consult_span_carries_read_path_attribute(self) -> None:
         with instrumented() as (fixture, spans, _):
             await fixture.orchestrator.consult(
@@ -102,8 +98,6 @@ class TestConsultSpanAttributes:
 
 
 class TestConsultEmitsStructuredLogs:
-    """Structured log events are emitted at stage boundaries."""
-
     async def test_consult_emits_start_log_event(self) -> None:
         with instrumented() as (fixture, _, cap):
             await fixture.orchestrator.consult(
@@ -278,8 +272,6 @@ class TestConsultEmitsStructuredLogs:
 
 
 class TestWritePathOneFetchOverUnion:
-    """Orchestrator issues one full-list fetch over corroborated+contradicted IDs."""
-
     async def test_attestation_fetch_keys_equal_union(self) -> None:
         cor_id = "550e8400-e29b-41d4-a716-446655440000"
         con_a = "660e8400-e29b-41d4-a716-446655440000"

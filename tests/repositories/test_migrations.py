@@ -28,8 +28,6 @@ _POSTGRES_MIGRATIONS_PACKAGE = "lore.repositories.postgres.migrations"
 
 
 class TestRunMigrationsRouting:
-    """run_migrations routes to the correct backend by DSN prefix."""
-
     @patch("lore.repositories.sqlite.bootstrap.run_migrations")
     def test_run_migrations_sqlite_dsn_routes_to_sqlite(self, mock_sqlite: MagicMock) -> None:
         dsn = "sqlite:///tmp/test.db"
@@ -59,8 +57,6 @@ class TestRunMigrationsRouting:
 
 
 class TestRunMigrationsSqliteBackend:
-    """run_migrations applies schema with sqlite-vec loaded."""
-
     _EXPECTED_TABLES: ClassVar[set[str]] = {
         "hypotheses",
         "attestations",
@@ -71,7 +67,6 @@ class TestRunMigrationsSqliteBackend:
     }
 
     def test_run_sqlite_migrations_applies_to_temp_db(self, tmp_path: Path) -> None:
-        """Smoke test: migrations apply the SQLite schema."""
         dsn = f"sqlite:///{tmp_path}/test.db"
         run_migrations(settings=make_settings(dsn=dsn), embedding_dim=1024)
 
@@ -86,7 +81,6 @@ class TestRunMigrationsSqliteBackend:
     def test_run_sqlite_migrations_custom_dim_creates_vec_table_with_that_dimension(
         self, tmp_path: Path
     ) -> None:
-        """vec_hypotheses uses the embedding_dim passed to run_migrations."""
         dsn = f"sqlite:///{tmp_path}/test.db"
         run_migrations(settings=make_settings(dsn=dsn), embedding_dim=1536)
 
@@ -103,14 +97,12 @@ class TestRunMigrationsSqliteBackend:
             conn.close()
 
     def test_run_sqlite_migrations_idempotent(self, tmp_path: Path) -> None:
-        """Second call is a no-op."""
         dsn = f"sqlite:///{tmp_path}/test.db"
         settings = make_settings(dsn=dsn)
         run_migrations(settings=settings, embedding_dim=1024)
         run_migrations(settings=settings, embedding_dim=1024)
 
     def test_run_sqlite_migrations_emits_applied_log_on_fresh_db(self, tmp_path: Path) -> None:
-        """Fresh DB: all discovered migrations apply; one ``migrations.applied`` event."""
         dsn = f"sqlite:///{tmp_path}/test.db"
         migrations = read_migrations(_SQLITE_MIGRATIONS_PACKAGE)
 
@@ -127,7 +119,6 @@ class TestRunMigrationsSqliteBackend:
     def test_run_sqlite_migrations_emits_applied_log_on_idempotent_rerun(
         self, tmp_path: Path
     ) -> None:
-        """Second call applies nothing; event reports all migrations skipped."""
         dsn = f"sqlite:///{tmp_path}/test.db"
         settings = make_settings(dsn=dsn)
         migrations = read_migrations(_SQLITE_MIGRATIONS_PACKAGE)
@@ -163,8 +154,6 @@ def pg_migrations_dsn(pg_dsn_session: str) -> Iterator[str]:
 
 
 class TestRunMigrationsPostgresBackend:
-    """run_migrations applies schema to PostgreSQL."""
-
     _EXPECTED_TABLES: ClassVar[set[str]] = {
         "hypotheses",
         "attestations",
@@ -173,7 +162,6 @@ class TestRunMigrationsPostgresBackend:
     }
 
     def test_run_postgres_migrations_applies_schema(self, pg_migrations_dsn: str) -> None:
-        """Smoke test: migrations apply the PostgreSQL schema."""
         run_migrations(settings=make_settings(dsn=pg_migrations_dsn), embedding_dim=1024)
 
         conn = psycopg.connect(pg_migrations_dsn, autocommit=True)
@@ -187,13 +175,11 @@ class TestRunMigrationsPostgresBackend:
             conn.close()
 
     def test_run_postgres_migrations_idempotent(self, pg_migrations_dsn: str) -> None:
-        """Second call is a no-op."""
         settings = make_settings(dsn=pg_migrations_dsn)
         run_migrations(settings=settings, embedding_dim=1024)
         run_migrations(settings=settings, embedding_dim=1024)
 
     def test_run_postgres_migrations_accepts_postgres_scheme(self, pg_migrations_dsn: str) -> None:
-        """DSN with ``postgres://`` scheme applies schema from scratch."""
         dsn = pg_migrations_dsn.replace("postgresql://", "postgres://", 1)
         run_migrations(settings=make_settings(dsn=dsn), embedding_dim=1024)
 
@@ -210,7 +196,6 @@ class TestRunMigrationsPostgresBackend:
     def test_run_postgres_migrations_custom_dim_creates_vector_with_that_dimension(
         self, pg_migrations_dsn: str
     ) -> None:
-        """hypotheses.embedding uses VECTOR(N) matching the embedding_dim argument."""
         run_migrations(settings=make_settings(dsn=pg_migrations_dsn), embedding_dim=1536)
 
         conn = psycopg.connect(pg_migrations_dsn, autocommit=True)
@@ -229,7 +214,6 @@ class TestRunMigrationsPostgresBackend:
     def test_run_postgres_migrations_emits_applied_log_on_fresh_db(
         self, pg_migrations_dsn: str
     ) -> None:
-        """Fresh DB: all discovered migrations apply; one ``migrations.applied`` event."""
         migrations = read_migrations(_POSTGRES_MIGRATIONS_PACKAGE)
 
         with structlog.testing.capture_logs() as cap:
@@ -245,7 +229,6 @@ class TestRunMigrationsPostgresBackend:
     def test_run_postgres_migrations_emits_applied_log_on_idempotent_rerun(
         self, pg_migrations_dsn: str
     ) -> None:
-        """Second call applies nothing; event reports all migrations skipped."""
         settings = make_settings(dsn=pg_migrations_dsn)
         migrations = read_migrations(_POSTGRES_MIGRATIONS_PACKAGE)
         run_migrations(settings=settings, embedding_dim=1024)
@@ -279,7 +262,6 @@ class TestCheckHealthSqlite:
     """Embedding model drift detection via _system."""
 
     def test_check_health_no_model_stores_model(self, sqlite_health_db: str) -> None:
-        """First call stores the model name."""
         check_health(
             settings=make_settings(dsn=sqlite_health_db, embedding_model="text-embedding-3-small"),
             embedding_dim=1024,
@@ -295,13 +277,11 @@ class TestCheckHealthSqlite:
             conn.close()
 
     def test_check_health_same_model_passes(self, sqlite_health_db: str) -> None:
-        """Second call with the same model is a no-op."""
         settings = make_settings(dsn=sqlite_health_db, embedding_model="text-embedding-3-small")
         check_health(settings=settings, embedding_dim=1024)
         check_health(settings=settings, embedding_dim=1024)
 
     def test_check_health_different_model_raises(self, sqlite_health_db: str) -> None:
-        """Different model raises StorageError — embedding drift detected."""
         check_health(
             settings=make_settings(dsn=sqlite_health_db, embedding_model="text-embedding-3-small"),
             embedding_dim=1024,
@@ -318,7 +298,6 @@ class TestCheckHealthSqlite:
     def test_check_health_first_call_with_dim_stores_embedding_dimensions(
         self, sqlite_health_db: str
     ) -> None:
-        """First call with embedding_dim stores the dimension in _system."""
         check_health(settings=make_settings(dsn=sqlite_health_db), embedding_dim=1536)
 
         path = sqlite_health_db.removeprefix("sqlite:///")
@@ -333,13 +312,11 @@ class TestCheckHealthSqlite:
             conn.close()
 
     def test_check_health_same_dim_twice_passes(self, sqlite_health_db: str) -> None:
-        """Second call with the same embedding_dim is a no-op."""
         settings = make_settings(dsn=sqlite_health_db)
         check_health(settings=settings, embedding_dim=1536)
         check_health(settings=settings, embedding_dim=1536)
 
     def test_check_health_different_dim_raises(self, sqlite_health_db: str) -> None:
-        """Different dimension raises StorageError — embedding dimensions mismatch detected."""
         settings = make_settings(dsn=sqlite_health_db)
         check_health(settings=settings, embedding_dim=1536)
 
@@ -347,7 +324,6 @@ class TestCheckHealthSqlite:
             check_health(settings=settings, embedding_dim=1024)
 
     def test_check_health_no_system_table_raises_storage_error(self, tmp_path: Path) -> None:
-        """check_health without run_migrations raises StorageError."""
         path = f"{tmp_path}/empty.db"
         sqlite3.connect(path).close()
         dsn = f"sqlite:///{path}"
@@ -359,7 +335,6 @@ class TestCheckHealthSqlite:
             )
 
     def test_check_health_different_fulltext_config_raises(self, sqlite_health_db: str) -> None:
-        """Different fulltext_config raises StorageError — FTS5 tokenizer drift."""
         check_health(
             settings=make_settings(
                 dsn=sqlite_health_db, sqlite=SqliteConfig(fulltext_config="porter unicode61")
@@ -409,7 +384,6 @@ class TestCheckHealthPostgres:
     """Embedding model drift detection via _system (PostgreSQL)."""
 
     def test_check_health_no_model_stores_model(self, pg_health_dsn: str) -> None:
-        """First call stores the model name."""
         check_health(
             settings=make_settings(dsn=pg_health_dsn, embedding_model="text-embedding-3-small"),
             embedding_dim=1024,
@@ -424,13 +398,11 @@ class TestCheckHealthPostgres:
             conn.close()
 
     def test_check_health_same_model_passes(self, pg_health_dsn: str) -> None:
-        """Second call with the same model is a no-op."""
         settings = make_settings(dsn=pg_health_dsn, embedding_model="text-embedding-3-small")
         check_health(settings=settings, embedding_dim=1024)
         check_health(settings=settings, embedding_dim=1024)
 
     def test_check_health_different_model_raises(self, pg_health_dsn: str) -> None:
-        """Different model raises StorageError — embedding drift detected."""
         check_health(
             settings=make_settings(dsn=pg_health_dsn, embedding_model="text-embedding-3-small"),
             embedding_dim=1024,
@@ -445,7 +417,6 @@ class TestCheckHealthPostgres:
     def test_check_health_first_call_with_dim_stores_embedding_dimensions(
         self, pg_health_dsn: str
     ) -> None:
-        """First call with embedding_dim stores the dimension in _system."""
         check_health(settings=make_settings(dsn=pg_health_dsn), embedding_dim=1536)
 
         conn = psycopg.connect(pg_health_dsn, autocommit=True)
@@ -459,13 +430,11 @@ class TestCheckHealthPostgres:
             conn.close()
 
     def test_check_health_same_dim_twice_passes(self, pg_health_dsn: str) -> None:
-        """Second call with the same embedding_dim is a no-op."""
         settings = make_settings(dsn=pg_health_dsn)
         check_health(settings=settings, embedding_dim=1536)
         check_health(settings=settings, embedding_dim=1536)
 
     def test_check_health_different_dim_raises(self, pg_health_dsn: str) -> None:
-        """Different dimension raises StorageError — embedding dimensions mismatch detected."""
         settings = make_settings(dsn=pg_health_dsn)
         check_health(settings=settings, embedding_dim=1536)
 
@@ -473,7 +442,6 @@ class TestCheckHealthPostgres:
             check_health(settings=settings, embedding_dim=1024)
 
     def test_check_health_no_system_table_raises_storage_error(self, pg_dsn_session: str) -> None:
-        """check_health without run_migrations raises StorageError."""
         # Create a temporary database with no _system table by using a different schema.
         conn = psycopg.connect(pg_dsn_session, autocommit=True)
         try:
@@ -496,7 +464,6 @@ class TestCheckHealthPostgres:
                 conn.close()
 
     def test_check_health_different_fulltext_config_raises(self, pg_health_dsn: str) -> None:
-        """Different fulltext_config raises StorageError — tsvector lexer drift."""
         english_pg = PostgresConfig(
             min_size=1, max_size=20, timeout=10.0, max_waiting=50, fulltext_config="english"
         )
@@ -517,8 +484,6 @@ class TestCheckHealthPostgres:
 
 
 class TestCheckHealthRouting:
-    """check_health routes to the correct backend by DSN prefix."""
-
     @patch("lore.repositories.postgres.bootstrap.check_health")
     def test_check_health_postgres_dsn_routes_to_postgres(self, mock_pg: MagicMock) -> None:
         dsn = "postgresql://localhost/db"

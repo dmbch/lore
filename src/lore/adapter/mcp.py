@@ -1,8 +1,4 @@
-"""FastMCP adapter — tool registration and lifespan.
-
-Thin adapter layer. Translates MCP protocol into orchestrator calls.
-No domain logic — parse, validate input shape, delegate.
-"""
+"""FastMCP adapter — tool registration and lifespan."""
 
 import importlib.resources
 from base64 import b64encode
@@ -69,7 +65,6 @@ def _bundled_logo() -> str:
 
 
 def _build_auth(settings: LoreSettings) -> OIDCProxy | None:
-    """Construct OIDCProxy when OIDC config is present, otherwise None."""
     if settings.oidc is None or settings.base_url is None:
         return None
     return OIDCProxy(

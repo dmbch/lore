@@ -39,7 +39,6 @@ def _assert_invariants(row: dict[str, Any]) -> None:
 
 
 async def test_novel_write(system: Orchestrator) -> None:
-    """First oracle submits a new claim — creates hypothesis + attestation."""
     response = await consult(
         system,
         hypothesis="The speed of light in a vacuum is approximately 299,792 km/s",
@@ -70,7 +69,6 @@ async def test_novel_write(system: Orchestrator) -> None:
 
 
 async def test_read(system: Orchestrator) -> None:
-    """Query for existing knowledge — retrieves but creates no attestations."""
     response = await consult(
         system,
         question="What is known about the speed of light?",
@@ -91,7 +89,6 @@ async def test_read(system: Orchestrator) -> None:
 
 
 async def test_corroborate(system: Orchestrator) -> None:
-    """Second oracle supports the claim — ECBF agreement compounds."""
     response = await consult(
         system,
         hypothesis="Light travels at roughly 3 times 10 to the 8th meters per second in vacuum",
@@ -127,7 +124,6 @@ async def test_corroborate(system: Orchestrator) -> None:
 
 
 async def test_contradict(system: Orchestrator) -> None:
-    """Third oracle contradicts — conflict acknowledged, attestations created."""
     response = await consult(
         system,
         hypothesis="The speed of light in a vacuum is approximately 150,000 km/s",

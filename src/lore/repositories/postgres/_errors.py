@@ -20,7 +20,6 @@ from lore.domain import DuplicateRecord, IntegrityViolation, StorageError
 
 
 def translate(e: psycopg.Error) -> NoReturn:
-    """Raise the domain exception appropriate for ``e``. Never returns."""
     if isinstance(e, psycopg.errors.SerializationFailure):
         raise e from None
     if isinstance(e, psycopg.errors.UniqueViolation):
