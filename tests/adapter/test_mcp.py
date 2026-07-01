@@ -1,4 +1,4 @@
-"""Tests for lore.adapter.mcp — FastMCP server and tool registration."""
+"""Tests for lore.adapter.mcp: FastMCP server and tool registration."""
 
 import os
 import re
@@ -226,7 +226,7 @@ async def test_correlation_id_uses_trace_id_when_otel_active(
 ) -> None:
     """With a valid OTel span context, correlation_id is the active trace_id.
 
-    One identifier across client error, APM trace lookup, and ledger PK —
+    One identifier across client error, APM trace lookup, and ledger PK:
     same value the structlog trace-context processor injects into every
     log event, so no extra log-line bytes.
     """
@@ -373,7 +373,7 @@ def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -
 
 
 def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None:
-    """openid is hardcoded at the OIDCProxy boundary — the minimum OIDC guarantees an id_token."""
+    """openid is hardcoded at the OIDCProxy boundary: the minimum OIDC guarantees an id_token."""
     from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
@@ -439,7 +439,7 @@ def test_build_auth_forwards_extra_authorize_params_from_settings(
 
 
 async def test_serve_in_stdio_mode_omits_uvicorn_config() -> None:
-    """Stdio transport has no uvicorn — passing ``uvicorn_config`` is rejected.
+    """Stdio transport has no uvicorn: passing ``uvicorn_config`` is rejected.
 
     The transport read goes through ``fastmcp.settings.transport``, the same
     singleton ``run_async(transport=None)`` resolves to. Patch the field
@@ -575,7 +575,7 @@ def test_fastmcp_exposes_lifespan_result_attribute(
 
     If FastMCP renames or removes this internal attribute, this test fails
     before the wired_server fixture silently stops working. Validated against
-    fastmcp 3.x — check on upgrade.
+    fastmcp 3.x. Check on upgrade.
     """
     assert hasattr(server, "_lifespan_result"), (
         "FastMCP no longer exposes _lifespan_result — update wired_server fixture"
@@ -596,7 +596,7 @@ async def test_question_exceeds_max_length_raises_validation_error(
 ) -> None:
     from pydantic import ValidationError
 
-    # limits.question is the configured max — exceed it by a wide margin.
+    # limits.question is the configured max. Exceed it by a wide margin.
     with pytest.raises(ValidationError, match="string_too_long"):
         await _call_tool(wired_server, "consult", {"question": "x" * 1_000_000})
 
@@ -607,7 +607,7 @@ async def test_fully_empty_consult_does_not_reach_orchestrator(
     """An empty consult is rejected by the domain validator before the orchestrator runs.
 
     The validator raises Pydantic ValidationError, which the adapter scrubs to
-    "invalid consult input" — Pydantic's str() includes `input_value=...`.
+    "invalid consult input": Pydantic's str() includes `input_value=...`.
     """
     with pytest.raises(ToolError, match=r"invalid consult input \(correlation_id="):
         await _call_tool(wired_server, "consult", {})
@@ -632,7 +632,7 @@ async def test_question_only_reaches_orchestrator(
 async def test_hypothesis_with_zero_confidence_reaches_orchestrator(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """confidence=0.0 is the genuine vacuous state — accepted, not absent."""
+    """confidence=0.0 is the genuine vacuous state: accepted, not absent."""
     await _call_tool(wired_server, "consult", {"hypothesis": "a claim", "confidence": 0.0})
     mock_orchestrator.consult.assert_called_once()
     request = mock_orchestrator.consult.call_args.kwargs["request"]

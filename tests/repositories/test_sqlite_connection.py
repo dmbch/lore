@@ -1,4 +1,4 @@
-"""Tests for the SQLite connection helper — extension-load failure path.
+"""Tests for the SQLite connection helper: extension-load failure path.
 
 The ``connect()`` factory loads the ``sqlite-vec`` shared library after
 opening the connection. If the shared library is missing or unloadable,

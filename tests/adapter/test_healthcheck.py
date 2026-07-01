@@ -2,17 +2,17 @@
 
 The two routes serve different probe semantics:
 
-- ``/health`` is the liveness probe — answers "the process is responsive."
+- ``/health`` is the liveness probe: answers "the process is responsive."
   Always 200; never touches the database.
-- ``/ready`` is the readiness probe — answers "the database is reachable
+- ``/ready`` is the readiness probe: answers "the database is reachable
   right now." 200 on success; 503 when the injected ``health_probe``
   raises ``StorageError`` (or anything else). The 503 body never echoes
-  the underlying error — operator diagnostics live in structlog, not in
+  the underlying error. Operator diagnostics live in structlog, not in
   the wire payload.
 
 The probe is injected into ``create_server`` rather than imported by the
 adapter; this keeps the adapter layer free of repository imports. When
-``health_probe`` is omitted, ``/ready`` returns 200 unconditionally —
+``health_probe`` is omitted, ``/ready`` returns 200 unconditionally:
 the right shape for stdio mode and tests that don't exercise readiness.
 """
 
@@ -66,7 +66,7 @@ async def _crashing_probe() -> None:
     """A health_probe that raises something other than StorageError.
 
     Stands in for a bug in the probe closure, a vendor SDK leak, or any
-    other unexpected failure — the catch-all branch must absorb it.
+    other unexpected failure. The catch-all branch must absorb it.
     """
     raise RuntimeError("unexpected probe bug: division by zero in pool.session")
 
@@ -94,7 +94,7 @@ def _get(client: TestClient, path: str) -> httpx.Response:
 
 def test_health_returns_ok_unconditionally(settings: LoreSettings) -> None:
     """`/health` is a no-op liveness probe; never touches the probe callable."""
-    # Even with a probe that would raise, /health stays 200 — confirming
+    # Even with a probe that would raise, /health stays 200, confirming
     # the route does not call the probe.
     client = _client(_server(settings, health_probe=_failing_probe))
     response = _get(client, "/health")
@@ -110,7 +110,7 @@ def test_ready_returns_ok_when_probe_succeeds(settings: LoreSettings) -> None:
 
 
 def test_ready_returns_ok_when_no_probe_configured(settings: LoreSettings) -> None:
-    """Without a probe, ``/ready`` returns 200 — the stdio / test shape.
+    """Without a probe, ``/ready`` returns 200 (the stdio / test shape).
 
     Pins the contract that omitting ``health_probe`` is a valid composition
     (stdio mode has no HTTP transport; tests that don't exercise readiness
@@ -123,7 +123,7 @@ def test_ready_returns_ok_when_no_probe_configured(settings: LoreSettings) -> No
 
 
 def test_ready_returns_503_when_probe_raises_storage_error(settings: LoreSettings) -> None:
-    """`/ready` translates `StorageError` to a 503 — load balancers pull the pod."""
+    """`/ready` translates `StorageError` to a 503: load balancers pull the pod."""
     client = _client(_server(settings, health_probe=_failing_probe))
     response = _get(client, "/ready")
     assert response.status_code == 503
@@ -151,7 +151,7 @@ def test_ready_503_does_not_leak_storage_error_message(settings: LoreSettings) -
     """The 503 body never echoes the underlying error message back to the client.
 
     DSN host:port, constraint names, and other operator-only diagnostics
-    must stay out of the wire payload — same scrub posture as the consult
+    must stay out of the wire payload, same scrub posture as the consult
     tool. Operators read them from structlog. Full-body equality enforces
     the contract more tightly than substring assertions on a sampled message.
     """

@@ -1,6 +1,6 @@
 """Sync bootstrap utilities for the SQLite backend.
 
-Migration runner and health check — called before the async event loop starts.
+Migration runner and health check: called before the async event loop starts.
 The ``_system`` table tracks applied migrations and runtime config (e.g.
 embedding model). SQLite's file-level locking serializes concurrent writers.
 """
@@ -33,7 +33,7 @@ def _connect(dsn: str) -> sqlite3.Connection:
 
     Uses ``isolation_level=None`` (autocommit) so callers control
     transaction boundaries explicitly via ``BEGIN``/``COMMIT``. Enables
-    WAL journal mode after extension load — the very first interaction
+    WAL journal mode after extension load: the very first interaction
     with a fresh DB file (migration apply) then runs under WAL rather
     than the default rollback-journal mode, matching the async runtime
     ``connect()`` so a single DB file is never opened under two
@@ -59,7 +59,7 @@ def run_migrations(*, dsn: str, **params: int | str) -> None:
     """Apply SQLite migrations with sqlite-vec loaded.
 
     Keyword arguments are substituted into migration SQL via
-    ``str.format(**params)`` — callers provide schema parameters
+    ``str.format(**params)``: callers provide schema parameters
     (e.g. ``embedding_dim=1024``, ``fulltext_config="porter unicode61"``)
     and the SQL templates reference them.
 
@@ -112,10 +112,10 @@ def check_health(
 ) -> None:
     """Verify embedding model + FTS5 tokenizer stability via ``_system``.
 
-    Requires ``run_migrations()`` to have been called first — the ``_system``
+    Requires ``run_migrations()`` to have been called first: the ``_system``
     table is created by the migration runner. On first call, records the
     config values. On subsequent calls, refuses to start if the configured
-    value diverges from the stored one — the FTS virtual table was built
+    value diverges from the stored one: the FTS virtual table was built
     under the previous tokenizer and any query against the new one would
     silently return wrong results.
     """
@@ -136,7 +136,7 @@ def check_health(
         except sqlite3.OperationalError as e:
             msg = "run_migrations() must be called before check_health()"
             raise StorageError(msg) from e
-        # No explicit COMMIT needed — _connect uses isolation_level=None
+        # No explicit COMMIT needed: _connect uses isolation_level=None
         # (autocommit), so the upsert commits immediately.
         if row is not None and row[0] != embedding_model:
             msg = (

@@ -1,4 +1,4 @@
-"""Tests for domain types — cross-layer boundary validation."""
+"""Tests for domain types: cross-layer boundary validation."""
 
 import pytest
 from pydantic import ValidationError
@@ -71,7 +71,7 @@ class TestTrustSignalValidation:
 
 
 class TestTrustSignalImmutability:
-    """Frozen Pydantic model — mutation raises ValidationError."""
+    """Frozen Pydantic model: mutation raises ValidationError."""
 
     def test_is_frozen(self) -> None:
         s = _valid_snapshot()
@@ -80,7 +80,7 @@ class TestTrustSignalImmutability:
 
 
 class TestTrustSignalModelConstruct:
-    """model_construct() skips validation — hot path for DB reads."""
+    """model_construct() skips validation: hot path for DB reads."""
 
     def test_model_construct_skips_validation(self) -> None:
         s = TrustSignal.model_construct(
@@ -94,7 +94,7 @@ class TestTrustSignalModelConstruct:
 
 
 class TestConsultLoreRequest:
-    """ConsultLoreRequest — tightened validator truth table.
+    """ConsultLoreRequest: tightened validator truth table.
 
     A call must carry a ``question``, a ``hypothesis``, or both; if a
     hypothesis is present, ``confidence`` is mandatory. ``context`` and
@@ -212,7 +212,7 @@ class TestConsultLoreRequest:
 
 
 class TestConsultLoreResponse:
-    """ConsultLoreResponse — requires an answer string."""
+    """ConsultLoreResponse: requires an answer string."""
 
     def test_requires_answer(self) -> None:
         with pytest.raises(ValidationError):
@@ -232,7 +232,7 @@ class TestConsultLoreResponse:
 
 
 class TestInterpreterInput:
-    """InterpreterInput — all-optional passthrough from MCP request."""
+    """InterpreterInput: all-optional passthrough from MCP request."""
 
     def test_all_fields_optional(self) -> None:
         i = InterpreterInput()
@@ -248,7 +248,7 @@ class TestInterpreterInput:
 
 
 class TestInterpreterOutput:
-    """InterpreterOutput — normalized question, decomposed propositions, keywords."""
+    """InterpreterOutput: normalized question, decomposed propositions, keywords."""
 
     def test_defaults_to_empty_lists(self) -> None:
         o = InterpreterOutput()
@@ -294,7 +294,7 @@ def _valid_search_result(**overrides: object) -> SearchResult:
 
 
 class TestSearchResult:
-    """SearchResult — retrieval candidate with scores and epistemic snapshot."""
+    """SearchResult: retrieval candidate with scores and epistemic snapshot."""
 
     def test_accepts_valid_data(self) -> None:
         s = _valid_search_result()
@@ -362,7 +362,7 @@ class TestSearchResult:
 
 
 class TestArchivistInput:
-    """ArchivistInput — unified input for both read and write paths."""
+    """ArchivistInput: unified input for both read and write paths."""
 
     def test_archivist_input_accepts_all_fields(self) -> None:
         r = _valid_search_result()
@@ -397,7 +397,7 @@ class TestArchivistInput:
 
 
 class TestResolution:
-    """Resolution — paraphrase / orthogonal-novel, optionally with contradicts."""
+    """Resolution: paraphrase / orthogonal-novel, optionally with contradicts."""
 
     # --- Paraphrase: corroborates set, contributes empty ---
 
@@ -468,7 +468,7 @@ class TestResolution:
 
 
 class TestArchivistOutput:
-    """ArchivistOutput — unified output for both read and write paths."""
+    """ArchivistOutput: unified output for both read and write paths."""
 
     def test_archivist_output_requires_answer(self) -> None:
         with pytest.raises(ValidationError):
@@ -500,7 +500,7 @@ class TestArchivistOutput:
         assert o.notes == ["ambiguous proposition X", "competing hypothesis Y was close"]
 
     def test_archivist_output_two_constructs_have_independent_resolutions_lists(self) -> None:
-        """default_factory=list gives each instance its own list — not a shared mutable default."""
+        """default_factory=list gives each instance its own list, not a shared mutable default."""
         a = ArchivistOutput.model_construct(reasoning="r", answer="a")
         b = ArchivistOutput.model_construct(reasoning="r", answer="a")
         assert a.resolutions is not b.resolutions
@@ -567,7 +567,7 @@ class TestArchivistOutputDisjointNovels:
     """ArchivistOutput rejects duplicate `contributes` strings across resolutions.
 
     Mirrors `_disjoint_resolution_ids` but on the novel-content slot. The Archivist's
-    one-resolution-per-proposition rule is a maximum, not a minimum — if two
+    one-resolution-per-proposition rule is a maximum, not a minimum: if two
     propositions would produce the same novel statement, they must collapse into a
     single resolution.
     """
@@ -662,7 +662,7 @@ class TestWriteContextValidation:
 
 
 class TestWriteContextImmutability:
-    """Frozen Pydantic model — mutation raises ValidationError."""
+    """Frozen Pydantic model: mutation raises ValidationError."""
 
     def test_is_frozen(self) -> None:
         c = _valid_context()

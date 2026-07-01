@@ -1,6 +1,6 @@
 """Scalar confidence ↔ opinion mapping.
 
-The forward mapping accepts c ∈ [-1, 1] — the full mathematical domain — and
+The forward mapping accepts c ∈ [-1, 1] (the full mathematical domain) and
 produces uncertainty-maximized opinions by construction. Trust discounting
 (P_effective < 1 for K >= 1) is the pipeline policy that prevents dogmatic
 opinions from reaching ECBF, not input validation.

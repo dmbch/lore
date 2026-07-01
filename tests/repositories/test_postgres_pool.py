@@ -22,7 +22,7 @@ class TestPostgresPoolSession:
         """Pool exhaustion (PoolTimeout) surfaces as StorageError, not psycopg.Error.
 
         The pool is constructed without the pgvector configure callback because
-        this test does not exercise vector operations — it only forces the
+        this test does not exercise vector operations: it only forces the
         getconn timeout.
         """
         raw_pool: AsyncConnectionPool[psycopg.AsyncConnection[Any]] = AsyncConnectionPool(
@@ -89,7 +89,7 @@ class TestPostgresPoolIsolation:
 
 
 class TestPostgresPoolSnapshotIsolation:
-    """SERIALIZABLE pins T1's snapshot at BEGIN — concurrent commits stay invisible.
+    """SERIALIZABLE pins T1's snapshot at BEGIN: concurrent commits stay invisible.
 
     Two coroutines coordinate through ``asyncio.Event``: T1 opens a
     transaction, reads, hands the floor to T2, waits for T2's commit, reads
@@ -169,7 +169,7 @@ class TestPostgresPoolSnapshotIsolation:
             assert len(first) == 1
             assert first == second
 
-            # Confirm T2's write actually committed — proves the test isn't
+            # Confirm T2's write actually committed: proves the test isn't
             # passing because the writer failed silently.
             async with pool.session() as repos:
                 after = await repos.attestations.find_by_hypothesis(hypothesis.id)
@@ -186,7 +186,7 @@ class TestPostgresPoolSerializationFailureTranslation:
     both write a new attestation on the same hypothesis. PostgreSQL detects
     the dependency cycle and aborts the second committer with
     SQLSTATE 40001. The pool's translation must surface this as
-    ``RetryableTransactionError`` — the contract the orchestrator's retry
+    ``RetryableTransactionError``, the contract the orchestrator's retry
     loop watches for.
     """
 
@@ -243,7 +243,7 @@ class TestPostgresPoolSerializationFailureTranslation:
                         # Wait for T2 to commit a conflicting attestation.
                         await t2_committed.wait()
                         # Now write on the same hypothesis. T1's snapshot is stale
-                        # relative to T2's commit — SERIALIZABLE detects the
+                        # relative to T2's commit: SERIALIZABLE detects the
                         # write-skew at commit time and raises SQLSTATE 40001.
                         await repos.attestations.append(
                             AttestationRecord(

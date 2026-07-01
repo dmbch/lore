@@ -48,7 +48,7 @@ class TestConstruction:
             Opinion(b=float("inf"), d=0.0, u=0.0)
 
     def test_epsilon_tolerance_accepts_near_one(self) -> None:
-        # Construct values whose sum is 1.0 + EPSILON/2 — clearly inside
+        # Construct values whose sum is 1.0 + EPSILON/2, clearly inside
         # the EPSILON tolerance window in Opinion.__new__ but well above
         # any IEEE-754 rounding noise. Verified: b + d + u == 1.0000000005.
         b = 0.3
@@ -76,12 +76,12 @@ class TestProjectedProbability:
 
     def test_vacuous_equals_base_rate(self) -> None:
         o = Opinion(b=0.0, d=0.0, u=1.0)
-        # P = 0 + 0.5 * 1.0 = 0.5 — no evidence, fall back to prior
+        # P = 0 + 0.5 * 1.0 = 0.5 (no evidence, fall back to prior)
         assert abs(o.projected_probability - BASE_RATE) < EPSILON
 
     def test_dogmatic_equals_belief(self) -> None:
         o = Opinion(b=0.7, d=0.3, u=0.0)
-        # P = 0.7 + 0.5 * 0 = 0.7 — no uncertainty, belief IS the probability
+        # P = 0.7 + 0.5 * 0 = 0.7 (no uncertainty, belief IS the probability)
         assert abs(o.projected_probability - 0.7) < EPSILON
 
 
@@ -181,6 +181,6 @@ class TestOpinionClampsOnConstruction:
         assert o.u == 0.0
 
     def test_opinion_outside_epsilon_tolerance_still_raises(self) -> None:
-        # Beyond EPSILON — the bounds check fires before the clamp.
+        # Beyond EPSILON: the bounds check fires before the clamp.
         with pytest.raises(ValueError, match="must be in"):
             Opinion(b=-1.0, d=0.0, u=2.0)

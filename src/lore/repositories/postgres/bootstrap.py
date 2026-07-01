@@ -1,6 +1,6 @@
 """Sync bootstrap utilities for the PostgreSQL backend.
 
-Migration runner and health check — called before the async event loop starts.
+Migration runner and health check: called before the async event loop starts.
 The ``_system`` table tracks applied migrations and runtime config (e.g.
 embedding model). An advisory lock prevents concurrent migration runs.
 """
@@ -34,12 +34,12 @@ def run_migrations(*, dsn: str, **params: int | str) -> None:
     """Apply PostgreSQL migrations under an advisory lock.
 
     Keyword arguments are substituted into migration SQL via
-    ``str.format(**params)`` — callers provide schema parameters
+    ``str.format(**params)``: callers provide schema parameters
     (e.g. ``embedding_dim=1024``, ``fulltext_config="english"``) and
     the SQL templates reference them.
 
     Each migration and its tracking record are applied in a single
-    transaction — if the SQL fails, the tracking row is not written,
+    transaction: if the SQL fails, the tracking row is not written,
     so the next run retries cleanly.
 
     String param values are validated upstream by ``factory.run_migrations``
@@ -78,7 +78,7 @@ def run_migrations(*, dsn: str, **params: int | str) -> None:
                     )
                 applied += 1
         finally:
-            # Advisory locks are session-scoped — released on disconnect anyway.
+            # Advisory locks are session-scoped: released on disconnect anyway.
             # Suppress errors so a dead connection doesn't mask the original
             # migration failure.
             with contextlib.suppress(psycopg.Error):
@@ -98,10 +98,10 @@ def check_health(
 ) -> None:
     """Verify embedding model + tsvector lexer stability via ``_system``.
 
-    Requires ``run_migrations()`` to have been called first — the ``_system``
+    Requires ``run_migrations()`` to have been called first: the ``_system``
     table is created by the migration runner. On first call, records the
     config values. On subsequent calls, refuses to start if the configured
-    value diverges from the stored one — the ``fulltext`` generated column
+    value diverges from the stored one: the ``fulltext`` generated column
     was built under the previous regconfig and any query against the new one
     would silently return wrong rankings.
     """

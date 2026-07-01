@@ -1,4 +1,4 @@
-"""Tests for EpistemicsConfig — the four epistemic hyperparameters."""
+"""Tests for EpistemicsConfig: the four epistemic hyperparameters."""
 
 import pytest
 from pydantic import ValidationError
@@ -9,7 +9,7 @@ _90_DAYS = 90 * 86400.0
 
 
 def _epistemics(attestation_half_life: str | float) -> EpistemicsConfig:
-    """Vary only the attestation half-life — the rest are fixed valid defaults.
+    """Vary only the attestation half-life; the rest are fixed valid defaults.
 
     Lets the duration-grammar tests below read as a single moving part.
     """

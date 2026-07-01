@@ -4,7 +4,7 @@ The pool-level test in ``test_postgres_pool.py`` proves
 ``SerializationFailure`` translates to ``RetryableTransactionError``; the
 stub tests in ``tests/orchestrator/test_consult_write_concurrency.py``
 prove the orchestrator's retry loop works. This test proves the *whole*
-chain — orchestrator + retry + real Postgres + SERIALIZABLE — preserves
+chain (orchestrator + retry + real Postgres + SERIALIZABLE) preserves
 end-to-end correctness when two consults race on the same hypothesis.
 """
 
@@ -54,7 +54,7 @@ class TestConcurrentConsultsAgainstPostgres:
     The end-state assertion is on ledger integrity: three attestations on
     the hypothesis (1 seed + 2 from the consults), distinct correlation
     IDs, both from the consult oracle. The retry path may or may not be
-    exercised on any given run depending on scheduling — that contract is
+    exercised on any given run depending on scheduling: that contract is
     covered by the stub and pool-level tests; this test guards correctness
     under realistic concurrency.
     """

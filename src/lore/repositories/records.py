@@ -2,7 +2,7 @@
 
 Pydantic models (frozen) that mirror the database schema and double as the
 orchestrator-visible shape for stored entities. Each record validates on
-construction — mirroring DB constraints (NOT NULL, type ranges, value
+construction, mirroring DB constraints (NOT NULL, type ranges, value
 domains) so corrupt data fails loudly at construction, not downstream.
 Hot-path reads use ``model_construct()`` to skip validation since the
 database already enforces the same constraints.
@@ -16,7 +16,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
 
 # Row dicts come from database cursors (aiosqlite Row or psycopg dict_row).
-# The actual value types are driver-determined — Any is unavoidable here.
+# The actual value types are driver-determined: Any is unavoidable here.
 type _Row = dict[str, Any]
 
 
@@ -60,7 +60,7 @@ class HypothesisResult(HypothesisRecord):
     """A hypothesis with retrieval scores from two-lane search.
 
     ``score`` is the composite RRF score in ``[0, 1]`` (Cormack et al. 2009);
-    per-lane RRF intermediates are computed in SQL but not surfaced here —
+    per-lane RRF intermediates are computed in SQL but not surfaced here:
     no caller consumes them. ``proximity`` is the raw cosine similarity in
     ``[-1, 1]`` (1 - cosine_distance), defaulting to 0.0 for rows that did
     not surface in the proximity lane. 0.0 is the "no signal" default for
@@ -69,7 +69,7 @@ class HypothesisResult(HypothesisRecord):
 
     Bounds are enforced by the SQL RRF formula (``1/(k+rank)``, k=60, so each
     lane contributes in ``(0, 1/61]``; the weighted sum stays in ``[0, 1]``)
-    and by DB CHECK constraints on the ``hypotheses`` table — not by Pydantic.
+    and by DB CHECK constraints on the ``hypotheses`` table, not by Pydantic.
     Reads use ``model_construct()`` on the hot path, so any field validator on
     this class would be dead code.
     """
@@ -79,7 +79,7 @@ class HypothesisResult(HypothesisRecord):
 
 
 class AttestationRecord(BaseModel):
-    """A stored ledger entry. Schema mirrors the ledger table — see IDEA.md §The Ledger."""
+    """A stored ledger entry. Schema mirrors the ledger table: see IDEA.md §The Ledger."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -133,7 +133,7 @@ class AttestationRecord(BaseModel):
     @field_validator("c_oracle_raw", "c_oracle_discounted", "c_herd")
     @classmethod
     def _validate_confidence_fields(cls, v: float, info: ValidationInfo) -> float:
-        # Storage bounds: [-1, 1] — the mathematical domain for a confidence scalar.
+        # Storage bounds: [-1, 1], the mathematical domain for a confidence scalar.
         # Trust discounting (P_effective < 1 for K >= 1) is the pipeline policy that
         # prevents dogmatic opinions from reaching ECBF. The storage layer only rejects
         # values outside the mathematical domain.
@@ -158,7 +158,7 @@ class RequestRecord(BaseModel):
     Structured columns mirror the ``ConsultLoreRequest`` payload plus the
     bookkeeping fields (``id``, ``oracle_id``, ``timestamp``). The
     ``hypothesis`` column is the **raw, pre-Interpreter string** the oracle
-    submitted — distinct from the ``hypotheses`` table, which stores atomic,
+    submitted, distinct from the ``hypotheses`` table, which stores atomic,
     Interpreter-decomposed propositions. Content fields are nullable at the
     storage layer; the at-least-one rule is enforced one layer up at the
     domain boundary.
@@ -195,7 +195,7 @@ class RequestRecord(BaseModel):
     @field_validator("confidence")
     @classmethod
     def _validate_confidence(cls, v: float | None) -> float | None:
-        # Storage bounds: [-1, 1] — the mathematical domain for a confidence
+        # Storage bounds: [-1, 1], the mathematical domain for a confidence
         # scalar. The math service enforces the tighter epistemic policy
         # downstream. ``None`` is the genuine "no confidence submitted" signal
         # and passes through unchanged.
@@ -208,7 +208,7 @@ class RequestRecord(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Record construction helpers — used by backend implementations, not exported.
+# Record construction helpers: used by backend implementations, not exported.
 # ---------------------------------------------------------------------------
 
 
@@ -222,7 +222,7 @@ def build_attestation_records(*, rows: Iterable[_Row]) -> list[AttestationRecord
     Postcondition: ``id`` and ``hypothesis_id`` are returned as ``str``;
     ``correlation_id`` and ``oracle_id`` pass through unchanged.
 
-    Uses model_construct() to skip validation — the database already enforces
+    Uses model_construct() to skip validation: the database already enforces
     constraints, so re-validating on read is redundant work.
 
     psycopg returns ``uuid.UUID`` for UUID columns; SQLite returns ``str``.

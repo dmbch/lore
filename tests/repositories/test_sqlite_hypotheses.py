@@ -30,7 +30,7 @@ async def sqlite_pool(sqlite_dsn_session: str) -> AsyncGenerator[SqlitePool]:
 
 
 class TestStoreFailureRollsBackViaOuterTransaction:
-    """Atomicity via parent transaction is the contract — SAVEPOINT was cosmetic."""
+    """Atomicity via parent transaction is the contract: SAVEPOINT was cosmetic."""
 
     async def test_store_failure_in_vec_insert_rolls_back_hypothesis_row_via_outer_transaction(
         self, sqlite_pool: SqlitePool, monkeypatch: pytest.MonkeyPatch
@@ -38,7 +38,7 @@ class TestStoreFailureRollsBackViaOuterTransaction:
         """Force the second INSERT to fail; assert no row visible after rollback.
 
         ``sqlite_vec.serialize_float32`` is called inline as the embedding
-        argument to the vec_hypotheses INSERT — after the hypotheses INSERT
+        argument to the vec_hypotheses INSERT, after the hypotheses INSERT
         has already run. Patching the module-level reference to raise simulates
         a mid-store Python-level failure. The store wraps the ``ValueError``
         as ``StorageError``; ``pool.transaction()`` catches it and rolls back
@@ -61,7 +61,7 @@ class TestStoreFailureRollsBackViaOuterTransaction:
                     created_at=1000,
                 )
 
-        # Lift the patch — query the raw table to prove no row survived.
+        # Lift the patch: query the raw table to prove no row survived.
         monkeypatch.undo()
         raw = sqlite_pool._conn  # pyright: ignore[reportPrivateUsage]
         cursor = await raw.execute(

@@ -1,6 +1,6 @@
 """Tests for adapter-layer config models.
 
-Covers Auth, Server, Oidc, Limits — pure construction and validation. The
+Covers Auth, Server, Oidc, Limits: pure construction and validation. The
 section→field loader mapping for these types lives in tests/config/test_sections.py.
 """
 
@@ -42,7 +42,7 @@ def test_server_config_icon_url_defaults_to_none() -> None:
 
 
 def test_server_config_rejects_legacy_auth_keys() -> None:
-    """auth_required and verify_id_token moved to [auth] — extra="forbid" rejects them."""
+    """auth_required and verify_id_token moved to [auth]: extra="forbid" rejects them."""
     with pytest.raises(ValidationError):
         ServerConfig(auth_required=False)  # pyright: ignore[reportCallIssue]
     with pytest.raises(ValidationError):
@@ -64,7 +64,7 @@ def test_oidc_config_extra_authorize_params_defaults_to_empty() -> None:
 
 
 # ---------------------------------------------------------------------------
-# LimitsConfig — character limits for pipeline payloads
+# LimitsConfig: character limits for pipeline payloads
 # ---------------------------------------------------------------------------
 
 
@@ -100,7 +100,7 @@ def test_limits_config_question_negative_raises() -> None:
 
 
 def test_limits_config_rejects_answer_key() -> None:
-    """answer is no longer a config field — extra="forbid" rejects it."""
+    """answer is no longer a config field: extra="forbid" rejects it."""
     with pytest.raises(ValidationError):
         LimitsConfig(
             question=1024,

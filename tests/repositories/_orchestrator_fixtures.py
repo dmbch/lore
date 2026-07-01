@@ -36,7 +36,7 @@ class StubCompletion:
 
 
 class FixedEmbedder:
-    """Returns a fixed non-zero vector — matches SCHEMA_DIM in conftest."""
+    """Returns a fixed non-zero vector: matches SCHEMA_DIM in conftest."""
 
     async def embed(self, text: str, *, task_type_key: str | None = None) -> list[float]:
         return [0.1] * 1024

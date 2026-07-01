@@ -1,4 +1,4 @@
-"""Binomial Opinion type — Jøsang's (b, d, u) triple.
+"""Binomial Opinion type: Jøsang's (b, d, u) triple.
 
 A Subjective Logic opinion has three components in [0, 1] satisfying
 b + d + u = 1: belief and disbelief carry evidence for and against a
@@ -20,7 +20,7 @@ from typing import NamedTuple, Self
 # IEEE 754 rounding across a few arithmetic operations.
 EPSILON = 1e-9
 
-# Prior probability assigned in the absence of evidence — Jøsang's base rate
+# Prior probability assigned in the absence of evidence: Jøsang's base rate
 # (a_x). Lore uses a single binary domain (true/false) with a symmetric prior:
 # equally likely absent evidence. This is a system constant, not per-opinion.
 # See docs/logic.md, "Base Rate as System Constant."
@@ -37,9 +37,9 @@ class Opinion(_OpinionBase):
     """A Subjective Logic binomial opinion: (b, d, u).
 
     Represents an observer's belief state about a binary proposition:
-      b (belief)      — evidence FOR the proposition being true
-      d (disbelief)   — evidence AGAINST the proposition being true
-      u (uncertainty)  — absence of evidence either way
+      b (belief)      : evidence FOR the proposition being true
+      d (disbelief)   : evidence AGAINST the proposition being true
+      u (uncertainty) : absence of evidence either way
 
     Invariant: b + d + u = 1.0. The total probability mass is always 1.
     All components are in [0, 1]. Immutable after construction.
@@ -90,15 +90,15 @@ class Opinion(_OpinionBase):
 
     @property
     def is_vacuous(self) -> bool:
-        """No evidence at all — complete ignorance (u ≈ 1)."""
+        """No evidence at all, complete ignorance (u ≈ 1)."""
         return self.u >= 1.0 - EPSILON
 
     @property
     def is_dogmatic(self) -> bool:
-        """Zero uncertainty — fully committed to belief/disbelief (u ≈ 0)."""
+        """Zero uncertainty, fully committed to belief/disbelief (u ≈ 0)."""
         return self.u <= EPSILON
 
 
 # Complete ignorance: no evidence for or against. The neutral element for
-# fusion — fusing any opinion with VACUOUS returns that opinion unchanged.
+# fusion: fusing any opinion with VACUOUS returns that opinion unchanged.
 VACUOUS = Opinion(b=0.0, d=0.0, u=1.0)

@@ -111,9 +111,9 @@ class TestOrchestratorRecordRetry:
                 oracle_id="oracle-1", request=write_request(), correlation_id="corr-retry"
             )
 
-        # The loop iterated once more than it raised — last attempt succeeded.
+        # The loop iterated once more than it raised: last attempt succeeded.
         assert pool.transaction_calls == raise_count + 1
-        # One backoff after attempt 0 — within the equal-jitter window for it.
+        # One backoff after attempt 0: within the equal-jitter window for it.
         assert len(sleeps) == 1
         lo, hi = _backoff_range(0)
         assert lo <= sleeps[0] <= hi

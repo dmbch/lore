@@ -1,4 +1,4 @@
-"""Domain vocabulary — shared types and exceptions.
+"""Domain vocabulary: shared types and exceptions.
 
 Leaf dependency in the import graph. Every layer may import from here;
 this package imports from nothing.

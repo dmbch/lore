@@ -1,4 +1,4 @@
-"""PostgreSQL connection helper — build the AsyncConnectionPool with pgvector registered.
+"""PostgreSQL connection helper: build the AsyncConnectionPool with pgvector registered.
 
 The pool ``PostgresPool`` owns the ``psycopg_pool.AsyncConnectionPool`` and
 exposes ``session()`` / ``transaction()``. This module exposes only the
@@ -21,7 +21,7 @@ async def _configure_connection(conn: psycopg.AsyncConnection[Any]) -> None:
 
     Registers pgvector and pins the isolation level to SERIALIZABLE so every
     transaction the connection opens is safe against write-skew. The
-    autocommit ``session()`` scope is unaffected — isolation level is
+    autocommit ``session()`` scope is unaffected: isolation level is
     irrelevant when each statement is its own transaction.
     """
     await register_vector_async(conn)
@@ -34,7 +34,7 @@ async def create_pool(
     """Create the AsyncConnectionPool.
 
     Schema is applied by ``run_migrations()`` in the factory before this
-    function is called — the pool assumes the tables already exist.
+    function is called: the pool assumes the tables already exist.
     """
     pool: AsyncConnectionPool[psycopg.AsyncConnection[Any]] = AsyncConnectionPool(
         dsn,
@@ -49,7 +49,7 @@ async def create_pool(
         # per ``getconn()``; on failure psycopg_pool discards the connection
         # and tries another, so callers see only working connections. This
         # is what lets the readiness probe trust ``pool.session()`` without
-        # an extra roundtrip — silent half-closes after a network partition
+        # an extra roundtrip: silent half-closes after a network partition
         # are caught at borrow time. Cost: one ``SELECT 1`` per borrow on
         # every consult call (negligible for Lore's traffic shape).
         check=AsyncConnectionPool.check_connection,

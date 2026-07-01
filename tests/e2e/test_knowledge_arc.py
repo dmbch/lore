@@ -1,5 +1,5 @@
 # pyright: reportPrivateUsage=false
-"""Knowledge arc — full pipeline e2e test.
+"""Knowledge arc: full pipeline e2e test.
 
 Four sequential consults exercise write, read, corroborate, and contradict
 paths. Semantic assertions via LLM-as-judge alongside structural DB
@@ -25,7 +25,7 @@ pytestmark = pytest.mark.e2e
 
 def _assert_invariants(row: dict[str, Any]) -> None:
     """Invariants that hold for every attestation in this scenario."""
-    # All oracles are new — trust is base rate
+    # All oracles are new. Trust is base rate.
     assert row["t_oracle"] == 0.5
     # Trust discount shrinks: |discounted| < |raw|
     assert abs(row["c_oracle_discounted"]) < abs(row["c_oracle_raw"])
@@ -155,7 +155,7 @@ async def test_contradict(system: Orchestrator) -> None:
 
 
 async def test_contradict_transfer_bounds_trust(system: Orchestrator) -> None:
-    """Contrarian oracle's trust stays near base rate — no self-referential boost."""
+    """Contrarian oracle's trust stays near base rate: no self-referential boost."""
     # Gamma makes another write to force a fresh trust computation
     await consult(
         system,

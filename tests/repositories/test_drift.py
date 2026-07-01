@@ -1,13 +1,13 @@
-"""Schema drift guard — asserts structural equivalence between SQLite and PostgreSQL.
+"""Schema drift guard: asserts structural equivalence between SQLite and PostgreSQL.
 
 Both backends must have the same relational tables with the same columns,
 primary keys, indexes, unique constraints, and foreign key constraints. Vector storage is
 implementation-specific (virtual table vs column) and excluded from the
 comparison.
 
-Requires a running PostgreSQL server — skipped when unavailable.
+Requires a running PostgreSQL server (skipped when unavailable).
 
-Uses sync connections directly for schema introspection — this is a
+Uses sync connections directly for schema introspection: this is a
 structural test, not a behavioral test of the async Protocol layer.
 """
 
@@ -41,7 +41,7 @@ _TYPE_MAP: dict[str, str] = {
 # Hypothesis-side IDs are UUIDv4-minted by ``generate_id()`` and use native UUID
 # on Postgres for storage efficiency. ``requests.id`` / ``attestations.correlation_id``
 # carry the FastMCP-tool-call ``trace_id.span_id`` composite (or a uuid4 hex
-# fallback under bare runs) — both are plain strings, not UUIDs, so the column
+# fallback under bare runs). Both are plain strings, not UUIDs, so the column
 # type is TEXT on both backends.
 _PG_TYPE_OVERRIDES: dict[tuple[str, str], str] = {
     ("hypotheses", "id"): "uuid",
@@ -112,7 +112,7 @@ def _sqlite_indexes(conn: sqlite3.Connection, table: str) -> dict[str, list[str]
 def _pg_indexes(conn: psycopg.Connection[Any], table: str) -> dict[str, list[str]]:
     """Return {index_name: [columns]} for non-constraint indexes.
 
-    Excludes indexes that back PRIMARY KEY or UNIQUE constraints — those are
+    Excludes indexes that back PRIMARY KEY or UNIQUE constraints: those are
     covered by the column-level checks.
     """
     rows = conn.execute(
@@ -212,7 +212,7 @@ def _pg_uniques(conn: psycopg.Connection[Any], table: str) -> set[tuple[str, ...
 
 
 # --- CHECK constraint introspection ---
-# We compare the columns covered by CHECK constraints AND the bounds —
+# We compare the columns covered by CHECK constraints AND the bounds:
 # both backends are expected to enforce the same numeric ranges per
 # column. SQLite renders ``CHECK (col BETWEEN x AND y)`` literally;
 # PostgreSQL normalises to ``CHECK ((col >= x) AND (col <= y))`` in
@@ -324,8 +324,8 @@ def _sqlite_check_bounds(conn: sqlite3.Connection, table: str) -> set[tuple[str,
 def _pg_check_bounds(conn: psycopg.Connection[Any], table: str) -> set[tuple[str, float, float]]:
     """Return ``(column, lower, upper)`` triples from CHECK constraints.
 
-    Uses ``pg_get_constraintdef()`` — the canonical source text PostgreSQL
-    renders for a CHECK clause. Excludes NOT NULL CHECKs by name pattern.
+    Uses ``pg_get_constraintdef()`` (the canonical source text PostgreSQL
+    renders for a CHECK clause). Excludes NOT NULL CHECKs by name pattern.
     """
     rows = conn.execute(
         "SELECT pg_get_constraintdef(c.oid)"
@@ -385,7 +385,7 @@ class TestSchemaDrift:
         for col_name, (sq_type, sq_notnull, sq_default) in sq_cols.items():
             pg_type, pg_notnull, pg_default = pg_shared[col_name]
 
-            # Check type — use override if present, otherwise standard mapping.
+            # Check type: use override if present, otherwise standard mapping.
             expected_pg = _PG_TYPE_OVERRIDES.get((table, col_name))
             if expected_pg is None:
                 expected_pg = _TYPE_MAP.get(sq_type)
@@ -456,7 +456,7 @@ class TestSchemaDrift:
     def test_shared_indexes_use_btree(
         self, drift_conns: tuple[sqlite3.Connection, psycopg.Connection[Any]], table: str
     ) -> None:
-        """Shared indexes must use btree on Postgres — SQLite has no other access method."""
+        """Shared indexes must use btree on Postgres: SQLite has no other access method."""
         _, pg = drift_conns
         shared_methods = {
             name: method
@@ -504,7 +504,7 @@ class TestSchemaDrift:
 
         Compares ``(column, lower, upper)`` triples across backends. A
         future drift like ``CHECK (c_oracle_raw BETWEEN -1.0 AND 2.0)``
-        on one backend would fail this assertion — the column-set check
+        on one backend would fail this assertion: the column-set check
         alone (the previous form) treated divergent bounds as equivalent.
         One-sided constraints (e.g. ``n_oracle_prior >= 0``) yield triples
         with ``+inf`` or ``-inf`` on the missing side, so asymmetric drift

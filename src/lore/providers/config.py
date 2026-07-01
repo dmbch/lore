@@ -1,4 +1,4 @@
-"""Model-role config types — frozen Pydantic models.
+"""Model-role config types: frozen Pydantic models.
 
 Pass-through containers by design: Lore types only the fields it consumes
 itself; every other key round-trips via ``model_dump`` and flows to LiteLLM

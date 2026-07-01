@@ -1,4 +1,4 @@
-"""Tests for CompletionProvider — Instructor-backed structured completion provider."""
+"""Tests for CompletionProvider: Instructor-backed structured completion provider."""
 
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -310,7 +310,7 @@ class TestCompletePassThroughExtras:
 
     Vendor-specific keys beyond what Lore types itself flow into the
     Instructor + LiteLLM call unchanged. The provider does not enumerate
-    them — that is the design commitment (see ``docs/architecture.md``
+    them. That is the design commitment (see ``docs/architecture.md``
     §LLM Providers).
     """
 

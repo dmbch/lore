@@ -1,4 +1,4 @@
-"""Tests for lore.telemetry — configure_telemetry + module-level start_span."""
+"""Tests for lore.telemetry: configure_telemetry + module-level start_span."""
 
 import logging
 import os
@@ -28,7 +28,7 @@ def isolated_configure() -> Iterator[None]:
 
 
 # ---------------------------------------------------------------------------
-# configure_telemetry() — provider non-replacement
+# configure_telemetry(): provider non-replacement
 # ---------------------------------------------------------------------------
 
 
@@ -59,7 +59,7 @@ def test_configure_telemetry_does_not_replace_global_meter_provider(
 def test_configure_telemetry_no_op_when_run_outside_wrapper(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Without opentelemetry-instrument, the API proxies stand in — no exception, logs flow.
+    """Without opentelemetry-instrument, the API proxies stand in: no exception, logs flow.
 
     The documented bare-launch shape (``python -m lore`` without the wrapper):
     spans are non-recording, but ``start_span`` is still usable and structlog
@@ -113,7 +113,7 @@ def test_log_level_warning_suppresses_info(
 
 
 # ---------------------------------------------------------------------------
-# FastMCP / LiteLLM logger reroute — and the OTEL_LOG_LEVEL gate
+# FastMCP / LiteLLM logger reroute, and the OTEL_LOG_LEVEL gate
 # ---------------------------------------------------------------------------
 
 
@@ -179,7 +179,7 @@ def test_configure_telemetry_preserves_explicit_litellm_span_mode(
 
 
 # ---------------------------------------------------------------------------
-# trace_id injection (requires an SDK TracerProvider — the wrapper case)
+# trace_id injection (requires an SDK TracerProvider, the wrapper case)
 # ---------------------------------------------------------------------------
 
 
@@ -267,7 +267,7 @@ def test_json_renderer_exc_info_emits_structured_traceback(
     """In JSON mode, ``log.error(..., exc_info=True)`` surfaces a structured exception.
 
     Four call sites in ``adapter/mcp.py`` rely on this contract. ``dict_tracebacks``
-    produces a JSON-queryable list of frames (exc_type, exc_value, frames) — log
+    produces a JSON-queryable list of frames (exc_type, exc_value, frames), and log
     aggregators filter by exception class natively, rather than grepping a wall-
     of-text string traceback.
     """
@@ -326,7 +326,7 @@ def test_console_renderer_exc_info_does_not_crash_formatter(
 def test_stderr_mode_with_all_loggers_does_not_touch_stdout(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Logs land on stderr only — stdout stays clean for the MCP transport."""
+    """Logs land on stderr only; stdout stays clean for the MCP transport."""
     telemetry.configure_telemetry()
 
     log = structlog.get_logger("test.stdout")
@@ -340,7 +340,7 @@ def test_stderr_mode_with_all_loggers_does_not_touch_stdout(
 
 
 # ---------------------------------------------------------------------------
-# Module-level start_span() — span creation, context binding, attributes
+# Module-level start_span(): span creation, context binding, attributes
 # ---------------------------------------------------------------------------
 #
 # start_span() resolves its tracer through otel_trace.get_tracer("lore") on

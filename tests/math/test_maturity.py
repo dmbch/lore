@@ -54,7 +54,7 @@ def test_maturity_ten_oracles_approaches_one() -> None:
 
 
 def test_maturity_k_zero_always_transparent() -> None:
-    """K=0 disables the phantom skeptic — M=1.0 regardless of oracle count."""
+    """K=0 disables the phantom skeptic: M=1.0 regardless of oracle count."""
     assert abs(compute_maturity(n_oracle_prior=0, k=0.0) - 1.0) < EPSILON
     assert abs(compute_maturity(n_oracle_prior=1, k=0.0) - 1.0) < EPSILON
     assert abs(compute_maturity(n_oracle_prior=100, k=0.0) - 1.0) < EPSILON

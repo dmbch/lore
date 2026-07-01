@@ -91,7 +91,7 @@ class TestStore:
         request_repo: RequestRepository,
         backend: BackendFixture,
     ) -> None:
-        """confidence=0.0 is a scalar, not absence — must round-trip as 0.0."""
+        """confidence=0.0 is a scalar, not absence: must round-trip as 0.0."""
         await request_repo.store(
             _make_request(id="00000000-0000-0000-0000-000000bacacd", confidence=0.0)
         )

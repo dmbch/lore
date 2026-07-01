@@ -1,4 +1,4 @@
-"""Write-path orchestrator tests — hypothesis-carrying consult calls.
+"""Write-path orchestrator tests: hypothesis-carrying consult calls.
 
 Transfer-specific tests live in ``test_transfer.py``.
 """
@@ -364,7 +364,7 @@ class TestWritePathReadThenWrite:
 
 
 class TestWritePathVacuousConfidence:
-    """Oracle submits confidence=0.0 — vacuous, not absent."""
+    """Oracle submits confidence=0.0: vacuous, not absent."""
 
     async def test_write_path_vacuous_confidence_produces_zero_raw(self) -> None:
         fixture = make_orchestrator(
@@ -492,7 +492,7 @@ class TestWritePathOrphanRequestRowOnInterpreterFailure:
     """Regression guard: a consult that fails after the request row is stored
     leaves the row in place with zero joining attestations.
 
-    This is the architecture's documented provenance contract — "storage is
+    This is the architecture's documented provenance contract: "storage is
     cheap, information is valuable". The orchestrator writes the request row
     autocommit *before* the providers session opens; an Interpreter failure
     cannot affect that row. The test locks the ordering in so future refactors
@@ -550,5 +550,5 @@ class TestWritePathOrphanRequestRowOnInterpreterFailure:
         assert stored.reasoning == "grep found grpc imports"
         assert stored.confidence == 0.7
 
-        # (b) No attestations joined to that correlation_id — provenance only.
+        # (b) No attestations joined to that correlation_id: provenance only.
         assert not any(call.correlation_id == "corr-orphan" for call in attestations.appended)

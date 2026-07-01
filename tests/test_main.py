@@ -1,4 +1,4 @@
-"""Tests for lore.__main__ — composition root."""
+"""Tests for lore.__main__: composition root."""
 
 import os
 from collections.abc import AsyncGenerator, Callable, Generator
@@ -52,8 +52,8 @@ def test_configure_loads_settings_and_wires_telemetry(bootstrap_env: None) -> No
     The positive bare-launch assertion is that the module-level ``start_span``
     yields a non-recording span (``is_valid`` is ``False``): that's the documented
     contract when the auto-config wrapper did not install an SDK ``TracerProvider``.
-    The wiring is still exercisable end-to-end — ``start_span`` enters and exits,
-    module-level structlog loggers emit — but recording/exporting is the SDK's
+    The wiring is still exercisable end-to-end: ``start_span`` enters and exits,
+    module-level structlog loggers emit, but recording/exporting is the SDK's
     job, owned by the wrapper.
     """
     from lore.__main__ import configure
@@ -72,7 +72,7 @@ def test_main_runs_amain_via_asyncio_run() -> None:
 
     # ``new=MagicMock(...)`` overrides the autouse AsyncMock for an
     # ``async def`` symbol so ``amain()`` returns the sentinel directly
-    # rather than wrapping it in a coroutine — the contract we want to
+    # rather than wrapping it in a coroutine. The contract we want to
     # pin is "main passes amain() into asyncio.run", regardless of how
     # the coroutine is constructed.
     sentinel = MagicMock(name="amain_coroutine")
@@ -242,7 +242,7 @@ def test_configure_boots_when_auth_required_with_oidc(tmp_path: Path) -> None:
 
 
 def test_configure_default_boots_without_oidc() -> None:
-    """Default [auth] required=false: no OIDC, any FASTMCP_HOST — boots without complaint."""
+    """Default [auth] required=false: no OIDC, any FASTMCP_HOST. Boots without complaint."""
     from lore.__main__ import configure
 
     env = {

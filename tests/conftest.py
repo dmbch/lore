@@ -16,7 +16,7 @@ import lore.telemetry as _telemetry
 
 def _reset_telemetry_state() -> None:
     # Note: the four library loggers ``configure_telemetry`` reroutes (fastmcp,
-    # LiteLLM, LiteLLM Proxy, LiteLLM Router) are not restored — they hold the
+    # LiteLLM, LiteLLM Proxy, LiteLLM Router) are not restored. They hold the
     # bare-stdlib state the reroute leaves them in. No current test depends on
     # the pre-reroute state across the boundary; a future test that does will
     # need to capture and restore those loggers itself.
@@ -43,8 +43,8 @@ def enforce_telemetry_reset() -> Iterator[None]:
 
     Autouse fixtures tear down after explicit ones, so this observes state
     after ``reset_telemetry`` (if requested) has cleared it. A live
-    ``_configured`` here means a test mutated globals without opting in —
-    fail loudly rather than letting the next test inherit the leak.
+    ``_configured`` here means a test mutated globals without opting in.
+    Fail loudly rather than letting the next test inherit the leak.
     """
     yield
     if _telemetry._configured:  # pyright: ignore[reportPrivateUsage]

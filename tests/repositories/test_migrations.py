@@ -1,9 +1,9 @@
 """Tests for migration runner and health check utilities.
 
-``run_migrations()`` routing tests mock the backend — we test our routing
+``run_migrations()`` routing tests mock the backend: we test our routing
 logic, not schema application. Smoke tests use real databases.
 
-``check_health()`` tests use real databases — it's our SQL.
+``check_health()`` tests use real databases: it's our SQL.
 """
 
 import sqlite3
@@ -145,7 +145,7 @@ def pg_migrations_dsn(pg_dsn_session: str) -> Iterator[str]:
     Drops all tables before the test (clean slate for migration verification),
     then restores schema afterward so the session-scoped DSN is usable by
     subsequent tests. If teardown fails (e.g. connection issue), all subsequent
-    PostgreSQL tests fail anyway — no special recovery needed.
+    PostgreSQL tests fail anyway, no special recovery needed.
     """
     drop_pg_tables(pg_dsn_session)
     yield pg_dsn_session
@@ -359,7 +359,7 @@ def pg_health_dsn(pg_dsn_session: str) -> Iterator[str]:
     """PostgreSQL DSN with health-check keys cleared.
 
     Deletes ``embedding_model``, ``embedding_dimensions``, and ``fulltext_config``
-    — migration tracking rows must survive across the session.
+    (migration tracking rows must survive across the session).
     """
     conn = psycopg.connect(pg_dsn_session, autocommit=True)
     try:

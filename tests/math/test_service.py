@@ -1,4 +1,4 @@
-"""Tests for the math service — orchestrator-facing API.
+"""Tests for the math service: orchestrator-facing API.
 
 The math service wraps the internal math primitives (Opinion, decay, fusion,
 trust discounting, maturity) and exposes them through scalar confidences and
@@ -22,7 +22,7 @@ from lore.math.service import MathService, build_math
 from tests.math.conftest import PROP_TOL
 from tests.repositories.conftest import NO_DECAY_TRUST_HL as _NO_DECAY_HL
 
-# Complete TOML with all required sections — a valid base for build_math.
+# Complete TOML with all required sections: a valid base for build_math.
 _COMPLETE_TOML = Path(__file__).parent.parent / "fixtures" / "lore_complete.toml"
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
@@ -30,7 +30,7 @@ _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
 confidence_strategy = st.floats(min_value=-1.0, max_value=1.0)
 # Discounted values are always non-dogmatic: P_effective < 1 for K >= 1.
-# Bound of 0.99 models realistic pipeline output — even with high trust
+# Bound of 0.99 models realistic pipeline output: even with high trust
 # (t_oracle ≈ 0.9) and mature hypotheses (M ≈ 0.9), P_effective ≈ 0.81.
 discounted_strategy = st.floats(min_value=-0.99, max_value=0.99)
 half_life_strategy = st.floats(min_value=0.5, max_value=1000.0)
@@ -122,7 +122,7 @@ class TestPrepareAttestationHandCalculated:
         assert abs(result.c_herd - 1.0) < EPSILON
 
     def test_contradiction_cancels(self) -> None:
-        """Equal and opposite discounted opinions cancel — herd returns to vacuous.
+        """Equal and opposite discounted opinions cancel: herd returns to vacuous.
 
         K=0, t_oracle=1.0 → P_effective=1.0, discount transparent.
         Existing: c_discounted=0.7. New: c=-0.7 → c_discounted=-0.7.
@@ -177,7 +177,7 @@ class TestPrepareAttestationHandCalculated:
 class TestPrepareAttestationPropertyBased:
     @given(c=confidence_strategy, half_life=half_life_strategy)
     def test_c_herd_in_range(self, c: float, half_life: float) -> None:
-        """Herd consensus is strictly non-dogmatic — ECBF with discounted inputs."""
+        """Herd consensus is strictly non-dogmatic: ECBF with discounted inputs."""
         svc = MathService(c_half_life=half_life, t_half_life=_NO_DECAY_HL)
         result = svc.prepare_attestation(
             confidence=c,
@@ -238,7 +238,7 @@ class TestPrepareAttestationPropertyBased:
 
     @given(c=confidence_strategy, half_life=half_life_strategy)
     def test_preserves_oracle_trust_for_ledger(self, c: float, half_life: float) -> None:
-        """Oracle trust is preserved verbatim — the ledger records what the system saw."""
+        """Oracle trust is preserved verbatim: the ledger records what the system saw."""
         svc = MathService(c_half_life=half_life, t_half_life=_NO_DECAY_HL)
         result = svc.prepare_attestation(
             confidence=c,
@@ -251,7 +251,7 @@ class TestPrepareAttestationPropertyBased:
 
     @given(c=confidence_strategy, half_life=half_life_strategy)
     def test_preserves_raw_confidence_for_audit(self, c: float, half_life: float) -> None:
-        """Raw confidence is preserved verbatim — the ledger is the audit trail."""
+        """Raw confidence is preserved verbatim: the ledger is the audit trail."""
         svc = MathService(c_half_life=half_life, t_half_life=_NO_DECAY_HL)
         result = svc.prepare_attestation(
             confidence=c,
@@ -272,7 +272,7 @@ class TestComputeConfidenceHandCalculated:
         assert abs(result) < EPSILON
 
     def test_single_undecayed(self) -> None:
-        """Single attestation at t_now — no decay, returns oracle's scalar."""
+        """Single attestation at t_now: no decay, returns oracle's scalar."""
         att = _make_existing(0.7, timestamp=1000)
         svc = MathService(c_half_life=_FAST_DECAY_HL, t_half_life=_NO_DECAY_HL)
         result = svc.compute_confidence(attestations=[att], t_now=1000)
@@ -290,7 +290,7 @@ class TestComputeConfidenceHandCalculated:
     def test_future_attestation_treated_as_undecayed(self) -> None:
         """An attestation with timestamp after t_now is clamped to zero elapsed time.
 
-        Clock skew or replayed attestations must not amplify belief — the decay
+        Clock skew or replayed attestations must not amplify belief: the decay
         function would invert (e^(+lambda*t)) without the clamp.
         """
         att = _make_existing(0.8, timestamp=2000)
@@ -303,13 +303,13 @@ class TestComputeConfidenceHandCalculated:
 class TestComputeConfidencePropertyBased:
     """Mathematical guarantees for compute_confidence.
 
-    These tests use discounted confidence values (non-dogmatic by construction —
+    These tests use discounted confidence values (non-dogmatic by construction:
     trust discounting ensures |c_oracle_discounted| < 1 for K >= 1).
     """
 
     @given(c=discounted_strategy, half_life=half_life_strategy)
     def test_result_in_range(self, c: float, half_life: float) -> None:
-        """Output is strictly non-dogmatic — ECBF with non-dogmatic inputs."""
+        """Output is strictly non-dogmatic: ECBF with non-dogmatic inputs."""
         att = _make_existing(c, timestamp=1000)
         svc = MathService(c_half_life=half_life, t_half_life=_NO_DECAY_HL)
         result = svc.compute_confidence(attestations=[att], t_now=1000)
@@ -541,7 +541,7 @@ class TestComputeOracleTrust:
     def test_compute_oracle_trust_contrarian_archetype(self) -> None:
         """docs/logic.md Example 3: the Contrarian earns ~0.489.
 
-        Two rows attesting against the herd — one fresh (info=1, signal
+        Two rows attesting against the herd, one fresh (info=1, signal
         passes), one moderate (info=0.5, signal softened toward 0.5).
         """
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
@@ -831,7 +831,7 @@ class TestComputeOracleTrust:
 
         baseline = svc.compute_oracle_trust(rows=rows, t_now=1000)
         assert svc.compute_oracle_trust(rows=list(reversed(rows)), t_now=1000) == baseline
-        # An explicit interleave — small/large magnitudes alternated so a
+        # An explicit interleave: small/large magnitudes alternated so a
         # naive left-fold lands on a different intermediate than baseline
         # or reverse.
         shuffled = [rows[1], rows[0], rows[5], rows[2], rows[7], rows[4], rows[3], rows[6]]

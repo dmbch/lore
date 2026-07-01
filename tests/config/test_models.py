@@ -1,4 +1,4 @@
-"""Tests for lore.config loader — vendor defaults, deep merge, validation.
+"""Tests for lore.config loader: vendor defaults, deep merge, validation.
 
 Pure model-construction tests for the model-role configs live in
 ``tests/providers/test_config.py`` (the providers layer owns those types).
@@ -16,13 +16,13 @@ from lore.config.loader import (
     _load_bundled_toml,  # pyright: ignore[reportPrivateUsage]
 )
 
-# Minimal valid env for most tests — DATABASE_URL is the only DSN env var.
+# Minimal valid env for most tests. DATABASE_URL is the only DSN env var.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
 # Path to the test TOML fixture.
 _TOML_PATH = Path(__file__).parent.parent / "fixtures" / "lore.toml"
 
-# A nonexistent path — forces vendor detection or error.
+# A nonexistent path: forces vendor detection or error.
 _NO_TOML = Path(__file__).parent.parent / "fixtures" / "nonexistent.toml"
 
 # Complete TOML with all three models + dimensions.
@@ -45,7 +45,7 @@ def test_model_config_carries_litellm_params() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Embedding config — dimensions from TOML
+# Embedding config: dimensions from TOML
 # ---------------------------------------------------------------------------
 
 
@@ -103,7 +103,7 @@ def test_vendor_toml_unknown_raises() -> None:
 
 
 def test_partial_user_toml_missing_fast_raises() -> None:
-    """User provides [embedding] and [reasoning] but not [fast] — error."""
+    """User provides [embedding] and [reasoning] but not [fast]: error."""
     partial = Path(__file__).parent.parent / "fixtures" / "lore_missing_fast.toml"
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
@@ -153,12 +153,12 @@ def test_build_model_missing_model_key_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Deep merge — trust partial override
+# Deep merge: trust partial override
 # ---------------------------------------------------------------------------
 
 
 def test_user_toml_epistemics_override_merges_with_defaults() -> None:
-    """User overrides the epistemics section — rest comes from base defaults."""
+    """User overrides the epistemics section. Rest comes from base defaults."""
     toml_path = Path(__file__).parent.parent / "fixtures" / "lore_trust_partial.toml"
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=toml_path)

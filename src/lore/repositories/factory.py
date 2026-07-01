@@ -1,4 +1,4 @@
-"""Repository factory — settings to RepositoryPool.
+"""Repository factory: settings to RepositoryPool.
 
 Bootstrap infrastructure, not a layer. ``connect()`` opens the backend
 named by ``settings.dsn`` and returns a RepositoryPool; the pool creates
@@ -60,7 +60,7 @@ def run_migrations(*, settings: LoreSettings, embedding_dim: int) -> None:
     ``int`` under ``strict=True``. The migration runner trusts those
     guarantees.
 
-    Sync — runs at bootstrap before the async event loop starts.
+    Sync: runs at bootstrap before the async event loop starts.
     """
     params: dict[str, int | str] = {
         "embedding_dim": embedding_dim,
@@ -77,11 +77,11 @@ def check_health(*, settings: LoreSettings, embedding_dim: int) -> None:
 
     On first call, stores ``embedding_model``, ``embedding_dim``, and
     ``fulltext_config``. On subsequent calls, refuses to start if any of
-    these differ from the recorded value — the vector space and FTS index
+    these differ from the recorded value: the vector space and FTS index
     are bound to those choices at schema creation, and silent drift would
     produce wrong retrieval results.
 
-    Sync — runs at bootstrap before the async event loop starts.
+    Sync: runs at bootstrap before the async event loop starts.
     """
     fulltext_config = _fulltext_config(settings)
     if is_postgres(settings.dsn):
@@ -109,7 +109,7 @@ def make_probe(
 
     The probe acquires a connection from ``pool`` via ``session()`` and
     immediately releases it. For Postgres, the pool's ``check`` callback
-    validates the connection on borrow — so the probe answers "can
+    validates the connection on borrow, so the probe answers "can
     consult get a working connection right now?" without an extra
     roundtrip. For SQLite, the probe verifies that a per-connection lock
     against the database file can be acquired.
@@ -135,7 +135,7 @@ async def connect(settings: LoreSettings) -> RepositoryPool:
     """Open a connection pool for the backend identified by ``settings.dsn``.
 
     Callers must run ``run_migrations(settings=..., embedding_dim=...)`` before
-    the first ``connect()`` call — migrations are a one-time bootstrap step,
+    the first ``connect()`` call: migrations are a one-time bootstrap step,
     not a per-pool concern.
 
     For PostgreSQL DSNs the pool is sized from ``settings.postgres``; for

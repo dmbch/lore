@@ -1,9 +1,9 @@
 # pyright: reportPrivateUsage=false
-"""Decay — prove confidence decreases over real elapsed time.
+"""Decay: prove confidence decreases over real elapsed time.
 
 Writes a hypothesis via the full pipeline, waits for real time to pass,
 then verifies that compute_confidence() produces decayed values. The stored
-c_herd on the ledger is immutable — decay is computed at read time.
+c_herd on the ledger is immutable. Decay is computed at read time.
 """
 
 import asyncio

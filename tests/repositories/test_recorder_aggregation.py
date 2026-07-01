@@ -37,7 +37,7 @@ async def test_recorder_passes_full_prior_history_to_prepare_attestation(
     with two priors feeds ``(prior_A, prior_B)`` into ``prepare_attestation``.
 
     The persisted row equals what ``MathService.prepare_attestation``
-    computes given the full prior set — proving the Recorder doesn't drop
+    computes given the full prior set, proving the Recorder doesn't drop
     priors, doesn't pass only the latest row, and roundtrips through
     persistence without precision loss. The ECBF algebra itself is
     verified in ``tests/math/``; this test pins the integration wiring.
@@ -45,7 +45,7 @@ async def test_recorder_passes_full_prior_history_to_prepare_attestation(
     ``t_now`` is captured from the persisted row's ``timestamp`` (the
     recorder writes ``timestamp=self._t_now``), so the expected and actual
     derivations share the orchestrator's real clock. ``t_oracle = 0.5`` is
-    the empty-rows branch in ``compute_oracle_trust`` — oracle-C has no
+    the empty-rows branch in ``compute_oracle_trust``: oracle-C has no
     prior attestations to scan. ``n_oracle_prior = 2`` since oracle-A and
     oracle-B are both distinct from oracle-C.
     """
@@ -57,7 +57,7 @@ async def test_recorder_passes_full_prior_history_to_prepare_attestation(
         content="an existing claim", embedding=[0.1] * 1024, created_at=0
     )
 
-    # The seeded ``c_herd`` columns are storage defaults — the contract under
+    # The seeded ``c_herd`` columns are storage defaults: the contract under
     # test is what the Recorder computes from ``c_oracle_discounted`` and
     # ``timestamp``, not what the prior ``c_herd`` fields say.
     await seed_request(backend.requests, correlation_id=prior_a_id, timestamp=1000)

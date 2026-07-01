@@ -1,4 +1,4 @@
-"""Retrieval-stage tests — concurrency contract for the session-bound bundle.
+"""Retrieval-stage tests: concurrency contract for the session-bound bundle.
 
 The repository pool yields a session-bound ``Repositories`` bundle for the
 search stage; ``hypotheses.search`` runs against the connection underlying
@@ -6,10 +6,10 @@ that session. psycopg's ``AsyncConnection`` is documented as not safe for
 concurrent use across tasks; ``asyncio.gather`` over per-source ``search``
 calls violates that contract. SQLite hides the hazard (aiosqlite serializes
 through one worker thread); current psycopg versions happen to serialize
-via an internal connection lock — the orchestrator must not lean on that.
+via an internal connection lock: the orchestrator must not lean on that.
 
 The test is contract-shaped: with multiple sources, ``search`` calls
-must be serial — no two overlap on the wall clock — so that a future
+must be serial (no two overlap on the wall clock) so that a future
 psycopg version dropping its internal lock cannot regress the system.
 """
 
@@ -48,7 +48,7 @@ from lore.repositories import (
 )
 
 # ---------------------------------------------------------------------------
-# Stubs — exercise the orchestrator's concurrency contract, not the backend
+# Stubs: exercise the orchestrator's concurrency contract, not the backend
 # ---------------------------------------------------------------------------
 
 
@@ -79,7 +79,7 @@ class _OverlapTrackingHypotheses:
     """Records entry/exit timestamps per ``search`` call.
 
     A short ``asyncio.sleep`` inside ``search`` opens a window in which
-    concurrent callers — if any — overlap on the wall clock. Tests inspect
+    concurrent callers (if any) overlap on the wall clock. Tests inspect
     the recorded windows to detect contract violations.
     """
 
@@ -161,7 +161,7 @@ class _StubPool:
         return None
 
 
-# Static Protocol verification — catches signature drift at type-check time.
+# Static Protocol verification: catches signature drift at type-check time.
 _: type[RepositoryPool] = _StubPool
 
 
@@ -257,7 +257,7 @@ class TestRetrieveDoesNotShareConnectionConcurrently:
     """The search stage must serialize ``hypotheses.search`` calls.
 
     All per-source ``search`` calls run inside the same ``pool.session()``
-    scope — they share the connection bound to that session. Concurrent
+    scope: they share the connection bound to that session. Concurrent
     ``search`` invocations on that connection are unsafe by psycopg's
     contract, even when current psycopg versions happen to serialize via
     an internal lock. The orchestrator owns the contract; do not lean on
@@ -285,7 +285,7 @@ class TestRetrieveDoesNotShareConnectionConcurrently:
         )
 
     async def test_retrieve_with_single_source_completes(self) -> None:
-        """Sanity control: one source means one search call — no concurrency hazard."""
+        """Sanity control: one source means one search call, no concurrency hazard."""
         hypotheses = _OverlapTrackingHypotheses()
         orchestrator = _make_orchestrator(propositions=[], hypotheses=hypotheses)
 

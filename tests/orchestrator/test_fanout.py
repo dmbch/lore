@@ -1,4 +1,4 @@
-"""Fan-out and deduplication tests — multiple search calls + retrieval shape."""
+"""Fan-out and deduplication tests: multiple search calls + retrieval shape."""
 
 import json
 from collections.abc import Sequence

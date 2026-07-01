@@ -1,4 +1,4 @@
-"""Orchestrator package — re-exports for stable public API."""
+"""Orchestrator package: re-exports for stable public API."""
 
 from .orchestrator import Orchestrator
 

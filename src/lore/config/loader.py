@@ -1,4 +1,4 @@
-"""Config loader — settings assembly.
+"""Config loader: settings assembly.
 
 Thin orchestrator: load base defaults → overlay vendor → overlay user TOML
 → validate → done. All types live in ``lore.config.types``.
@@ -30,7 +30,7 @@ def redact_dsn(dsn: str) -> str:
     Cheap operator-facing redaction for diagnostic logs. Postgres DSNs
     (``postgresql://user:pass@host:5432/db``) come back without
     credentials; SQLite paths (``sqlite:////tmp/lore.db``) round-trip
-    unchanged. Query strings and fragments are dropped — they should
+    unchanged. Query strings and fragments are dropped, as they should
     never carry secrets, but the redaction is defensive.
     """
     parts = urlsplit(dsn)
@@ -138,7 +138,7 @@ def _resolve_env() -> tuple[str, OidcConfig | None, str | None]:
     convention). The scheme drives backend dispatch downstream via
     ``is_postgres`` / ``is_sqlite``. The OIDC ↔ BASE_URL pairing invariant
     lives on the ``LoreSettings`` cross-section validator, which fires after
-    ``model_validate`` — this function only parses.
+    ``model_validate``; this function only parses.
     """
     dsn = os.environ.get("DATABASE_URL")
     if not dsn or not dsn.strip():
@@ -178,8 +178,8 @@ def load_settings(
     """Load and validate all settings from env + TOML + vendor detection.
 
     Loading order:
-    1. Bundled ``lore.toml`` — behavioral defaults (epistemics, limits, retrieval)
-    2. Detect vendor → load vendor defaults (stripped of ``api_key``) — model defaults
+    1. Bundled ``lore.toml``: behavioral defaults (epistemics, limits, retrieval)
+    2. Detect vendor → load vendor defaults (stripped of ``api_key``): model defaults
     3. Deep merge vendor over bundled → proto-config
     4. Discover user ``lore.toml`` → deep merge user over proto-config
     5. Resolve ``bundled:`` prompt references to concrete paths

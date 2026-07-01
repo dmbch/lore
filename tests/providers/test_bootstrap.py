@@ -1,4 +1,4 @@
-"""Tests for the provider bootstrap factories — dimension resolution and wiring."""
+"""Tests for the provider bootstrap factories: dimension resolution and wiring."""
 
 import os
 from pathlib import Path
@@ -11,17 +11,17 @@ from lore.domain import InferenceError
 from lore.providers import CompletionProvider, EmbeddingModelConfig, EmbeddingProvider
 from lore.providers.bootstrap import build_providers, resolve_dimensions
 
-# Complete TOML with all three model roles — a valid base for model_copy.
+# Complete TOML with all three model roles: a valid base for model_copy.
 _COMPLETE_TOML = Path(__file__).parent.parent / "fixtures" / "lore_complete.toml"
 
-# Minimal valid env for load_settings — DATABASE_URL is the only required DSN.
+# Minimal valid env for load_settings. DATABASE_URL is the only required DSN.
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
 
 def _settings(*, model: str, dimensions: int | None) -> LoreSettings:
     """Valid base settings with only the embedding role varied.
 
-    ``model_copy(update=...)`` deliberately bypasses validators — the base
+    ``model_copy(update=...)`` deliberately bypasses validators. The base
     loaded from the complete fixture is already valid, and we only swap the
     embedding role to carry the per-test ``model``/``dimensions``.
     """
@@ -88,7 +88,7 @@ class TestModelUnknown:
 
     def test_resolve_dimensions_bare_exception_raises_inference_error(self) -> None:
         # LiteLLM raises a bare Exception for unmapped models, not
-        # ValueError/KeyError — the wrapper must surface a typed domain error.
+        # ValueError/KeyError: the wrapper must surface a typed domain error.
         with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.side_effect = Exception("Model X isn't mapped yet")
 

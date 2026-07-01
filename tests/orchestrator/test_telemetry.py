@@ -1,4 +1,4 @@
-"""Instrumentation tests — spans, attributes, structured logs."""
+"""Instrumentation tests: spans, attributes, structured logs."""
 
 from collections.abc import Sequence
 

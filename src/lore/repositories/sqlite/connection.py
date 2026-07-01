@@ -1,4 +1,4 @@
-"""SQLite connection helper — open and configure with sqlite-vec loaded.
+"""SQLite connection helper: open and configure with sqlite-vec loaded.
 
 The pool ``SqlitePool`` owns the single ``aiosqlite.Connection`` plus an
 ``asyncio.Lock`` and exposes ``session()`` / ``transaction()``. This module
@@ -16,7 +16,7 @@ async def connect(path: str) -> aiosqlite.Connection:
 
     Uses autocommit mode (isolation_level=None). Transaction boundaries
     are managed by ``SqlitePool.transaction()`` via explicit BEGIN / COMMIT
-    / ROLLBACK — repositories themselves never commit.
+    / ROLLBACK: repositories themselves never commit.
 
     Sets row_factory to sqlite3.Row so queries return named-column access,
     eliminating fragile positional indexing in repository implementations.

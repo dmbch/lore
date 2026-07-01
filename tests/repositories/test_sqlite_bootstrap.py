@@ -1,4 +1,4 @@
-"""Tests for the SQLite sync bootstrap helper — WAL journal mode.
+"""Tests for the SQLite sync bootstrap helper: WAL journal mode.
 
 The async runtime ``connect()`` already sets ``PRAGMA journal_mode=WAL``;
 the sync ``_connect()`` used by ``run_migrations()`` and ``check_health()``

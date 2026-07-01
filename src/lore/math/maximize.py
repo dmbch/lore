@@ -1,4 +1,4 @@
-"""Uncertainty maximization — Jøsang 2016, Eq. 3.27.
+"""Uncertainty maximization: Jøsang 2016, Eq. 3.27.
 
 Pushes uncertainty to its theoretical maximum while preserving the
 projected probability P = b + a·u. The result is an *epistemic* opinion:

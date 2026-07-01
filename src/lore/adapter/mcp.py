@@ -1,4 +1,4 @@
-"""FastMCP adapter — tool registration and lifespan."""
+"""FastMCP adapter: tool registration and lifespan."""
 
 import importlib.resources
 from base64 import b64encode
@@ -32,7 +32,7 @@ log = structlog.get_logger(__name__)
 _TOOL_NAME = "consult"
 
 
-# Parameter descriptions — MCP tool schema guidance for the client LLM.
+# Parameter descriptions: MCP tool schema guidance for the client LLM.
 _PARAM_DESCRIPTIONS = {
     "question": (
         "What do you want to know? Searches the shared knowledge base."
@@ -70,7 +70,7 @@ def _build_auth(settings: LoreSettings) -> OIDCProxy | None:
     return OIDCProxy(
         config_url=settings.oidc.discovery_url,
         client_id=settings.oidc.client_id,
-        # Unwrap the SecretStr exactly once — at the OIDC client boundary.
+        # Unwrap the SecretStr exactly once, at the OIDC client boundary.
         # Every other code path sees the masked repr.
         client_secret=settings.oidc.client_secret.get_secret_value(),
         base_url=settings.base_url,
@@ -93,7 +93,7 @@ def create_server(
     ``health_probe`` is the readiness probe the ``/ready`` route awaits.
     The composition root composes it (``repositories.make_probe(pool)``)
     so the adapter never imports the repository layer directly. When
-    ``None``, ``/ready`` returns 200 unconditionally — the right shape
+    ``None``, ``/ready`` returns 200 unconditionally: the right shape
     for stdio mode (no HTTP transport) and for tests that don't exercise
     readiness.
     """
@@ -126,7 +126,7 @@ async def serve(server: FastMCP[Orchestrator]) -> None:
     Banner is always off. For HTTP transport, uvicorn's ``dictConfig`` is
     suppressed (``log_config=None``) so its loggers propagate to the root
     structlog handler instead of installing their own. Stdio transport
-    has no uvicorn — passing ``uvicorn_config`` is rejected by FastMCP's
+    has no uvicorn: passing ``uvicorn_config`` is rejected by FastMCP's
     stdio dispatch, so the kwarg is gated on transport.
 
     The transport read goes through ``fastmcp.settings`` rather than the env
@@ -146,7 +146,7 @@ def _register_healthchecks(
 ) -> None:
     """Register ``/health`` (liveness) and ``/ready`` (readiness) routes.
 
-    ``/health`` is a no-op 200 — the load balancer learns the process is
+    ``/health`` is a no-op 200: the load balancer learns the process is
     responsive. ``/ready`` awaits the injected probe when present;
     ``StorageError`` becomes 503 with a scrubbed body, and any other
     exception collapses to the same scrubbed 503 (full exception + stack
@@ -171,8 +171,8 @@ def _register_healthchecks(
             log.warning("ready.unavailable", error_message=str(exc))
             return JSONResponse({"status": "unavailable"}, status_code=503)
         except Exception as exc:
-            # Anything unexpected — bug in the probe closure, vendor SDK leak,
-            # asyncio internals — collapses to the same scrubbed 503 so the
+            # Anything unexpected: bug in the probe closure, vendor SDK leak,
+            # asyncio internals: collapses to the same scrubbed 503 so the
             # wire posture stays uniform. Full diagnostics live in the log.
             log.error(
                 "ready.error.internal",
@@ -217,7 +217,7 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
         ] = None,
     ) -> ConsultLoreResponse:
         # trace_id of the active span gives one ID across the client error,
-        # the APM trace, and the ledger row — same value the structlog
+        # the APM trace, and the ledger row: the same value the structlog
         # processor already injects into every log event, so we add no
         # extra log-line bytes. Bare runs (no SDK TracerProvider) produce
         # a non-recording span with INVALID context; fall back to a uuid4
@@ -234,12 +234,12 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
             )
             token = get_access_token()
             if token:
-                # Claims pass through verbatim — no whitespace stripping, no
+                # Claims pass through verbatim: no whitespace stripping, no
                 # normalization. Operators are responsible for IdP ``sub``
                 # hygiene; the ledger treats byte-distinct strings as distinct
                 # oracles. The only shape rules here are the ones that would
                 # either corrupt the data path (missing / mistyped / empty) or
-                # bypass epistemic safety (synthetic-namespace squat — an IdP
+                # bypass epistemic safety (synthetic-namespace squat: an IdP
                 # issuing ``_transfer`` would write full-credibility attestations).
                 claim = token.claims.get("sub")
                 if claim is None:
@@ -259,14 +259,14 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
                 oracle_id = LOCAL_ORACLE
 
             # FastMCP types lifespan_context as dict[str, Any] but returns the
-            # lifespan-yielded value directly — our Orchestrator instance.
+            # lifespan-yielded value directly: our Orchestrator instance.
             orchestrator = cast(Orchestrator, ctx.lifespan_context)
             return await orchestrator.consult(
                 oracle_id=oracle_id, request=request, correlation_id=correlation_id
             )
         except AuthenticationError as exc:
             # Authentication errors collapse to a constant client-facing
-            # message — the synthetic-namespace refusal and the missing/
+            # message: the synthetic-namespace refusal and the missing/
             # mistyped ``sub`` claims are operator diagnostics, not contract
             # surface. Full exception + stack in the log under correlation_id.
             log.error(
@@ -281,7 +281,7 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
         except ValidationError as exc:
             # Pydantic's str() includes `input_value=...`, so surfacing the
             # message verbatim would echo the client's payload back. Scrub
-            # with a 4xx-shaped signal — the client learns "your input was
+            # with a 4xx-shaped signal: the client learns "your input was
             # invalid" without learning what we saw. Full exception + stack
             # in the log under correlation_id.
             log.error(

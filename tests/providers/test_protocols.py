@@ -1,7 +1,7 @@
 """Tests for provider Protocols, error types, and session scope.
 
 Dummy implementations verify Protocol shape compiles under pyright.
-InferenceError mirrors StorageError in repositories — single base
+InferenceError mirrors StorageError in repositories: single base
 exception for the provider layer.
 """
 
@@ -18,7 +18,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 # ---------------------------------------------------------------------------
-# Dummy implementations — structural subtyping verification
+# Dummy implementations: structural subtyping verification
 # ---------------------------------------------------------------------------
 
 
@@ -99,7 +99,7 @@ class TestInferenceError:
 
 
 # ---------------------------------------------------------------------------
-# Providers session — memoized embedding scope
+# Providers session: memoized embedding scope
 # ---------------------------------------------------------------------------
 
 

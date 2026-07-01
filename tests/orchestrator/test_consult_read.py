@@ -1,4 +1,4 @@
-"""Read-path orchestrator tests — question-only consult calls."""
+"""Read-path orchestrator tests: question-only consult calls."""
 
 import json
 
@@ -131,7 +131,7 @@ class TestOracleIdLiteralPassthrough:
 
     The README documents: "the ledger and provenance tables always store the
     raw value; redaction applies only to telemetry export." Hashing oracle_id
-    in flight would silently violate this contract — the kind of mistake the
+    in flight would silently violate this contract, the kind of mistake the
     deleted ``OracleIdentity.fingerprint`` pairing was originally meant to
     prevent. The byte-distinct marker below is what catches a future
     transformation: it survives only under literal passthrough.

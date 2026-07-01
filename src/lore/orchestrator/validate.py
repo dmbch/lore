@@ -1,4 +1,4 @@
-"""Validate stage — trust-boundary check on the Archivist's resolutions.
+"""Validate stage: trust-boundary check on the Archivist's resolutions.
 
 The epistemics absorb misclassified relationships (a paraphrase labelled novel,
 an orthogonal claim labelled contradiction) via trust discounting, ECBF, and

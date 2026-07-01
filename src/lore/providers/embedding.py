@@ -1,4 +1,4 @@
-"""LiteLLM embedding provider — vendor-neutral text embedding."""
+"""LiteLLM embedding provider: vendor-neutral text embedding."""
 
 from typing import Any
 
@@ -25,7 +25,7 @@ async def _call_litellm_embedding(
     ``EmbeddingModelConfig`` and ``docs/architecture.md`` §LLM Providers).
     The return is ``EmbeddingResponse``; the precise shape Lore consumes
     (``data: list[Embedding]``, ``Embedding.embedding: list[float]``)
-    comes from the local stub overlay at ``typings/litellm`` — LiteLLM
+    comes from the local stub overlay at ``typings/litellm``: LiteLLM
     ships ``py.typed`` but its runtime annotations on these fields are
     loose. Tests monkey-patch the module's ``litellm`` symbol via
     per-call attribute lookup.

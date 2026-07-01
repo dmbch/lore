@@ -1,4 +1,4 @@
-"""Tests for CachedEmbedder — request-scoped embedding cache.
+"""Tests for CachedEmbedder: request-scoped embedding cache.
 
 The cache must single-flight concurrent calls with identical keys so
 duplicate ``contributes`` strings in a consult batch trigger one inner
@@ -21,7 +21,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class _CountingInner:
-    """Minimal Embedder — no ``resolve_task_type``, deterministic outputs.
+    """Minimal Embedder, no ``resolve_task_type``, deterministic outputs.
 
     Sleeps briefly inside ``embed`` so concurrent ``gather`` calls
     interleave at the await point, which is where the task-map
@@ -145,10 +145,10 @@ class TestCachedEmbedderTaskTypeResolution:
         assert inner.calls == 2
 
     async def test_inner_without_resolve_caches_per_key(self) -> None:
-        """Inner without ``resolve_task_type`` — semantic key is the cache key directly."""
+        """Inner without ``resolve_task_type``: semantic key is the cache key directly."""
 
         class _BareInner:
-            """Minimal Embedder — no ``resolve_task_type`` attribute."""
+            """Minimal Embedder, no ``resolve_task_type`` attribute."""
 
             def __init__(self) -> None:
                 self.calls: list[TaskTypeKey | None] = []
@@ -174,7 +174,7 @@ class TestCachedEmbedderTaskTypeResolution:
 
 
 class _NoopCompleter:
-    """Minimal Completer — never called; only satisfies Protocol shape."""
+    """Minimal Completer: never called; only satisfies Protocol shape."""
 
     async def complete(self, *, response_model: type[T], system: str, user: str) -> T:
         del response_model, system, user
@@ -189,7 +189,7 @@ class TestProvidersSessionLifetime:
 
         Construction-time contract: ``Providers.session`` builds a new
         ``CachedEmbedder(self.embedder)`` on every entry, so per-request
-        cache state never leaks across requests. Regression guard — a
+        cache state never leaks across requests. Regression guard: a
         refactor that memoizes the wrapper would silently turn the cache
         into a process-wide singleton and this assertion would catch it.
         """
