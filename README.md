@@ -33,7 +33,7 @@ docker run -i --rm \
   ghcr.io/dmbch/lore:latest
 ```
 
-`-i` keeps stdin open for the stdio transport; point your MCP client (Claude Desktop, the MCP Inspector, …) at that `docker run` command. A vendor API key must be present at startup so Lore can resolve its embedding model; no network call is made at boot. To run from source instead, see [Development](#development).
+Point your MCP client (Claude Desktop, the MCP Inspector, …) at that `docker run` command. A vendor API key must be present at startup so Lore can resolve its embedding model — though no network call is made at boot; resolution is a local cost-map lookup. To run from source instead, see [Development](#development).
 
 ### HTTP, multi-user
 
@@ -98,8 +98,6 @@ docker run … \
   ghcr.io/dmbch/lore:latest
 ```
 
-Use `--mount`, not `-v`, for a single file: if the source path is missing, `-v` silently creates a directory there and your config vanishes. The field reference is under [Configuration](#configuration).
-
 ### Custom image
 
 To bake in your own `lore.toml` or prompt templates, build a child image from the published one and point `[prompts]` at the copied files.
@@ -157,6 +155,28 @@ Lore auto-detects the LLM vendor from API keys in the environment; first lexical
 </details>
 
 ### Behavioral config (`lore.toml`)
+
+A minimal drop-in. Every field has a bundled default, so override only what you tune to your field; the tables below are the full reference.
+
+```toml
+# lore.toml
+
+[epistemics]
+attestation_half_life = "90d"   # how fast evidence ages — shorter for fast-moving fields
+trust_half_life = "90d"         # how fast oracle track records age (independent of the above)
+maturity_k = 1.0                # oracle diversity before the trust discount lifts; 0.5 for small herds
+
+[retrieval]
+proximity = 0.5                 # vector-similarity lane weight (proximity + authority must sum to 1.0)
+authority = 0.5                 # full-text lane weight
+limit = 10                      # results returned after scoring
+
+[auth]
+required = false                # set true to refuse open-facing HTTP startup without OIDC_URL
+
+[sqlite]
+fulltext_config = "porter unicode61"   # English stemming; use "unicode61" for non-English deployments
+```
 
 <details>
 <summary>Model roles — <code>[embedding]</code>, <code>[fast]</code>, <code>[reasoning]</code></summary>
@@ -266,10 +286,12 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 | `context` | int | `4096` | Max characters for the context field |
 | `reasoning` | int | `4096` | Max characters for the reasoning field |
 
-**`[prompts]`** — template paths; bundled defaults unless overridden
+**`[prompts]`** — template paths; bundled defaults unless overridden. Each value is a filesystem path or a `bundled:pkg/name.md` reference.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `narrative` | path or omit | omitted | Optional preamble prepended to the Scribe prompt (house voice, mission) |
+| `glossary` | path or omit | omitted | Optional glossary prepended to the Scribe prompt (domain jargon) |
 | `scribe` | path | bundled | Scribe system prompt |
 | `consult` | path | bundled | Consult tool description |
 | `interpreter` | path | bundled | Interpreter system prompt |
