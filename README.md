@@ -465,7 +465,7 @@ Five layers, hexagonal. See [docs/architecture.md](docs/architecture.md) for the
 
 ## Contributing
 
-MIT licensed. Open source, but this project doesn't currently solicit or accept pull requests. Issues are welcome.
+MIT licensed. Open source, but this project doesn't currently solicit or accept pull requests. Issues are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for how to help, and the [Code of Conduct](CODE_OF_CONDUCT.md) for the ground rules. Found a vulnerability? Don't open a public issue; follow the [security policy](SECURITY.md).
 
 This is an experiment: open source in the age of AI.
 
