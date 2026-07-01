@@ -88,6 +88,62 @@ Oracle identity comes from the IdP `sub` claim. Without `OIDC_URL`, every reques
 
 Query parameters on `OIDC_URL` (e.g. `?hd=example.com`) are forwarded verbatim to the upstream authorize endpoint.
 
+### Reference deployment (Fly.io)
+
+The dogfooding deployment runs on [Fly.io](https://fly.io): one machine, HTTP transport with OIDC, SQLite on a persistent volume, Gemini for inference, OTLP export to a collector. It is one declarative `fly.toml` plus a handful of secrets — non-secret topology in `[env]`, everything with a credential in `fly secrets`.
+
+```toml
+# fly.toml
+app = 'lore'
+primary_region = 'fra'
+
+[build]
+  image = 'ghcr.io/dmbch/lore:0.2.0'
+
+[env]
+  BASE_URL = "https://lore.fly.dev"
+  FASTMCP_HOST = "0.0.0.0"
+  FASTMCP_TRANSPORT = "http"
+  OTEL_EXPORTER_OTLP_ENDPOINT = "https://otlp.example.com/otlp"
+
+[mounts]
+  source = "lore_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "1gb"
+```
+
+The rest are set as Fly secrets rather than `[env]` — the database DSN, the vendor key, the OIDC credentials, and the OTLP auth token:
+
+```bash
+fly secrets set \
+  DATABASE_URL="sqlite:////data/lore.db" \
+  GEMINI_API_KEY="…" \
+  OIDC_URL="https://client_id:client_secret@accounts.google.com/.well-known/openid-configuration?hd=example.com" \
+  OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic%20…"
+
+fly volumes create lore_data --region fra --size 1
+fly deploy
+```
+
+A few Lore-specific notes:
+
+- **`FASTMCP_HOST = "0.0.0.0"` is mandatory here.** Lore inherits FastMCP's loopback default; leave it and Fly's proxy can't reach the machine, so every request times out.
+- **`BASE_URL` and `OIDC_URL` are a validated pair** — Lore refuses to start with one but not the other. `BASE_URL` is the public origin the IdP redirects back to; `OIDC_URL` points at the IdP's discovery document with the client credentials in the userinfo. The `?hd=example.com` query rides through to the authorize endpoint, restricting sign-in to a single Google Workspace domain. Drop both to run behind a proxy that authenticates upstream — oracle identity then falls back to `_local`.
+- **`OTEL_EXPORTER_OTLP_HEADERS` is percent-encoded.** The space in `Basic <token>` must be written `%20`; a literal space breaks the header parse.
+- **One machine, because SQLite is single-writer.** To scale horizontally, move to Postgres: point `DATABASE_URL` at a `postgresql://…` DSN (still a secret — it carries credentials) and drop the volume mount. Schema and vector space carry over untouched.
+- **Wire `GET /ready` to Fly's health checks** so a machine that can't reach its database is pulled from rotation rather than serving failures.
+
 ### Configuration file
 
 Behavioral config is TOML, discovered from `./lore.toml` then `/etc/lore.toml` (first found wins). Since `WORKDIR` is `/data`, the simplest path is to drop `lore.toml` into the data volume; otherwise bind-mount a single file:
@@ -162,20 +218,20 @@ A minimal drop-in. Every field has a bundled default, so override only what you 
 # lore.toml
 
 [epistemics]
-attestation_half_life = "90d"   # how fast evidence ages — shorter for fast-moving fields
-trust_half_life = "90d"         # how fast oracle track records age (independent of the above)
-maturity_k = 1.0                # oracle diversity before the trust discount lifts; 0.5 for small herds
+attestation_half_life = "90d"
+trust_half_life = "90d"
+maturity_k = 1.0
 
 [retrieval]
-proximity = 0.5                 # vector-similarity lane weight (proximity + authority must sum to 1.0)
-authority = 0.5                 # full-text lane weight
-limit = 10                      # results returned after scoring
+proximity = 0.5
+authority = 0.5
+limit = 10
 
 [auth]
-required = false                # set true to refuse open-facing HTTP startup without OIDC_URL
+required = false
 
 [sqlite]
-fulltext_config = "porter unicode61"   # English stemming; use "unicode61" for non-English deployments
+fulltext_config = "porter unicode61"
 ```
 
 <details>
