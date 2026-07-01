@@ -10,7 +10,7 @@ Teams hemorrhage knowledge. Someone debugs a subtle issue, traces a primary sour
 
 Lore is a shared archive for people who think for a living. It connects centaurs (a human and a frontier model, working together) into a herd that shares its memory. You work the way you already work: ask questions, offer hunches, say "I'm pretty sure" or "I doubt this, but." Contribution is a byproduct of working, never a separate task. The commons grows with use.
 
-What makes this interesting is not the storage — it's the group epistemics.
+What makes this interesting is not the storage: it's the group epistemics.
 
 Lore tracks two distinct kinds of being right. Whether you agreed with the herd when you spoke, and whether the herd eventually came around to your position. The second one is the trick: it is how the prophet (early, alone, vindicated) earns more than the bandwagoner (late, settled, contributing nothing). Being early and right is the most valuable move an oracle can make. Rubber-stamping a settled answer earns nothing.
 
@@ -69,7 +69,7 @@ Historical attestations are frozen. The ledger is never rewritten.
 
 ### The Provenance (Requests)
 
-Every `consult` call, read or write, is recorded. One row per request. Each row stores the full consult input verbatim across structured columns — `question`, `context`, `hypothesis`, `reasoning`, `confidence` — plus correlation ID, oracle ID, and timestamp. Storage is cheap; information is valuable.
+Every `consult` call, read or write, is recorded. One row per request. Each row stores the full consult input verbatim across structured columns (`question`, `context`, `hypothesis`, `reasoning`, `confidence`), plus correlation ID, oracle ID, and timestamp. Storage is cheap; information is valuable.
 
 ---
 
@@ -177,13 +177,13 @@ Before reasoning, the orchestrator enriches each retrieved hypothesis with its c
 
 **On write** (hypothesis provided). The Archivist receives the normalized original, its atomic propositions (if any), and all retrieved hypotheses with their current epistemic states and per-lane retrieval scores. Per-lane scores inform the Archivist's judgment about the relationship. It can see which atomic propositions already have epistemic history, which premises the herd has opinions on, and reasons about the composite hypothesis with grounded inputs.
 
-The Archivist thinks proposition by proposition — the original hypothesis and every atom the Interpreter produced. Each becomes a resolution naming exactly one primary relationship, optionally paired with a list of contradicted hypotheses:
+The Archivist thinks proposition by proposition: the original hypothesis and every atom the Interpreter produced. Each becomes a resolution naming exactly one primary relationship, optionally paired with a list of contradicted hypotheses:
 
-- **Paraphrase.** The proposition IS an existing hypothesis — the same claim, perhaps rephrased. The resolution sets `corroborates` to that hypothesis's ID. Action: positive attestation on the corroborated hypothesis. No new node.
+- **Paraphrase.** The proposition IS an existing hypothesis: the same claim, perhaps rephrased. The resolution sets `corroborates` to that hypothesis's ID. Action: positive attestation on the corroborated hypothesis. No new node.
 - **Orthogonal-novel.** The proposition is genuinely new and does not paraphrase anything in the archive. The resolution sets `contributes` to a self-contained, atomic statement of the new content. Action: store the novel and write a positive attestation on it.
-- **Contradicts.** Either form may additionally list `contradicts: [HypothesisId, ...]` — existing hypotheses the proposition is mutually exclusive with. Action: disbelief attestation on each contradicted hypothesis. For an orthogonal-novel paired with contradicts, the herd's dampened contrary position transfers onto the novel as a single consolidated transfer attestation (see [logic.md](docs/logic.md)).
+- **Contradicts.** Either form may additionally list `contradicts: [HypothesisId, ...]`, existing hypotheses the proposition is mutually exclusive with. Action: disbelief attestation on each contradicted hypothesis. For an orthogonal-novel paired with contradicts, the herd's dampened contrary position transfers onto the novel as a single consolidated transfer attestation (see [logic.md](docs/logic.md)).
 
-Across all resolutions in one consult, each existing hypothesis ID appears at most once — whether in `corroborates` or in any `contradicts` list. An oracle attests on each existing hypothesis at most once per consult call.
+Across all resolutions in one consult, each existing hypothesis ID appears at most once, whether in `corroborates` or in any `contradicts` list. An oracle attests on each existing hypothesis at most once per consult call.
 
 ### Stage 4: Record & Fuse
 
@@ -198,7 +198,7 @@ For each oracle attestation produced by a resolution:
 - Compute `c_herd`: the new hypothesis state (decay + ECBF of all discounted attestations including the new one, projected to scalar).
 - Persist the attestation row to the immutable ledger.
 
-For an orthogonal-novel paired with `contradicts`, a single consolidated transfer attestation lands on the novel before the oracle's own. It carries the herd's already-discounted prior, derived from the latest `c_herd` row of each contradicted hypothesis fused via decayed ECBF and negated. It is recorded under the synthetic `_transfer` oracle with full credibility — no further discount, since `c_herd` already encodes source-level maturity. If the fused result rounds to zero (e.g. balanced contradictions), no transfer row is written. The oracle's attestation on the novel then fuses against this dampened prior rather than a vacuous one.
+For an orthogonal-novel paired with `contradicts`, a single consolidated transfer attestation lands on the novel before the oracle's own. It carries the herd's already-discounted prior, derived from the latest `c_herd` row of each contradicted hypothesis fused via decayed ECBF and negated. It is recorded under the synthetic `_transfer` oracle with full credibility: no further discount, since `c_herd` already encodes source-level maturity. If the fused result rounds to zero (e.g. balanced contradictions), no transfer row is written. The oracle's attestation on the novel then fuses against this dampened prior rather than a vacuous one.
 
 A single `consult` call may produce multiple writes. All writes execute within the same transaction; if any step fails, the transaction rolls back. After a successful write, read-after-write is always consistent.
 
@@ -211,7 +211,7 @@ How the organization tunes Lore to the shape of the field it serves. The first f
 - **attestation decay** (`[epistemics] attestation_half_life`): how fast knowledge ages. Short for fast-moving fields, long for stable scholarship. Duration string (e.g. `"90d"`).
 - **maturity** (`[epistemics] maturity_k`, K in the formalism): half-saturation constant for oracle diversity. Higher values require more oracle diversity before the trust discount lifts. K also governs the adaptive blend between write-time and read-time alignment in oracle trust computation: a fresh hypothesis (low maturity) weights read-time validation, a mature hypothesis weights write-time agreement. K = 0 makes maturity transparent and collapses the blend to pure write-time. Default: 1.
 - **trust decay** (`[epistemics] trust_half_life`): separate decay time scale for oracle trust alignment. Controls how fast track records age. Decoupled from attestation decay because an organization may want long-lived knowledge but fast-adapting trust, or vice versa.
-- **transfer threshold** (`[epistemics] transfer_threshold`): epistemic-significance floor for the consolidated transfer attestation. When an orthogonal-novel contradicts existing claims and the fused herd magnitude falls below this value, no transfer row is written — the algebra has nothing meaningful to carry over. Decoupled from IEEE float noise so operators can tune what counts as "informationally meaningful." Default: 1e-3.
+- **transfer threshold** (`[epistemics] transfer_threshold`): epistemic-significance floor for the consolidated transfer attestation. When an orthogonal-novel contradicts existing claims and the fused herd magnitude falls below this value, no transfer row is written: the algebra has nothing meaningful to carry over. Decoupled from IEEE float noise so operators can tune what counts as "informationally meaningful." Default: 1e-3.
 - **Retrieval weights** (`[retrieval]`): composite score weights for two-lane retrieval. Default: proximity 0.5, authority 0.5.
 - **Retrieval limits** (`[retrieval]`): final result count, fan-out multiplier, and `max_keywords` for the authority lane.
 

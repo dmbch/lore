@@ -60,7 +60,7 @@ The opinion is uncertainty-maximized by construction:
 ```
 c > 0:  ω = (c, 0, 1 − c)     (belief and uncertainty)
 c < 0:  ω = (0, |c|, 1 − |c|) (disbelief and uncertainty)
-c = 0:  ω = (0, 0, 1)         (vacuous — pure ignorance)
+c = 0:  ω = (0, 0, 1)         (vacuous, pure ignorance)
 ```
 
 **Proof of uncertainty maximization.** For c > 0: P = 0.5 + 0.5c. Uncertainty maximization (Eq. 3.27) yields ü = 2 · min(P, 1 − P). Since P ≥ 0.5, min(P, 1 − P) = 1 − P = 0.5 − 0.5c = (1 − c)/2, so ü = 1 − c. Then b̈ = P − 0.5ü = (0.5 + 0.5c) − 0.5(1 − c) = c, d̈ = 0. This matches the forward mapping. Symmetric for c < 0.
@@ -627,11 +627,11 @@ Each contradicted hypothesis contributes one evidence piece: its latest stored `
 The transfer attestation is written to the ledger with:
 
 ```
-oracle_id           = "_transfer"          (synthetic — not a real oracle)
+oracle_id           = "_transfer"          (synthetic, not a real oracle)
 timestamp           = t_now                (recorded inside the same transaction)
 c_oracle_raw        = c_transfer
-c_oracle_discounted = c_transfer           (no further discount — c_herd is post-pipeline)
-t_oracle            = 1.0                  (full credibility — encodes the herd's prior)
+c_oracle_discounted = c_transfer           (no further discount: c_herd is post-pipeline)
+t_oracle            = 1.0                  (full credibility: encodes the herd's prior)
 c_herd              = c_transfer           (sole attestation at that point)
 ```
 
