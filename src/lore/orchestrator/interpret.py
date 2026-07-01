@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from lore.domain import ConsultLoreRequest, InterpreterInput, InterpreterOutput
-from lore.prompts import load_prompt
+from lore.prompts import build_core_prompt
 from lore.telemetry import start_span
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ async def interpret(
     with start_span("lore.interpret"):
         return await session.interpreter.complete(
             response_model=InterpreterOutput,
-            system=load_prompt(settings.prompts.interpreter),
+            system=build_core_prompt(settings.prompts, base=settings.prompts.interpreter),
             user=InterpreterInput(
                 question=request.question,
                 hypothesis=request.hypothesis,

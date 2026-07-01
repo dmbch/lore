@@ -1,6 +1,7 @@
 """Read-path orchestrator tests: question-only consult calls."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +11,7 @@ from lore.domain import (
     StorageError,
 )
 from lore.orchestrator import Orchestrator
+from lore.prompts import load_prompt
 from lore.providers import Providers
 from lore.repositories import (
     Repositories,
@@ -60,6 +62,47 @@ class TestReadPathCallsInterpreter:
         assert len(fixture.interpreter.calls) == 1
         _system, user = fixture.interpreter.calls[0]
         assert "What is X?" in user
+
+
+class TestInterpreterSystemPromptCarriesDomainIncludes:
+    async def test_interpreter_system_prompt_includes_domain_narrative(
+        self, tmp_path: Path
+    ) -> None:
+        settings = make_settings()
+        narrative = tmp_path / "narrative.md"
+        narrative.write_text("DOMAIN NARRATIVE.")
+        glossary = tmp_path / "glossary.md"
+        glossary.write_text("GLOSSARY TERMS.")
+        prompts = settings.prompts.model_copy(update={"narrative": narrative, "glossary": glossary})
+        settings = settings.model_copy(update={"prompts": prompts})
+
+        fixture = make_orchestrator(settings=settings)
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=ConsultLoreRequest(question="What is X?"),
+            correlation_id="corr-1",
+        )
+
+        system = fixture.interpreter.calls[0][0]
+        assert system.startswith("DOMAIN NARRATIVE.")
+        assert "GLOSSARY TERMS." in system
+        assert load_prompt(settings.prompts.interpreter) in system
+
+
+class TestInterpreterSystemPromptDefaultsToBase:
+    async def test_interpreter_system_prompt_defaults_to_base_without_includes(self) -> None:
+        settings = make_settings()
+
+        fixture = make_orchestrator(settings=settings)
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=ConsultLoreRequest(question="What is X?"),
+            correlation_id="corr-1",
+        )
+
+        assert fixture.interpreter.calls[0][0] == load_prompt(settings.prompts.interpreter)
 
 
 class TestReadPathEmbedsNormalizedQuestion:
