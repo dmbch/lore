@@ -4,7 +4,7 @@ from pathlib import Path
 
 from lore.prompts.config import PromptsConfig
 
-__all__ = ["PromptsConfig", "build_core_prompt", "build_system_prompt", "load_prompt"]
+__all__ = ["PromptsConfig", "build_core_prompt", "load_prompt"]
 
 
 def load_prompt(path: Path) -> str:
@@ -18,14 +18,4 @@ def build_core_prompt(config: PromptsConfig, *, base: Path) -> str:
     if config.glossary is not None:
         parts.append(load_prompt(config.glossary))
     parts.append(load_prompt(base))
-    return "\n\n".join(parts)
-
-
-def build_system_prompt(config: PromptsConfig) -> str:
-    parts: list[str] = []
-    if config.narrative is not None:
-        parts.append(load_prompt(config.narrative))
-    if config.glossary is not None:
-        parts.append(load_prompt(config.glossary))
-    parts.append(load_prompt(config.scribe))
     return "\n\n".join(parts)

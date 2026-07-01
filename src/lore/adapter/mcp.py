@@ -22,7 +22,7 @@ from starlette.responses import JSONResponse, Response
 from lore.domain import LOCAL_ORACLE, ConsultLoreRequest, ConsultLoreResponse
 from lore.domain.errors import AuthenticationError, StorageError
 from lore.orchestrator import Orchestrator
-from lore.prompts import build_system_prompt, load_prompt
+from lore.prompts import load_prompt
 
 if TYPE_CHECKING:
     from lore.config import LoreSettings
@@ -103,7 +103,7 @@ def create_server(
         async with system as orchestrator:
             yield orchestrator
 
-    instructions = build_system_prompt(settings.prompts)
+    instructions = load_prompt(settings.prompts.scribe)
     auth = _build_auth(settings)
     server: FastMCP[Orchestrator] = FastMCP(
         name=settings.server.name,

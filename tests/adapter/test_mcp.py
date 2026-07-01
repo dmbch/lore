@@ -20,7 +20,7 @@ from lore.config import LoreSettings, load_settings
 from lore.domain import ConsultLoreRequest, ConsultLoreResponse
 from lore.domain.errors import StorageError
 from lore.orchestrator import Orchestrator
-from lore.prompts import build_system_prompt
+from lore.prompts import load_prompt
 
 _COMPLETE_TOML = Path(__file__).parents[1] / "fixtures" / "lore_complete.toml"
 
@@ -70,12 +70,22 @@ async def test_server_registers_tool_with_configured_name(
     assert "consult" in names
 
 
-def test_server_scribe_prompt_becomes_instructions(
+def test_mcp_instructions_are_scribe_only(
+    tmp_path: Path,
     settings: LoreSettings,
     server: FastMCP[Orchestrator],
 ) -> None:
-    expected = build_system_prompt(settings.prompts)
-    assert server.instructions == expected
+    assert server.instructions == load_prompt(settings.prompts.scribe)
+
+    narrative = tmp_path / "narrative.md"
+    narrative.write_text("DOMAIN NARRATIVE MUST NOT LEAK.")
+    prompts = settings.prompts.model_copy(update={"narrative": narrative})
+    leaky = settings.model_copy(update={"prompts": prompts})
+    srv = create_server(settings=leaky, system=_noop_system())
+    instructions = srv.instructions
+    assert instructions is not None
+    assert "DOMAIN NARRATIVE MUST NOT LEAK." not in instructions
+    assert instructions == load_prompt(leaky.prompts.scribe)
 
 
 def test_server_version_defaults_to_dev_marker(
