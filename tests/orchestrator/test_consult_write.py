@@ -4,6 +4,7 @@ Transfer-specific tests live in ``test_transfer.py``.
 """
 
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 from pydantic import BaseModel
@@ -16,6 +17,7 @@ from lore.domain import (
     TrustSignal,
 )
 from lore.orchestrator import Orchestrator
+from lore.prompts import load_prompt
 from lore.providers import Providers
 from lore.repositories import (
     AttestationRecord,
@@ -552,3 +554,42 @@ class TestWritePathOrphanRequestRowOnInterpreterFailure:
 
         # (b) No attestations joined to that correlation_id: provenance only.
         assert not any(call.correlation_id == "corr-orphan" for call in attestations.appended)
+
+
+class TestWritePathArchivistSystemPromptCarriesIncludes:
+    async def test_archivist_system_prompt_includes_domain_narrative(self, tmp_path: Path) -> None:
+        settings = make_settings()
+        narrative = tmp_path / "narrative.md"
+        narrative.write_text("DOMAIN NARRATIVE.")
+        glossary = tmp_path / "glossary.md"
+        glossary.write_text("GLOSSARY TERMS.")
+        prompts = settings.prompts.model_copy(update={"narrative": narrative, "glossary": glossary})
+        settings = settings.model_copy(update={"prompts": prompts})
+
+        fixture = make_orchestrator(settings=settings)
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=write_request(),
+            correlation_id="corr-1",
+        )
+
+        system = fixture.archivist.calls[0][0]
+        assert system.startswith("DOMAIN NARRATIVE.")
+        assert "GLOSSARY TERMS." in system
+        assert load_prompt(settings.prompts.archivist) in system
+
+
+class TestWritePathArchivistSystemPromptDefaultsToBase:
+    async def test_archivist_system_prompt_defaults_to_base_without_includes(self) -> None:
+        settings = make_settings()
+
+        fixture = make_orchestrator(settings=settings)
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=write_request(),
+            correlation_id="corr-1",
+        )
+
+        assert fixture.archivist.calls[0][0] == load_prompt(settings.prompts.archivist)

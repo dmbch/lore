@@ -11,7 +11,7 @@ from lore.domain import (
     InterpreterOutput,
     SearchResult,
 )
-from lore.prompts import load_prompt
+from lore.prompts import build_core_prompt
 from lore.telemetry import start_span
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ async def reason(
     with start_span("lore.reason"):
         reasoned = await session.archivist.complete(
             response_model=ArchivistOutput,
-            system=load_prompt(settings.prompts.archivist),
+            system=build_core_prompt(settings.prompts, base=settings.prompts.archivist),
             user=ArchivistInput(
                 question=request.question,
                 hypothesis=request.hypothesis,
