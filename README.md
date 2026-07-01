@@ -33,7 +33,7 @@ docker run -i --rm \
   ghcr.io/dmbch/lore:latest
 ```
 
-Point your MCP client (Claude Desktop, the MCP Inspector, …) at that `docker run` command. A vendor API key must be present at startup so Lore can resolve its embedding model — though no network call is made at boot; resolution is a local cost-map lookup. To run from source instead, see [Development](#development).
+Point your MCP client (Claude Desktop, the MCP Inspector, …) at that `docker run` command. A vendor API key must be present at startup so Lore can resolve its embedding model, though no network call is made at boot; resolution is a local cost-map lookup. To run from source instead, see [Development](#development).
 
 ### HTTP, multi-user
 
@@ -71,7 +71,7 @@ Migrations run at startup. The bootstrap health check refuses to start on an emb
 
 ### OIDC authentication
 
-For HTTP multi-user with Lore terminating auth itself, set both `OIDC_URL` and `BASE_URL`. `OIDC_URL` is the IdP's full discovery-document URL — ending in `/.well-known/openid-configuration` — with the client credentials in the userinfo. Lore fetches that URL as-is and appends nothing, so the path must be complete.
+For HTTP multi-user with Lore terminating auth itself, set both `OIDC_URL` and `BASE_URL`. `OIDC_URL` is the IdP's full discovery-document URL (ending in `/.well-known/openid-configuration`) with the client credentials in the userinfo. Lore fetches that URL as-is and appends nothing, so the path must be complete.
 
 ```bash
 docker run --rm \
@@ -90,7 +90,7 @@ Query parameters on `OIDC_URL` (e.g. `?hd=example.com`) are forwarded verbatim t
 
 ### Reference deployment (Fly.io)
 
-The dogfooding deployment runs on [Fly.io](https://fly.io): one machine, HTTP transport with OIDC, SQLite on a persistent volume, Gemini for inference, OTLP export to a collector. It is one declarative `fly.toml` plus a handful of secrets — non-secret topology in `[env]`, everything with a credential in `fly secrets`.
+The dogfooding deployment runs on [Fly.io](https://fly.io): one machine, HTTP transport with OIDC, SQLite on a persistent volume, Gemini for inference, OTLP export to a collector. It is one declarative `fly.toml` plus a handful of secrets: non-secret topology in `[env]`, everything with a credential in `fly secrets`.
 
 ```toml
 # fly.toml
@@ -123,7 +123,7 @@ primary_region = 'fra'
   memory = "1gb"
 ```
 
-The rest are set as Fly secrets rather than `[env]` — the database DSN, the vendor key, the OIDC credentials, and the OTLP auth token:
+The rest are set as Fly secrets rather than `[env]`: the database DSN, the vendor key, the OIDC credentials, and the OTLP auth token:
 
 ```bash
 fly secrets set \
@@ -139,9 +139,9 @@ fly deploy
 A few Lore-specific notes:
 
 - **`FASTMCP_HOST = "0.0.0.0"` is mandatory here.** Lore inherits FastMCP's loopback default; leave it and Fly's proxy can't reach the machine, so every request times out.
-- **`BASE_URL` and `OIDC_URL` are a validated pair** — Lore refuses to start with one but not the other. `BASE_URL` is the public origin the IdP redirects back to; `OIDC_URL` points at the IdP's discovery document with the client credentials in the userinfo. The `?hd=example.com` query rides through to the authorize endpoint, restricting sign-in to a single Google Workspace domain. Drop both to run behind a proxy that authenticates upstream — oracle identity then falls back to `_local`.
+- **`BASE_URL` and `OIDC_URL` are a validated pair**: Lore refuses to start with one but not the other. `BASE_URL` is the public origin the IdP redirects back to; `OIDC_URL` points at the IdP's discovery document with the client credentials in the userinfo. The `?hd=example.com` query rides through to the authorize endpoint, restricting sign-in to a single Google Workspace domain. Drop both to run behind a proxy that authenticates upstream: oracle identity then falls back to `_local`.
 - **`OTEL_EXPORTER_OTLP_HEADERS` is percent-encoded.** The space in `Basic <token>` must be written `%20`; a literal space breaks the header parse.
-- **One machine, because SQLite is single-writer.** To scale horizontally, move to Postgres: point `DATABASE_URL` at a `postgresql://…` DSN (still a secret — it carries credentials) and drop the volume mount. Schema and vector space carry over untouched.
+- **One machine, because SQLite is single-writer.** To scale horizontally, move to Postgres: point `DATABASE_URL` at a `postgresql://…` DSN (still a secret: it carries credentials) and drop the volume mount. Schema and vector space carry over untouched.
 - **Wire `GET /ready` to Fly's health checks** so a machine that can't reach its database is pulled from rotation rather than serving failures.
 
 ### Configuration file
@@ -235,7 +235,7 @@ fulltext_config = "porter unicode61"
 ```
 
 <details>
-<summary>Model roles — <code>[embedding]</code>, <code>[fast]</code>, <code>[reasoning]</code></summary>
+<summary>Model roles: <code>[embedding]</code>, <code>[fast]</code>, <code>[reasoning]</code></summary>
 
 **`[embedding]`**
 
@@ -247,28 +247,28 @@ fulltext_config = "porter unicode61"
 | `task_type.question` | string or omit | vendor default | Task type for question embedding |
 | `task_type.verification` | string or omit | vendor default | Task type for verification embedding |
 
-**`[fast]`** — the Interpreter (fast, cheap)
+**`[fast]`**: the Interpreter (fast, cheap)
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `model` | string | vendor default | LiteLLM model string |
-| `temperature` | float or omit | — | Sampling temperature |
-| `max_tokens` | int or omit | — | Max output tokens |
+| `temperature` | float or omit | none | Sampling temperature |
+| `max_tokens` | int or omit | none | Max output tokens |
 | `reasoning_effort` | string or omit | vendor default | Reasoning effort level |
 
-**`[reasoning]`** — the Archivist (slow, careful)
+**`[reasoning]`**: the Archivist (slow, careful)
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `model` | string | vendor default | LiteLLM model string |
-| `temperature` | float or omit | — | Sampling temperature |
-| `max_tokens` | int or omit | — | Max output tokens |
+| `temperature` | float or omit | none | Sampling temperature |
+| `max_tokens` | int or omit | none | Max output tokens |
 | `reasoning_effort` | string or omit | vendor default | Reasoning effort level |
 
 </details>
 
 <details>
-<summary>Epistemics — <code>[epistemics]</code>, <code>[retrieval]</code></summary>
+<summary>Epistemics: <code>[epistemics]</code>, <code>[retrieval]</code></summary>
 
 **`[epistemics]`**
 
@@ -292,11 +292,11 @@ fulltext_config = "porter unicode61"
 </details>
 
 <details>
-<summary>Storage backends — <code>[postgres]</code>, <code>[sqlite]</code></summary>
+<summary>Storage backends: <code>[postgres]</code>, <code>[sqlite]</code></summary>
 
 Only the section matching your `DATABASE_URL` backend applies.
 
-**`[postgres]`** — connection pool tuning for the production backend
+**`[postgres]`**: connection pool tuning for the production backend
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -306,7 +306,7 @@ Only the section matching your `DATABASE_URL` backend applies.
 | `max_waiting` | int | `50` | Max callers queued for a connection (0 = unbounded) |
 | `fulltext_config` | string | `"english"` | Postgres text-search config for the authority lane (`german`, `french`, `simple`, …) |
 
-**`[sqlite]`** — full-text tokenizer for the development backend
+**`[sqlite]`**: full-text tokenizer for the development backend
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -317,7 +317,7 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 </details>
 
 <details>
-<summary>Server, auth, limits, prompts — <code>[server]</code>, <code>[auth]</code>, <code>[limits]</code>, <code>[prompts]</code></summary>
+<summary>Server, auth, limits, prompts: <code>[server]</code>, <code>[auth]</code>, <code>[limits]</code>, <code>[prompts]</code></summary>
 
 **`[server]`**
 
@@ -330,10 +330,10 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `required` | bool | `false` | Refuse HTTP startup when no `OIDC_URL` is set — fail-fast for the open-path mistake |
+| `required` | bool | `false` | Refuse HTTP startup when no `OIDC_URL` is set: fail-fast for the open-path mistake |
 | `verify_id_token` | bool | `true` | Verify the OIDC id_token signature |
 
-**`[limits]`** — character limits for pipeline payloads; all values > 0
+**`[limits]`**: character limits for pipeline payloads; all values > 0
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -342,7 +342,7 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 | `context` | int | `4096` | Max characters for the context field |
 | `reasoning` | int | `4096` | Max characters for the reasoning field |
 
-**`[prompts]`** — template paths; bundled defaults unless overridden. Each value is a filesystem path or a `bundled:pkg/name.md` reference.
+**`[prompts]`**: template paths; bundled defaults unless overridden. Each value is a filesystem path or a `bundled:pkg/name.md` reference.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -457,7 +457,7 @@ Launch Lore through `opentelemetry-instrument` with `OTEL_EXPORTER_OTLP_ENDPOINT
 
 Lore is developed as a centaur: a human programmer and Claude Code in close collaboration. The workflow lives in [CLAUDE.md](CLAUDE.md), enforced through Claude Code skills and commands. Non-trivial work follows brainstorm, `/plan`, `/build` (TDD), `/review`.
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (no scope). Releases are cut automatically from those commits by `.github/workflows/release.yml`: the version is computed from commit history, and the same checks that gate every PR — plus end-to-end and container smoke tests — must pass against the released commit before anything ships.
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (no scope). Releases are cut automatically from those commits by `.github/workflows/release.yml`: the version is computed from commit history, and the same checks that gate every PR (plus end-to-end and container smoke tests) must pass against the released commit before anything ships.
 
 ### Architecture
 
