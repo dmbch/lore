@@ -39,7 +39,7 @@ _PARAM_DESCRIPTIONS = {
         " Can be combined with a hypothesis to both ask and contribute."
     ),
     "context": (
-        "Why are you asking — the problem being solved, the decision being faced."
+        "Why are you asking: the problem being solved, the decision being faced."
         " Improves retrieval and resolution quality."
     ),
     "hypothesis": (

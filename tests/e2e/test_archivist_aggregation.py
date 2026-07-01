@@ -177,7 +177,7 @@ async def test_ambiguous_composite_emits_consult_notes_log(
     await consult(
         system,
         hypothesis=(
-            "The HTTP service handles internal calls — these are RPC, "
+            "The HTTP service handles internal calls: these are RPC, "
             "they may run on gRPC, and the transport may or may not be HTTP/2."
         ),
         confidence=0.4,

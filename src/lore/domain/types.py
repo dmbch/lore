@@ -259,7 +259,7 @@ class ArchivistOutput(BaseModel):
     )
     notes: list[str] = Field(
         default_factory=list,
-        description="Free-text classification challenges — observability surface, not stored",
+        description="Free-text classification challenges: observability surface, not stored",
     )
 
     @model_validator(mode="after")

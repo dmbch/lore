@@ -578,7 +578,7 @@ def test_fastmcp_exposes_lifespan_result_attribute(
     fastmcp 3.x. Check on upgrade.
     """
     assert hasattr(server, "_lifespan_result"), (
-        "FastMCP no longer exposes _lifespan_result — update wired_server fixture"
+        "FastMCP no longer exposes _lifespan_result: update wired_server fixture"
     )
 
 

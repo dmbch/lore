@@ -98,7 +98,7 @@ class Verdict(BaseModel):
 
 _JUDGE_SYSTEM = (
     "You are a test judge. Does the answer meet the criterion?"
-    " Ignore verbosity, formatting, and phrasing — only semantic content matters."
+    " Ignore verbosity, formatting, and phrasing: only semantic content matters."
     "\n\nThink step by step in the reasoning field, then set passed."
 )
 

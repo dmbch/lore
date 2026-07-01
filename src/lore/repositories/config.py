@@ -79,7 +79,7 @@ class PostgresConfig(BaseModel):
         # closes the injection surface at config load.
         if not _PG_FULLTEXT_CONFIG_RE.match(v):
             msg = (
-                f"fulltext_config {v!r} must match {_PG_FULLTEXT_CONFIG_RE.pattern} —"
+                f"fulltext_config {v!r} must match {_PG_FULLTEXT_CONFIG_RE.pattern}:"
                 " a plain Postgres identifier (e.g. 'english', 'german', 'simple')"
             )
             raise ValueError(msg)
@@ -133,7 +133,7 @@ class SqliteConfig(BaseModel):
         # regex closes the injection surface at config load.
         if not _SQLITE_FULLTEXT_CONFIG_RE.match(v):
             msg = (
-                f"fulltext_config {v!r} must match {_SQLITE_FULLTEXT_CONFIG_RE.pattern} —"
+                f"fulltext_config {v!r} must match {_SQLITE_FULLTEXT_CONFIG_RE.pattern}:"
                 " a FTS5 tokenize spec (e.g. 'porter unicode61', 'unicode61')"
             )
             raise ValueError(msg)
