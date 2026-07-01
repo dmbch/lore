@@ -89,7 +89,7 @@ Only the scalar is stored in the ledger — the BDU representation is derivable 
 
 ACBF (Def. 12.5) accumulates evidence from independent sources. It is the first step of ECBF.
 
-For two opinions where at least one is non-dogmatic:
+**Case I.** For two opinions where at least one is non-dogmatic:
 
 ```
 κ   = u_A + u_B − u_A · u_B
@@ -98,7 +98,7 @@ d_⊕ = (d_A · u_B + d_B · u_A) / κ
 u_⊕ = (u_A · u_B) / κ
 ```
 
-When all opinions are dogmatic (u = 0): the result is their average with equal weights (γ_i = 1/N, generalizing Eq. 12.15). This is the limit case — formally, γ_A = lim u_B/(u_A + u_B) as both approach zero. The implementation must handle this explicitly to avoid division by zero.
+**Case II.** When all opinions are dogmatic (u = 0): the result is their average with equal weights (γ_i = 1/N, generalizing Eq. 12.15). This is the limit case — formally, γ_A = lim u_B/(u_A + u_B) as both approach zero. The implementation must handle this explicitly to avoid division by zero.
 
 **Mixed-dogmatic partition.** When some inputs are dogmatic and the rest are non-dogmatic, the equal-weight N-ary mean runs over the dogmatic subset only. The non-dogmatic minority is excluded — its ``u_B/(u_A + u_B)`` weight collapses to zero in the same limit that drives Case II. The implementation follows the tum-i4 Aggregatio reading of Eq. 12.15. Default Lore tuning keeps ``K ≥ 1``, which prevents dogmatic intermediates from ever reaching ECBF; the partition is the formal contract for ``K = 0`` deployments and any future code path that produces dogmatic discounted opinions.
 
@@ -151,7 +151,7 @@ CCF is idempotent: `fuse([a, a]) = a`. This means 50 oracles each submitting mod
 
 2. **Contradiction cancels.** When evidence is evenly split (P ≈ 0.5), uncertainty maximization yields ü = 1.0, b = 0, d = 0 — the vacuous opinion. The system returns to "we don't know" rather than claiming false certainty about a tie.
 
-**Source correlation.** ECBF assumes source independence — which oracles in an organization aren't, strictly speaking. But uncertainty maximization is inherently conservative: it maximizes ignorance given the evidence. This is the correct conservative stance for epistemic propositions where corroboration should accumulate evidence but the system shouldn't claim more certainty than warranted.
+**Source correlation.** ECBF assumes source independence — which oracles in an organization aren't, strictly speaking. But uncertainty maximization is inherently conservative: it maximizes ignorance given the evidence. This is the correct stance for epistemic propositions where corroboration should accumulate evidence but the system shouldn't claim more certainty than warranted.
 
 **Multiple attestations from the same oracle** compound via ACBF, with temporal decay as the natural correction: the older attestation decays toward vacuous over time, while the fresh one enters at full strength. No special "latest-per-oracle" logic is needed.
 
@@ -415,7 +415,7 @@ P' = P_eff · P_source + 0.5 · (1 − P_eff) = info · align + 0.5 · (1 − in
 | 0.00 | 1.00 | 0.500 | Bandwagon on dogmatic herd — neutral (no credit, no penalty) |
 | 0.00 | 0.00 | 0.500 | Contrarian on dogmatic herd — neutral (cannot tell crank from prophet) |
 
-The asymmetry is exactly right: *informative* wrongness (info=1, align=0) still gets punished to 0; *uninformative* wrongness gets neutralized to 0.5. An oracle disagreeing with a dogmatic herd is epistemically indistinguishable from a prophet the herd cannot move to meet — we default to neutral until fresh evidence arrives.
+The asymmetry is deliberate: *informative* wrongness (info=1, align=0) still gets punished to 0; *uninformative* wrongness gets neutralized to 0.5. An oracle disagreeing with a dogmatic herd is epistemically indistinguishable from a prophet the herd cannot move to meet — we default to neutral until fresh evidence arrives.
 
 ### Conviction Weighting (Preserved)
 
@@ -559,7 +559,7 @@ Totals:
 - denominator ≈ `0.800 + 0.700 = 1.500`
 - `t_oracle ≈ 0.7328 / 1.500 ≈ 0.489`
 
-Contrarian earns trust close to base rate — slightly below 0.5. Row 1 is on a fresh hypothesis (`info = 1`) so the pull toward 0.5 does nothing and the genuine disagreement signal passes through. Row 2 is on a moderately-formed hypothesis (`info = 0.5`), so its disagreement is softened: `effective_align = 0.447` rather than `0.394`. The contrarian's honest disagreements on informative hypotheses still pull trust down, while disagreements on less-informative hypotheses are discounted — exactly right.
+Contrarian earns trust close to base rate — slightly below 0.5. Row 1 is on a fresh hypothesis (`info = 1`) so the pull toward 0.5 does nothing and the genuine disagreement signal passes through. Row 2 is on a moderately-formed hypothesis (`info = 0.5`), so its disagreement is softened: `effective_align = 0.447` rather than `0.394`. The contrarian's honest disagreements on informative hypotheses still pull trust down, while disagreements on less-informative hypotheses are discounted.
 
 #### Example 4: The Honest Conformist
 

@@ -10,7 +10,7 @@ Teams hemorrhage knowledge. Someone debugs a subtle issue, traces a primary sour
 
 Lore is a shared archive for people who think for a living. It connects centaurs (a human and a frontier model, working together) into a herd that shares its memory. You work the way you already work: ask questions, offer hunches, say "I'm pretty sure" or "I doubt this, but." Contribution is a byproduct of working, never a separate task. The commons grows with use.
 
-What makes this interesting is not the storage. It's the group epistemics.
+What makes this interesting is not the storage — it's the group epistemics.
 
 Lore tracks two distinct kinds of being right. Whether you agreed with the herd when you spoke, and whether the herd eventually came around to your position. The second one is the trick: it is how the prophet (early, alone, vindicated) earns more than the bandwagoner (late, settled, contributing nothing). Being early and right is the most valuable move an oracle can make. Rubber-stamping a settled answer earns nothing.
 
@@ -65,7 +65,7 @@ An append-only, immutable table. Each row records ten fields:
 
 Historical attestations are frozen. The ledger is never rewritten.
 
-**Derivable, not stored:** `c_herd_prior` (LAG window over the ledger), `n_prior` (COUNT from the ledger), and conflict metrics PD/CC/DC (derivable from `c_oracle_raw` and `c_herd_prior`). The immutable ledger is the source of truth; any derived field is redundant.
+**Derivable, not stored:** `c_herd_prior` (LAG window over the ledger), `n_prior` (COUNT from the ledger), and conflict metrics PD/CC/DC (derivable from `c_oracle_raw` and `c_herd_prior`). The immutable ledger is the source of truth.
 
 ### The Provenance (Requests)
 
@@ -193,7 +193,7 @@ For each oracle attestation produced by a resolution:
 
 - Map the confidence scalar to `c_oracle_raw`.
 - Compute oracle trust: `t_oracle` from a bounded scan of the oracle's recent attestation history.
-- Compute hypothesis maturity: M = N_O / (N_O + K), where N_O = distinct oracles on this hypothesis + 1.
+- Compute hypothesis maturity: M = N_O / (N_O + K), where N_O = the distinct prior oracles on this hypothesis plus the current one (`n_oracle_prior` + 1).
 - Compute P_effective = M x t_oracle. Apply trust discounting: `c_oracle_discounted` = P_effective x `c_oracle_raw`.
 - Compute `c_herd`: the new hypothesis state (decay + ECBF of all discounted attestations including the new one, projected to scalar).
 - Persist the attestation row to the immutable ledger.
