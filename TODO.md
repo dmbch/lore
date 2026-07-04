@@ -48,6 +48,66 @@ pass against current guidance.
 
 ---
 
+## MCP-native exploration app (MCP Apps extension)
+
+**Found:** 2026-07-03, design discussion.
+
+**What.** An exploration and management UI served through the MCP Apps extension
+(SEP-1865, first official MCP extension; host-side spec finalizes 2026-07-28). One
+model-visible entry tool (working name `explore`) returns a UI rendered in the client's
+sandboxed iframe; everything behind it is app-only backend tools (`visibility: ["app"]`)
+the model never sees and the context window never carries. FastMCP >= 3.2 wires this
+natively (`FastMCPApp`, Prefab components); our floor is already 3.4.2.
+
+Candidate views, not all at once:
+
+- **Hybrid hypothesis search**: reuse the two-lane retrieval path as-is.
+- **Open questions**: blocked on a data gap; provenance stores the question verbatim but
+  not the answer or retrieval outcome, so "unanswered" is not derivable today. Decide
+  whether provenance should record the answer (in the spirit of "storage is cheap").
+- **New hypotheses feed**: recent orthogonal-novel activity from the ledger.
+- **New controversies**: recent `contradicts` activity / conflict metrics.
+- **Frequently asked/answered questions**: provenance frequency over question embeddings.
+- **Topical clusters**: last or not yet; needs embedding clustering plus labeling, and is
+  noise at current archive size.
+
+**Why it matters.** The epistemics are invisible today: the oracle sees one `answer`
+string. A UI that shows the herd's belief structure (uncertainty frontier, controversies,
+decay) at the moment of use is a direct lever on adoption, the binding constraint named in
+PLAN.md.
+
+**Decisions locked (2026-07-03).**
+
+- `consult` stays the only model-facing tool besides the `explore` entry point; the
+  one-tool discipline survives.
+- No REST from the iframe. App-scoped tools are the API; they inherit the authenticated
+  MCP connection. (Iframe CSP defaults to `connect-src 'none'` anyway; a `connectDomains`
+  allowlist exists but would mean owning a second auth story.)
+- Queries land as orchestrator read paths; app tools are thin adapter wrappers, same
+  layering as `consult`. The queries survive any later change of surface.
+- Prefab (`prefab-ui`, pinned) for v1. Presentation only, swappable for a hand-authored
+  `ui://` HTML template without touching a tool. Same author as FastMCP; marginal vendor
+  risk near zero given the existing dependency.
+- The surface is read-only. If manual assertions ever land, they route through `consult`
+  (Interpreter and Archivist still run; only the Scribe's structuring is bypassed), never
+  a direct write.
+
+**Options / open questions.**
+
+- Manual assertions from the UI: viable via `consult`, but decide whether an unstructured
+  human hypothesis without a Scribe is wanted at all.
+- Renders only in app-capable clients (Claude desktop/web, ChatGPT, VS Code, Goose);
+  terminal Claude Code shows the text fallback (`ctx.client_supports_extension()`).
+- Conversation-bound: no ambient or shareable view. Residual case for a minimal
+  server-rendered observatory page, chiefly the adoption metrics already listed as a
+  PLAN.md follow-up.
+- Spike before planning: one `explore` tool, one app-only `frontier` tool, one DataTable
+  with uncertainty rendering; verifies Prefab's catalog can express the frontier view.
+
+**Status:** deferred; own plan cycle after Group P lands. Spike first.
+
+---
+
 ## litellm security bumps blocked by the instructor + pydantic pin chain
 
 **Found:** 2026-07-03, dependency security triage.
@@ -78,4 +138,36 @@ downgrade.
   re-exposes all seven.
 
 **Status:** blocked upstream (instructor plus litellm/pydantic pins); dismissed as
-non-reachable; revisit on the next instructor release.
+non-reachable; revisit on the next instructor release. A scoped pytest filterwarnings
+entry (pyproject) silences litellm's teardown RuntimeWarning (`Logging.async_success_handler`
+never awaited) in e2e runs; drop the filter together with this entry when the cap lifts.
+
+---
+
+## Authority lane ANDs every keyword token: long keyword lists match nothing
+
+**Found:** 2026-07-03, interpreter prompt pilot.
+
+**What.** `search_candidates` joins all Interpreter keywords into one query string
+(`retrieve.py`). SQLite double-quotes each token, and FTS5 treats adjacent quoted tokens
+as implicit AND; PostgreSQL's `plainto_tsquery` inserts AND between all lexemes. Every
+token of every keyword must therefore co-occur in a single hypothesis for the authority
+lane to return it. More or longer keywords make the query stricter, not broader; a
+specific 8-keyword list will often match zero rows and the lane silently contributes
+nothing while proximity carries the whole search.
+
+**Why it matters.** The rewritten interpreter prompt allows up to 8 keywords, most
+specific first (ordering matters because the list head survives `max_keywords`
+truncation). Under AND semantics that tuning narrows the lane it feeds. Retrieval recall
+bounds paraphrase detection, and nothing measures either today.
+
+**Options / open questions.**
+
+- OR the keywords per keyword (each keyword a quoted phrase, keywords joined by OR),
+  keeping tokens within one keyword ANDed. Matches the intuition the prompt now teaches.
+- Query per keyword with RRF merge, mirroring the per-source loop that already exists.
+- Fold into the retrieval-recall eval (PLAN.md follow-up): measure before tuning.
+
+**Status:** promoted to PLAN.md Group R (2026-07-04): OR the keywords, rank
+multi-keyword matches higher. The recall eval stays a follow-up for tuning weights, not
+a gate for the semantics fix.
