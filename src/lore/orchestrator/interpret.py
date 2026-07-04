@@ -1,5 +1,6 @@
 """Interpreter stage: decompose request into propositions and keywords."""
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from lore.domain import ConsultLoreRequest, InterpreterInput, InterpreterOutput
@@ -16,6 +17,7 @@ async def interpret(
     session: Providers,
     request: ConsultLoreRequest,
     settings: LoreSettings,
+    t_now: int,
 ) -> InterpreterOutput:
     with start_span("lore.interpret"):
         return await session.interpreter.complete(
@@ -26,5 +28,6 @@ async def interpret(
                 hypothesis=request.hypothesis,
                 context=request.context,
                 reasoning=request.reasoning,
+                today=datetime.fromtimestamp(t_now, tz=UTC).date(),
             ).model_dump_json(),
         )

@@ -1,5 +1,7 @@
 """Tests for domain types: cross-layer boundary validation."""
 
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
@@ -216,7 +218,7 @@ class TestConsultLoreResponse:
 
     def test_requires_answer(self) -> None:
         with pytest.raises(ValidationError):
-            ConsultLoreResponse()  # pyright: ignore[reportCallIssue]
+            ConsultLoreResponse()  # pyright: ignore[reportCallIssue] - omitting the required field is the behavior under test
 
     def test_is_frozen(self) -> None:
         r = ConsultLoreResponse(answer="text")
@@ -232,17 +234,21 @@ class TestConsultLoreResponse:
 
 
 class TestInterpreterInput:
-    """InterpreterInput: all-optional passthrough from MCP request."""
+    """InterpreterInput: required consult date, optional passthrough from MCP request."""
 
-    def test_all_fields_optional(self) -> None:
-        i = InterpreterInput()
+    def test_construct_without_today_raises(self) -> None:
+        with pytest.raises(ValidationError, match="today"):
+            InterpreterInput()  # pyright: ignore[reportCallIssue] - omitting the required field is the behavior under test
+
+    def test_construct_with_only_today_defaults_passthrough_to_none(self) -> None:
+        i = InterpreterInput(today=date(2026, 7, 3))
         assert i.question is None
         assert i.hypothesis is None
         assert i.context is None
         assert i.reasoning is None
 
     def test_is_frozen(self) -> None:
-        i = InterpreterInput()
+        i = InterpreterInput(today=date(2026, 7, 3))
         with pytest.raises(ValidationError, match="frozen"):
             i.question = "changed"  # pyright: ignore[reportAttributeAccessIssue]
 
@@ -472,7 +478,7 @@ class TestArchivistOutput:
 
     def test_archivist_output_requires_answer(self) -> None:
         with pytest.raises(ValidationError):
-            ArchivistOutput()  # pyright: ignore[reportCallIssue]
+            ArchivistOutput()  # pyright: ignore[reportCallIssue] - omitting the required field is the behavior under test
 
     def test_archivist_output_defaults_to_empty_resolutions(self) -> None:
         o = ArchivistOutput(reasoning="test reasoning", answer="The evidence supports X.")
