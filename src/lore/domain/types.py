@@ -48,6 +48,15 @@ class ConsultLoreRequest(BaseModel):
     reasoning: str | None = None
     confidence: float | None = None
 
+    @field_validator("question", "context", "hypothesis", "reasoning", mode="before")
+    @classmethod
+    def _blank_to_none(cls, v: object) -> object:
+        # A whitespace-only field is no input: fold it to None so the gate below
+        # sees it as absent. A field with real content passes verbatim.
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
     @model_validator(mode="after")
     def _require_question_or_complete_hypothesis(self) -> Self:
         if self.question is None and self.hypothesis is None:
@@ -103,11 +112,17 @@ class InterpreterOutput(BaseModel):
     )
     propositions: list[str] = Field(
         default_factory=list,
-        max_length=16,
-        description="Normalized original hypothesis first, then atomic decompositions if composite",
+        max_length=16,  # the original plus the 15-atom cap in interpreter.md step 5
+        description=(
+            "The normalized, grounded, date-resolved hypothesis first,"
+            " then atoms if it is a genuine conjunction"
+        ),
     )
     keywords: list[str] = Field(
-        default_factory=list, description="Retrieval keywords extracted from the content"
+        default_factory=list,
+        description=(
+            "Full-text search keywords from all populated input fields, most specific first"
+        ),
     )
 
 
