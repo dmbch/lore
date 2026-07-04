@@ -97,6 +97,13 @@ testpaths = ["tests"]
 addopts = "--cov=lore --cov-report=term-missing --cov-config=pyproject.toml -m 'not e2e'"
 asyncio_mode = "auto"
 markers = ["e2e: end-to-end tests requiring real LLM and database"]
+filterwarnings = [
+    # litellm's logging worker drops queued success-handler coroutines at
+    # event-loop teardown; fires only on live e2e calls. Fixed upstream but
+    # unreachable behind the instructor litellm cap (see TODO.md); remove
+    # this filter when the cap lifts.
+    "ignore:coroutine 'Logging.async_success_handler' was never awaited:RuntimeWarning",
+]
 
 [tool.coverage.run]
 source = ["lore"]

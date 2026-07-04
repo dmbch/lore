@@ -189,6 +189,40 @@ class TestConsultLoreRequest:
         with pytest.raises(ValidationError, match="requires a hypothesis"):
             ConsultLoreRequest(question="q", confidence=0.5)
 
+    # --- Blank strings normalize to None ---
+
+    def test_consult_request_blank_hypothesis_with_confidence_rejected(self) -> None:
+        # Whitespace-only hypothesis folds to None, so the gate sees no claim.
+        with pytest.raises(ValidationError, match="requires a question, a hypothesis, or both"):
+            ConsultLoreRequest(hypothesis="   ", confidence=0.5)
+
+    def test_consult_request_empty_hypothesis_with_confidence_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="requires a question, a hypothesis, or both"):
+            ConsultLoreRequest(hypothesis="", confidence=0.5)
+
+    def test_consult_request_blank_question_alone_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="requires a question, a hypothesis, or both"):
+            ConsultLoreRequest(question="   ")
+
+    def test_consult_request_empty_question_alone_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="requires a question, a hypothesis, or both"):
+            ConsultLoreRequest(question="")
+
+    def test_consult_request_blank_hypothesis_with_question_and_confidence_rejected(self) -> None:
+        # A real question does not rescue a blank hypothesis: confidence still
+        # has no claim to land on.
+        with pytest.raises(ValidationError, match="requires a hypothesis"):
+            ConsultLoreRequest(question="what?", hypothesis="   ", confidence=0.5)
+
+    def test_consult_request_blank_context_normalizes_to_none(self) -> None:
+        r = ConsultLoreRequest(question="what?", context="   ")
+        assert r.context is None
+
+    def test_consult_request_hypothesis_surrounding_whitespace_preserved(self) -> None:
+        # A real claim passes verbatim: only wholly-blank strings become None.
+        r = ConsultLoreRequest(hypothesis="  Service X caused it  ", confidence=0.5)
+        assert r.hypothesis == "  Service X caused it  "
+
     # --- Unchanged invariants ---
 
     def test_is_frozen(self) -> None:

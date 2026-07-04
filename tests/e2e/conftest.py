@@ -109,7 +109,10 @@ async def judge(
     answer: str,
     criterion: str,
 ) -> Verdict:
-    return await system._providers.interpreter.complete(
+    # Grade with the reasoning model: judging interpreter outputs with the same
+    # fast model would share its blind spots. The archivist cycle must swap in a
+    # decorrelated judge before trusting its greens (PLAN.md, Group I).
+    return await system._providers.archivist.complete(
         system=_JUDGE_SYSTEM,
         user=f"Criterion: {criterion}\n\nAnswer: {answer}",
         response_model=Verdict,
