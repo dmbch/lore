@@ -1,6 +1,7 @@
 """Read-path orchestrator tests: question-only consult calls."""
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -103,6 +104,23 @@ class TestInterpreterSystemPromptDefaultsToBase:
         )
 
         assert fixture.interpreter.calls[0][0] == load_prompt(settings.prompts.interpreter)
+
+
+class TestInterpreterInputCarriesConsultDate:
+    async def test_interpreter_input_carries_consult_date(self) -> None:
+        fixture = make_orchestrator()
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=ConsultLoreRequest(question="What is X?"),
+            correlation_id="corr-1",
+        )
+
+        _system, user = fixture.interpreter.calls[0]
+        payload = json.loads(user)
+        t_now = fixture.requests.stored[0].timestamp
+        expected = datetime.fromtimestamp(t_now, tz=UTC).date().isoformat()
+        assert payload["today"] == expected
 
 
 class TestReadPathEmbedsNormalizedQuestion:

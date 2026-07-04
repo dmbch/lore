@@ -5,6 +5,7 @@ module imports from nothing in the project.
 """
 
 import math
+from datetime import date
 from typing import NamedTuple, Self
 
 from pydantic import (
@@ -80,7 +81,7 @@ class ConsultLoreResponse(BaseModel):
 
 
 class InterpreterInput(BaseModel):
-    """Passthrough from MCP request to the Interpreter."""
+    """Passthrough from MCP request to the Interpreter, plus the consult date."""
 
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -88,6 +89,8 @@ class InterpreterInput(BaseModel):
     hypothesis: str | None = None
     context: str | None = None
     reasoning: str | None = None
+    # UTC calendar date of the consult; MCP carries no client timezone.
+    today: date
 
 
 class InterpreterOutput(BaseModel):

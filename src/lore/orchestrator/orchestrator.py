@@ -100,7 +100,7 @@ class Orchestrator:
 
             async with self._providers.session() as session:
                 interpreted = await interpret(
-                    session=session, request=request, settings=self._settings
+                    session=session, request=request, settings=self._settings, t_now=t_now
                 )
                 log.info("consult.interpreted", propositions=len(interpreted.propositions))
                 log.debug(
