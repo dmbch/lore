@@ -131,7 +131,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=5),
-            keywords=[""],
+            keywords=[],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -191,7 +191,7 @@ class TestSearch:
         # Act: search with embedding close to h1 and query matching h1
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=1),
-            keywords=["gRPC migration latency"],
+            keywords=["gRPC", "migration", "latency"],
             weights=(0.5, 0.5),
             limit=10,
             fan_out=2,
@@ -281,6 +281,67 @@ class TestSearch:
         assert len(results) >= 1
         assert results[0].content == "PostgreSQL migration failed on Tuesday"
 
+    async def test_search_single_matching_keyword_suffices(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """OR reachability: one matching keyword surfaces the row, even among misses.
+
+        The authority lane combines keywords with OR, so a single hit is
+        enough. Under keyword-AND every added keyword would narrow the lane
+        and the two non-matching keywords would shut the row out.
+        """
+        stored = await hypothesis_repo.store(
+            content="quantum entanglement experiment succeeded",
+            embedding=_embedding(seed=7),
+            created_at=1000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=500),
+            keywords=["quantum", "unrelated", "nonsense"],
+            weights=(0.0, 1.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        # score > 0 with the proximity weight zeroed isolates authority-lane
+        # membership: the row surfaced because a keyword matched, not because
+        # the UNION pool carried it in from the proximity lane.
+        matched = {r.id for r in results if r.score > 0}
+        assert stored.id in matched
+
+    async def test_search_multi_token_keyword_matches_as_phrase(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """Phrase integrity: a multi-token keyword matches an adjacency, not token-OR.
+
+        ``"content delivery network"`` must match a document carrying that
+        phrase and miss one that carries the same three tokens scattered.
+        Under token-level AND/OR both would match, collapsing the distinction.
+        """
+        phrase_doc = await hypothesis_repo.store(
+            content="the content delivery network cached the asset",
+            embedding=_embedding(seed=8),
+            created_at=1000,
+        )
+        scattered = await hypothesis_repo.store(
+            content="content flows through a delivery pipe on our network",
+            embedding=_embedding(seed=9),
+            created_at=2000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=500),
+            keywords=["content delivery network"],
+            weights=(0.0, 1.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        matched = {r.id for r in results if r.score > 0}
+        assert phrase_doc.id in matched
+        assert scattered.id not in matched
+
     async def test_search_respects_limit(self, hypothesis_repo: HypothesisRepository) -> None:
         for seed in range(1, 6):
             await hypothesis_repo.store(
@@ -330,7 +391,7 @@ class TestSearch:
         )
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=1),
-            keywords=["gRPC migration latency"],
+            keywords=["gRPC", "migration", "latency"],
             weights=(0.5, 0.5),
             limit=10,
             fan_out=2,
@@ -377,7 +438,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=10),
-            keywords=[""],
+            keywords=[],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
