@@ -429,3 +429,54 @@ class TestFTSBehavioralParity:
         )
         matched = any(r.id == record.id and r.score > 0 for r in results)
         assert matched is False
+
+
+class TestAuthorityLaneOrSemanticsParity:
+    """OR reachability, phrase integrity, and multi-match ordering agree across backends.
+
+    The authority lane combines keywords with OR and matches each multi-token
+    keyword as an adjacency phrase. SQLite (FTS5 ``MATCH``) and Postgres
+    (``websearch_to_tsquery``) build this from the same shared query string;
+    this test asserts one corpus yields the same authority membership and the
+    same relative order on both backends. A divergence fails one param.
+    """
+
+    async def test_authority_lane_or_semantics_match_across_backends(
+        self, backend: BackendFixture
+    ) -> None:
+        # Matches both keywords: the token ``mitochondria`` and the phrase
+        # ``citric acid cycle`` (adjacent) => 2 keyword matches.
+        both = await backend.hypotheses.store(
+            content="mitochondria fuels the citric acid cycle",
+            embedding=[0.1] * SCHEMA_DIM,
+            created_at=0,
+        )
+        # Matches one keyword (``mitochondria``) => 1 keyword match. Proves OR
+        # reachability: a single hit surfaces the row.
+        single = await backend.hypotheses.store(
+            content="mitochondria alone in the cytoplasm",
+            embedding=[0.1] * SCHEMA_DIM,
+            created_at=0,
+        )
+        # Carries citric, acid, and cycle scattered, never as the phrase, and
+        # no ``mitochondria`` => 0 keyword matches. Proves phrase integrity:
+        # token co-occurrence is not a phrase match.
+        scattered = await backend.hypotheses.store(
+            content="acid from citric fruit disrupts the cycle",
+            embedding=[0.1] * SCHEMA_DIM,
+            created_at=0,
+        )
+
+        results = await backend.hypotheses.search(
+            embedding=[0.1] * SCHEMA_DIM,
+            keywords=["mitochondria", "citric acid cycle"],
+            weights=(0.0, 1.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        # score > 0 with the proximity weight zeroed isolates authority-lane
+        # membership; the list preserves the score-descending result order.
+        matched = [r.id for r in results if r.score > 0]
+        assert matched == [both.id, single.id]
+        assert scattered.id not in matched
