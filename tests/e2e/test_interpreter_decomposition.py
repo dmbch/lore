@@ -277,7 +277,7 @@ async def test_absolute_date_survives_in_proposition(
 ) -> None:
     out = await _interpret(
         system,
-        hypothesis="The 2025-03-15 rockfall was caused by freeze-thaw cycling of the cliff face.",
+        hypothesis="The 2025-09-04 rockfall was caused by freeze-thaw cycling of the cliff face.",
     )
 
     assert out.propositions, "hypothesis present, expected at least one proposition"
@@ -285,7 +285,7 @@ async def test_absolute_date_survives_in_proposition(
         system,
         answer="\n".join(out.propositions),
         criterion=(
-            "Every statement identifies the rockfall by the date March 15, 2025. "
+            "Every statement identifies the rockfall by the date September 4, 2025. "
             "The date may appear in any format, but a statement about an undated "
             "rockfall fails."
         ),
