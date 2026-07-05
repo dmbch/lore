@@ -43,18 +43,18 @@ class _SequentialSearchHypotheses(StubHypotheses):
     def __init__(self, search_result_sets: list[list[HypothesisResult]]) -> None:
         super().__init__()
         self._result_sets = list(search_result_sets)
-        self.search_calls: list[tuple[Sequence[float], str, int]] = []
+        self.search_calls: list[tuple[Sequence[float], Sequence[str], int]] = []
 
     async def search(
         self,
         *,
         embedding: Sequence[float],
-        query: str,
+        keywords: Sequence[str],
         weights: tuple[float, float],
         limit: int,
         fan_out: int,
     ) -> list[HypothesisResult]:
-        self.search_calls.append((embedding, query, fan_out))
+        self.search_calls.append((embedding, keywords, fan_out))
         if self._result_sets:
             return self._result_sets.pop(0)
         return []
@@ -333,8 +333,8 @@ class TestMaxKeywordsTruncation:
         )
 
         assert len(hypotheses.search_calls) == 1
-        _, query, _ = hypotheses.search_calls[0]
-        assert query == "kw1 kw2"
+        _, keywords, _ = hypotheses.search_calls[0]
+        assert keywords == ["kw1", "kw2"]
 
 
 class TestOrchestratorForwardsFanOutToSearch:

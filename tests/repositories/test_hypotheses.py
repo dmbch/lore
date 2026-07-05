@@ -68,7 +68,7 @@ class TestStore:
         )
         results = await hypothesis_repo.search(
             embedding=_embedding(1),
-            query="good claim",
+            keywords=["good claim"],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -131,7 +131,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=5),
-            query="",
+            keywords=[""],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -151,7 +151,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=5),
-            query="   \t  ",
+            keywords=["   \t  "],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -165,7 +165,7 @@ class TestSearch:
         embedding = _embedding(seed=1)
         results = await hypothesis_repo.search(
             embedding=embedding,
-            query="any query",
+            keywords=["any query"],
             weights=(0.5, 0.5),
             limit=10,
             fan_out=2,
@@ -191,7 +191,7 @@ class TestSearch:
         # Act: search with embedding close to h1 and query matching h1
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=1),
-            query="gRPC migration latency",
+            keywords=["gRPC migration latency"],
             weights=(0.5, 0.5),
             limit=10,
             fan_out=2,
@@ -213,7 +213,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=42),
-            query="completely unrelated terms",
+            keywords=["completely unrelated terms"],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -240,7 +240,7 @@ class TestSearch:
         # Authority-only search: h1 should rank first (FTS match on content)
         authority_results = await hypothesis_repo.search(
             embedding=_embedding(seed=50),
-            query="kubernetes deployment",
+            keywords=["kubernetes deployment"],
             weights=(0.0, 1.0),
             limit=10,
             fan_out=2,
@@ -249,7 +249,7 @@ class TestSearch:
         # Proximity-only search: seed=50 is closer to seed=2 than seed=1
         proximity_results = await hypothesis_repo.search(
             embedding=_embedding(seed=2),
-            query="kubernetes deployment",
+            keywords=["kubernetes deployment"],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -272,7 +272,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=999),
-            query="PostgreSQL migration",
+            keywords=["PostgreSQL migration"],
             weights=(0.0, 1.0),
             limit=10,
             fan_out=2,
@@ -291,7 +291,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=1),
-            query="hypothesis",
+            keywords=["hypothesis"],
             weights=(0.5, 0.5),
             limit=2,
             fan_out=2,
@@ -310,7 +310,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=10),
-            query="PostgreSQL vacuum",
+            keywords=["PostgreSQL vacuum"],
             weights=(0.5, 0.5),
             limit=10,
             fan_out=2,
@@ -330,7 +330,7 @@ class TestSearch:
         )
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=1),
-            query="gRPC migration latency",
+            keywords=["gRPC migration latency"],
             weights=(0.5, 0.5),
             limit=10,
             fan_out=2,
@@ -352,7 +352,7 @@ class TestSearch:
         )
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=42),
-            query="completely unrelated terms",
+            keywords=["completely unrelated terms"],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -377,7 +377,7 @@ class TestSearch:
 
         results = await hypothesis_repo.search(
             embedding=_embedding(seed=10),
-            query="",
+            keywords=[""],
             weights=(1.0, 0.0),
             limit=10,
             fan_out=2,
@@ -426,14 +426,14 @@ class TestSearch:
 
         narrow = await hypothesis_repo.search(
             embedding=q_emb,
-            query="rarewidget",
+            keywords=["rarewidget"],
             weights=(0.5, 0.5),
             limit=1,
             fan_out=1,
         )
         wide = await hypothesis_repo.search(
             embedding=q_emb,
-            query="rarewidget",
+            keywords=["rarewidget"],
             weights=(0.5, 0.5),
             limit=1,
             fan_out=3,
@@ -458,7 +458,7 @@ class TestSearch:
         with pytest.raises(ValueError, match="limit must be >= 1"):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
-                query="any",
+                keywords=["any"],
                 weights=(0.5, 0.5),
                 limit=bad_limit,
                 fan_out=2,
@@ -471,7 +471,7 @@ class TestSearch:
         with pytest.raises(ValueError, match="fan_out must be >= 1"):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
-                query="any",
+                keywords=["any"],
                 weights=(0.5, 0.5),
                 limit=5,
                 fan_out=bad_fan_out,
@@ -483,7 +483,7 @@ class TestSearch:
         with pytest.raises(ValueError, match=re.escape("weights must sum to 1.0")):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
-                query="any",
+                keywords=["any"],
                 weights=(1.0, 1.0),
                 limit=5,
                 fan_out=2,
@@ -496,7 +496,7 @@ class TestSearch:
         with pytest.raises(ValueError, match="weights must be non-negative"):
             await hypothesis_repo.search(
                 embedding=_embedding(seed=1),
-                query="any",
+                keywords=["any"],
                 weights=(-0.5, 1.5),
                 limit=5,
                 fan_out=2,
@@ -531,7 +531,7 @@ class TestStorageError:
         with pytest.raises(StorageError):
             await hypothesis_repo.search(
                 embedding=_embedding(0),
-                query="any query",
+                keywords=["any query"],
                 weights=(0.5, 0.5),
                 limit=5,
                 fan_out=2,

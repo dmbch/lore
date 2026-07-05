@@ -62,7 +62,7 @@ class PostgresHypothesisRepository:
         self,
         *,
         embedding: Sequence[float],
-        query: str,
+        keywords: Sequence[str],
         weights: tuple[float, float],
         limit: int,
         fan_out: int,
@@ -77,6 +77,9 @@ class PostgresHypothesisRepository:
         validate_search_params(weights=weights, limit=limit, fan_out=fan_out)
         w_prox, w_auth = weights
         per_lane_limit = fan_out * limit
+        # R1: behavior-preserving join. R2 replaces this with a phrase-OR
+        # builder consumed by ``websearch_to_tsquery``.
+        query = " ".join(keywords)
 
         # k=60: Cormack et al. 2009 standard RRF constant. Inlined as a SQL
         # literal so the string stays a LiteralString (psycopg requirement).

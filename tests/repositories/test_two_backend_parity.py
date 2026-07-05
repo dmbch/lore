@@ -218,7 +218,7 @@ class TestSearchSurfacesProximity:
         emb = [1.0] + [0.0] * (SCHEMA_DIM - 1)
         await backend.hypotheses.store(content="alpha-content", embedding=emb, created_at=0)
         results = await backend.hypotheses.search(
-            embedding=emb, query="alpha-content", weights=(1.0, 0.0), limit=5, fan_out=2
+            embedding=emb, keywords=["alpha-content"], weights=(1.0, 0.0), limit=5, fan_out=2
         )
         assert len(results) == 1
         # Same vector on both sides → cosine similarity ~= 1.0. float32
@@ -251,7 +251,7 @@ class TestSearchSurfacesProximity:
         # composite score, so the authority-only row is the unique top-1
         # without depending on RRF tiebreak ordering.
         results = await backend.hypotheses.search(
-            embedding=query_emb, query="vermillion", weights=(0.0, 1.0), limit=1, fan_out=2
+            embedding=query_emb, keywords=["vermillion"], weights=(0.0, 1.0), limit=1, fan_out=2
         )
         assert len(results) == 1
         assert results[0].content == "vermillion archive"
@@ -404,7 +404,7 @@ class TestFTSBehavioralParity:
             content=stored, embedding=[0.1] * SCHEMA_DIM, created_at=0
         )
         results = await backend.hypotheses.search(
-            embedding=[0.1] * SCHEMA_DIM, query=query, weights=(0.0, 1.0), limit=10, fan_out=2
+            embedding=[0.1] * SCHEMA_DIM, keywords=[query], weights=(0.0, 1.0), limit=10, fan_out=2
         )
         # score > 0 with w_prox=0 isolates authority-lane membership.
         matched = any(r.id == record.id and r.score > 0 for r in results)
@@ -421,7 +421,11 @@ class TestFTSBehavioralParity:
             content="straße", embedding=[0.1] * SCHEMA_DIM, created_at=0
         )
         results = await backend.hypotheses.search(
-            embedding=[0.1] * SCHEMA_DIM, query="strasse", weights=(0.0, 1.0), limit=10, fan_out=2
+            embedding=[0.1] * SCHEMA_DIM,
+            keywords=["strasse"],
+            weights=(0.0, 1.0),
+            limit=10,
+            fan_out=2,
         )
         matched = any(r.id == record.id and r.score > 0 for r in results)
         assert matched is False

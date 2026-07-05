@@ -63,7 +63,7 @@ async def search_candidates(
 ) -> list[HypothesisResult]:
     """Search per-source and dedup. Pure DB: runs inside a session scope."""
     with start_span("lore.search_candidates"):
-        query = " ".join(interpreted.keywords[: settings.retrieval.max_keywords])
+        keywords = interpreted.keywords[: settings.retrieval.max_keywords]
         weights = settings.retrieval.weights
         limit = settings.retrieval.limit
         fan_out = settings.retrieval.fan_out
@@ -73,7 +73,7 @@ async def search_candidates(
         # current session scope.
         result_sets: list[list[HypothesisResult]] = [
             await hypotheses.search(
-                embedding=emb, query=query, weights=weights, limit=limit, fan_out=fan_out
+                embedding=emb, keywords=keywords, weights=weights, limit=limit, fan_out=fan_out
             )
             for emb in source_embeddings
         ]

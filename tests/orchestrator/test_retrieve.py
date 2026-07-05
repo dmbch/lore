@@ -34,6 +34,7 @@ from lore.domain import (
 )
 from lore.math import EpistemicsConfig, MathService
 from lore.orchestrator import Orchestrator
+from lore.orchestrator.retrieve import search_candidates
 from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
@@ -100,16 +101,51 @@ class _OverlapTrackingHypotheses:
         self,
         *,
         embedding: Sequence[float],
-        query: str,
+        keywords: Sequence[str],
         weights: tuple[float, float],
         limit: int,
         fan_out: int,
     ) -> list[HypothesisResult]:
-        del embedding, query, weights, limit, fan_out
+        del embedding, keywords, weights, limit, fan_out
         entry = time.monotonic()
         await asyncio.sleep(0.01)
         exit_ = time.monotonic()
         self.windows.append((entry, exit_))
+        return []
+
+
+class _KeywordRecordingHypotheses:
+    """Captures the keyword list handed to ``search``.
+
+    The authority lane needs keyword boundaries intact down to the SQL;
+    this stub proves ``search_candidates`` forwards the list, not a
+    pre-joined string that has already thrown the boundaries away.
+    """
+
+    def __init__(self) -> None:
+        self.received: list[Sequence[str]] = []
+
+    async def store(
+        self, *, content: str, embedding: Sequence[float], created_at: int
+    ) -> HypothesisRecord:
+        del content, embedding, created_at
+        raise NotImplementedError
+
+    async def find_by_id(self, id: str) -> HypothesisRecord | None:
+        del id
+        raise NotImplementedError
+
+    async def search(
+        self,
+        *,
+        embedding: Sequence[float],
+        keywords: Sequence[str],
+        weights: tuple[float, float],
+        limit: int,
+        fan_out: int,
+    ) -> list[HypothesisResult]:
+        del embedding, weights, limit, fan_out
+        self.received.append(keywords)
         return []
 
 
@@ -296,3 +332,29 @@ class TestRetrieveDoesNotShareConnectionConcurrently:
         )
 
         assert len(hypotheses.windows) == 1
+
+
+class TestSearchCandidatesForwardsKeywordList:
+    """The authority lane needs keyword boundaries intact down to the SQL.
+
+    ``search_candidates`` must hand ``search`` the truncated keyword list,
+    not a space-joined string that has already discarded the boundaries a
+    multi-token keyword depends on.
+    """
+
+    async def test_search_candidates_passes_keyword_list(self) -> None:
+        hypotheses = _KeywordRecordingHypotheses()
+        interpreted = InterpreterOutput(
+            question="normalized question",
+            propositions=["prop A"],
+            keywords=["content delivery network", "latency"],
+        )
+
+        await search_candidates(
+            hypotheses=hypotheses,
+            interpreted=interpreted,
+            source_embeddings=[list(_STUB_EMBEDDING)],
+            settings=_make_settings(),
+        )
+
+        assert hypotheses.received == [["content delivery network", "latency"]]

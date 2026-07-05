@@ -107,12 +107,12 @@ class _CandidatesHypotheses:
         self,
         *,
         embedding: Sequence[float],
-        query: str,
+        keywords: Sequence[str],
         weights: tuple[float, float],
         limit: int,
         fan_out: int,
     ) -> list[HypothesisResult]:
-        del embedding, query, weights, limit, fan_out
+        del embedding, keywords, weights, limit, fan_out
         return list(self._candidates)
 
 

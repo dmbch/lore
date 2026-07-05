@@ -51,7 +51,7 @@ class HypothesisRepository(Protocol):
         self,
         *,
         embedding: Sequence[float],
-        query: str,
+        keywords: Sequence[str],
         weights: tuple[float, float],
         limit: int,
         fan_out: int,
@@ -59,7 +59,9 @@ class HypothesisRepository(Protocol):
         """Two-lane Weighted Reciprocal Rank Fusion retrieval.
 
         Lane 1 (proximity): vector cosine similarity.
-        Lane 2 (authority): full-text search.
+        Lane 2 (authority): full-text search over ``keywords``. Each
+        keyword is one retrieval term; boundaries are preserved down to
+        the SQL so a multi-token keyword can match as a phrase.
 
         Each lane ranks candidates independently; per-lane scores are
         ``1 / (k + rank)`` (Cormack et al. 2009, k=60). The composite
