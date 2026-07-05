@@ -7,6 +7,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from lore.repositories import records
+from lore.repositories._fulltext import build_fulltext_query
 from lore.repositories._validation import validate_embedding, validate_search_params
 from lore.repositories.postgres._errors import translate
 from lore.repositories.records import HypothesisRecord, HypothesisResult
@@ -69,17 +70,17 @@ class PostgresHypothesisRepository:
     ) -> list[HypothesisResult]:
         """Two-lane retrieval: pgvector proximity + tsvector authority.
 
-        ``plainto_tsquery`` of an empty string matches nothing under any
-        regconfig, so the authority lane is naturally inert on an empty
-        query, unlike SQLite, whose FTS5 MATCH errors on empty input and
+        The authority lane matches ``keywords`` with OR, each keyword a
+        quoted ``websearch_to_tsquery`` phrase (adjacency).
+        ``websearch_to_tsquery`` of an empty string matches nothing under
+        any regconfig, so the lane is naturally inert when no keyword
+        survives, unlike SQLite, whose FTS5 MATCH errors on empty input and
         must be skipped explicitly.
         """
         validate_search_params(weights=weights, limit=limit, fan_out=fan_out)
         w_prox, w_auth = weights
         per_lane_limit = fan_out * limit
-        # R1: behavior-preserving join. R2 replaces this with a phrase-OR
-        # builder consumed by ``websearch_to_tsquery``.
-        query = " ".join(keywords)
+        query = build_fulltext_query(keywords)
 
         # k=60: Cormack et al. 2009 standard RRF constant. Inlined as a SQL
         # literal so the string stays a LiteralString (psycopg requirement).
@@ -106,9 +107,9 @@ class PostgresHypothesisRepository:
             "  FROM ("
             "    SELECT id AS hypothesis_id,"
             "      ts_rank(fulltext,"
-            "        plainto_tsquery(%(fts_cfg)s::regconfig, %(query)s)) AS score"
+            "        websearch_to_tsquery(%(fts_cfg)s::regconfig, %(query)s)) AS score"
             "    FROM hypotheses"
-            "    WHERE fulltext @@ plainto_tsquery(%(fts_cfg)s::regconfig, %(query)s)"
+            "    WHERE fulltext @@ websearch_to_tsquery(%(fts_cfg)s::regconfig, %(query)s)"
             "    ORDER BY score DESC LIMIT %(fan_out)s"
             "  ) sub"
             "),"

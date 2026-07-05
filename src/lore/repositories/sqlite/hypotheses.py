@@ -8,25 +8,10 @@ import sqlite_vec
 
 from lore.domain import StorageError
 from lore.repositories import records
+from lore.repositories._fulltext import build_fulltext_query
 from lore.repositories._validation import validate_embedding, validate_search_params
 from lore.repositories.records import HypothesisRecord, HypothesisResult
 from lore.repositories.sqlite._errors import classify_integrity_error
-
-
-def _sanitize_fts5_query(query: str) -> str:
-    """Force literal matching by double-quoting each token.
-
-    FTS5 interprets query syntax (NOT, OR, AND, NEAR, +, *, ^, etc.).
-    PostgreSQL's plainto_tsquery strips all operators by design; to
-    maintain parity, we quote every token so FTS5 treats them as literals.
-
-    Internal double quotes are escaped by doubling (FTS5's convention,
-    same as SQL/CSV, not backslash escaping like JSON). No stdlib
-    function provides FTS5 quoting.
-    """
-    tokens = query.split()
-    double_quote = '"'
-    return " ".join(f'"{t.replace(double_quote, double_quote * 2)}"' for t in tokens if t)
 
 
 class SqliteHypothesisRepository:
@@ -94,18 +79,14 @@ class SqliteHypothesisRepository:
     ) -> list[HypothesisResult]:
         """Two-lane retrieval: sqlite-vec proximity + FTS5 authority.
 
-        The authority lane is skipped when the query is empty (FTS5 MATCH
-        errors on an empty string, contrast Postgres, whose
-        ``plainto_tsquery`` is simply inert). Query tokens are double-quoted
-        to force literal matching, matching Postgres's ``plainto_tsquery``
-        which strips all operators.
+        The authority lane matches ``keywords`` with OR, each keyword a
+        quoted FTS5 phrase (adjacency). The lane is skipped when no keyword
+        survives (FTS5 MATCH errors on an empty string, contrast Postgres,
+        whose ``websearch_to_tsquery`` is simply inert).
         """
         validate_search_params(weights=weights, limit=limit, fan_out=fan_out)
         w_prox, w_auth = weights
         per_lane_limit = fan_out * limit
-        # R1: behavior-preserving join. R2 replaces this with a phrase-OR
-        # builder that keeps keyword boundaries intact.
-        query = " ".join(keywords)
 
         # Lane 1: proximity, ranked by cosine distance (ascending).
         # ``distance`` is exposed alongside ``rank`` so the projection can
@@ -129,9 +110,9 @@ class SqliteHypothesisRepository:
         ]
 
         # Lane 2: authority, ranked by FTS5 BM25 (rank is negative, lower
-        # is better, so ORDER BY rank ASC).  Skipped when query is empty.
-        safe_query = _sanitize_fts5_query(query) if query.strip() else ""
-        if safe_query:
+        # is better, so ORDER BY rank ASC). Skipped when no keyword survives.
+        fulltext_query = build_fulltext_query(keywords)
+        if fulltext_query:
             l2_cte = (
                 ", l2_ranked AS ("
                 "  SELECT hypothesis_id,"
@@ -144,7 +125,7 @@ class SqliteHypothesisRepository:
             l2_pool = " UNION SELECT hypothesis_id FROM l2_ranked"
             l2_join = " LEFT JOIN l2_ranked l2 ON p.hypothesis_id = l2.hypothesis_id"
             rrf_auth = "COALESCE(1.0 / (60 + l2.rank), 0.0)"
-            params.extend([safe_query, per_lane_limit])
+            params.extend([fulltext_query, per_lane_limit])
         else:
             l2_cte = ""
             l2_pool = ""
