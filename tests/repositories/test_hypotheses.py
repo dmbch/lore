@@ -342,6 +342,40 @@ class TestSearch:
         assert phrase_doc.id in matched
         assert scattered.id not in matched
 
+    async def test_search_more_keyword_matches_rank_higher(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """A hypothesis matching more keywords ranks above one matching fewer.
+
+        The keywords are rarity-comparable: each appears in exactly one stored
+        hypothesis, so their FTS5/ts_rank term weights are equal and the
+        ordering isolates match count from term-rarity skew. Certifies the
+        ranking the RRF handoff relies on without an explicit match count.
+        """
+        three = await hypothesis_repo.store(
+            content="alfa bravo charlie",
+            embedding=_embedding(seed=1),
+            created_at=1000,
+        )
+        one = await hypothesis_repo.store(
+            content="delta",
+            embedding=_embedding(seed=2),
+            created_at=2000,
+        )
+
+        results = await hypothesis_repo.search(
+            embedding=_embedding(seed=500),
+            keywords=["alfa", "bravo", "charlie", "delta"],
+            weights=(0.0, 1.0),
+            limit=10,
+            fan_out=2,
+        )
+
+        order = [r.id for r in results if r.score > 0]
+        assert three.id in order
+        assert one.id in order
+        assert order.index(three.id) < order.index(one.id)
+
     async def test_search_respects_limit(self, hypothesis_repo: HypothesisRepository) -> None:
         for seed in range(1, 6):
             await hypothesis_repo.store(
