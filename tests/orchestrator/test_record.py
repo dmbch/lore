@@ -62,7 +62,7 @@ class _StubHypotheses:
         self,
         *,
         embedding: Sequence[float],
-        query: str,
+        keywords: Sequence[str],
         weights: tuple[float, float],
         limit: int,
         fan_out: int,

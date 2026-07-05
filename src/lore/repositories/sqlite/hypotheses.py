@@ -87,7 +87,7 @@ class SqliteHypothesisRepository:
         self,
         *,
         embedding: Sequence[float],
-        query: str,
+        keywords: Sequence[str],
         weights: tuple[float, float],
         limit: int,
         fan_out: int,
@@ -103,6 +103,9 @@ class SqliteHypothesisRepository:
         validate_search_params(weights=weights, limit=limit, fan_out=fan_out)
         w_prox, w_auth = weights
         per_lane_limit = fan_out * limit
+        # R1: behavior-preserving join. R2 replaces this with a phrase-OR
+        # builder that keeps keyword boundaries intact.
+        query = " ".join(keywords)
 
         # Lane 1: proximity, ranked by cosine distance (ascending).
         # ``distance`` is exposed alongside ``rank`` so the projection can
