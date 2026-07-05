@@ -287,7 +287,7 @@ fulltext_config = "porter unicode61"
 | `authority` | float [0, 1] | `0.5` | Weight for the full-text search lane |
 | `limit` | int | `10` | Final result count after scoring |
 | `fan_out` | int | `2` | Multiplier for per-lane candidate fetch (limit x fan_out) |
-| `max_keywords` | int | `10` | Max keywords for the authority lane query |
+| `max_keywords` | int | `10` | Max keywords for the authority lane query. Deliberately above the interpreter prompt's 8-keyword ceiling: headroom, not a mismatch |
 
 </details>
 
