@@ -32,9 +32,14 @@ class TestBuildFulltextQuery:
     def test_keyword_whitespace_is_trimmed(self) -> None:
         assert build_fulltext_query(["  spaced  "]) == '"spaced"'
 
-    def test_internal_double_quotes_are_escaped(self) -> None:
-        # FTS5 escapes an internal quote by doubling it; websearch tolerates the same.
-        assert build_fulltext_query(['say "hi"']) == '"say ""hi"""'
+    def test_internal_double_quotes_become_spaces(self) -> None:
+        # FTS5's doubling escape closes the phrase early under
+        # websearch_to_tsquery, and neither tokenizer keeps the quote anyway,
+        # so the builder drops the character instead of escaping it.
+        assert build_fulltext_query(['say "hi"']) == '"say hi"'
+
+    def test_quote_only_keyword_is_dropped(self) -> None:
+        assert build_fulltext_query(['"']) == ""
 
     def test_operators_inside_a_keyword_stay_literal(self) -> None:
         # Quoting forces literal matching: NOT/OR/NEAR carry no operator meaning

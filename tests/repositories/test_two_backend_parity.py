@@ -389,6 +389,11 @@ class TestFTSBehavioralParity:
             # English stemming: both stem running→run, runs→run
             # (SQLite via porter, Postgres via Snowball).
             ("running fast", "runs", True, True),
+            # Internal double quote: the builder drops it (FTS5's doubling
+            # escape would close the phrase early under websearch_to_tsquery),
+            # so both backends see the phrase [19, rack] and match the
+            # adjacency in the stored content.
+            ('the 19" rack in aisle four', '19" rack', True, True),
         ],
     )
     async def test_fts_recall_parity_verified(
