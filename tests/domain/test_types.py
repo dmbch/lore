@@ -325,7 +325,7 @@ def _valid_search_result(**overrides: object) -> SearchResult:
         "content": "Service X switched to gRPC in Q3",
         "c_herd": 0.4,
         "attestation_count": 3,
-        "last_attested": 1700000000,
+        "last_attested": date(2023, 11, 14),
         "score": 0.7,
         "proximity": 0.8,
     }
@@ -342,7 +342,7 @@ class TestSearchResult:
         assert s.content == "Service X switched to gRPC in Q3"
         assert s.c_herd == 0.4
         assert s.attestation_count == 3
-        assert s.last_attested == 1700000000
+        assert s.last_attested == date(2023, 11, 14)
         assert s.score == 0.7
         assert s.proximity == 0.8
 
@@ -383,7 +383,7 @@ class TestSearchResult:
                 "content": "x",
                 "c_herd": 0.0,
                 "attestation_count": 0,
-                "last_attested": 0,
+                "last_attested": None,
                 "score": 0.5,
             }
         )
@@ -393,9 +393,14 @@ class TestSearchResult:
         with pytest.raises(ValueError, match="attestation_count"):
             _valid_search_result(attestation_count=-1)
 
-    def test_last_attested_non_negative(self) -> None:
-        with pytest.raises(ValueError, match="last_attested"):
-            _valid_search_result(last_attested=-1)
+    def test_last_attested_none_means_never_attested(self) -> None:
+        s = _valid_search_result(last_attested=None)
+        assert s.last_attested is None
+
+    def test_last_attested_rejects_epoch_int(self) -> None:
+        # The pre-migration representation; strict mode keeps it out.
+        with pytest.raises(ValidationError, match="last_attested"):
+            _valid_search_result(last_attested=1700000000)
 
 
 # --- Archivist types ---

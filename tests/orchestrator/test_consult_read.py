@@ -166,6 +166,42 @@ class TestReadPathEnrichesWithEpistemicState:
         assert retrieved["c_herd"] != 0.0  # attested, not vacuous
 
 
+class TestReadPathArchivistPayloadLastAttested:
+    async def test_archivist_payload_last_attested_is_iso_date(self) -> None:
+        hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
+        result = make_hypothesis_result(id=hypothesis_id)
+        attestation = make_attestation(hypothesis_id=hypothesis_id, timestamp=2000000000)
+
+        fixture = make_orchestrator(
+            search_results=[result],
+            by_hypotheses={hypothesis_id: [attestation]},
+        )
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=ConsultLoreRequest(question="What is X?"),
+            correlation_id="corr-1",
+        )
+
+        _system, user = fixture.archivist.calls[0]
+        payload = json.loads(user)
+        expected = datetime.fromtimestamp(2000000000, tz=UTC).date().isoformat()
+        assert payload["retrieved"][0]["last_attested"] == expected
+
+    async def test_archivist_payload_last_attested_null_when_never_attested(self) -> None:
+        fixture = make_orchestrator(search_results=[make_hypothesis_result()])
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=ConsultLoreRequest(question="What is X?"),
+            correlation_id="corr-1",
+        )
+
+        _system, user = fixture.archivist.calls[0]
+        payload = json.loads(user)
+        assert payload["retrieved"][0]["last_attested"] is None
+
+
 class TestReadPathPersistsStructuredRequest:
     async def test_read_path_persists_structured_request_all_fields(self) -> None:
         fixture = make_orchestrator()

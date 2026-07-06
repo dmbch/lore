@@ -6,6 +6,7 @@ keeps the embedding surface in one file.
 """
 
 import asyncio
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from lore.domain import EvidenceInput, InterpreterOutput, SearchResult
@@ -105,7 +106,11 @@ async def enrich(
             c_herd = (
                 math.compute_confidence(attestations=evidence, t_now=t_now) if evidence else 0.0
             )
-            last_attested = max(a.timestamp for a in raw) if raw else 0
+            last_attested = (
+                datetime.fromtimestamp(max(a.timestamp for a in raw), tz=UTC).date()
+                if raw
+                else None
+            )
             enriched.append(
                 SearchResult(
                     id=candidate.id,

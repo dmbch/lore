@@ -135,6 +135,8 @@ class SearchResult(BaseModel):
     ``score`` is the composite RRF score in ``[0, 1]`` from two-lane search.
     ``proximity`` is the raw cosine similarity in ``[-1, 1]`` from the
     proximity lane, defaulting to 0.0 for rows that surfaced authority-only.
+    ``last_attested`` is the UTC calendar date of the newest attestation,
+    ``None`` when the hypothesis has never been attested.
     """
 
     model_config = ConfigDict(frozen=True, strict=True)
@@ -143,7 +145,7 @@ class SearchResult(BaseModel):
     content: str
     c_herd: float
     attestation_count: int
-    last_attested: int
+    last_attested: date | None
     score: float
     proximity: float = 0.0
 
@@ -168,11 +170,11 @@ class SearchResult(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("attestation_count", "last_attested")
+    @field_validator("attestation_count")
     @classmethod
-    def _validate_non_negative_int(cls, v: int, info: ValidationInfo) -> int:
+    def _validate_attestation_count(cls, v: int) -> int:
         if v < 0:
-            msg = f"{info.field_name} must be >= 0, got {v}"
+            msg = f"attestation_count must be >= 0, got {v}"
             raise ValueError(msg)
         return v
 
