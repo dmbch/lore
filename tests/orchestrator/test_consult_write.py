@@ -3,7 +3,9 @@
 Transfer-specific tests live in ``test_transfer.py``.
 """
 
+import json
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -554,6 +556,23 @@ class TestWritePathOrphanRequestRowOnInterpreterFailure:
 
         # (b) No attestations joined to that correlation_id: provenance only.
         assert not any(call.correlation_id == "corr-orphan" for call in attestations.appended)
+
+
+class TestArchivistInputCarriesConsultDate:
+    async def test_archivist_input_carries_consult_date(self) -> None:
+        fixture = make_orchestrator()
+
+        await fixture.orchestrator.consult(
+            oracle_id="oracle-1",
+            request=write_request(),
+            correlation_id="corr-1",
+        )
+
+        _system, user = fixture.archivist.calls[0]
+        payload = json.loads(user)
+        t_now = fixture.requests.stored[0].timestamp
+        expected = datetime.fromtimestamp(t_now, tz=UTC).date().isoformat()
+        assert payload["today"] == expected
 
 
 class TestWritePathArchivistSystemPromptCarriesIncludes:
