@@ -191,6 +191,8 @@ class ArchivistInput(BaseModel):
     reasoning: str | None = None
     propositions: list[str] = Field(default_factory=list)
     retrieved: list[SearchResult]
+    # UTC calendar date of the consult; MCP carries no client timezone.
+    today: date
 
 
 class Resolution(BaseModel):

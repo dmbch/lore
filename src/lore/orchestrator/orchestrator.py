@@ -149,6 +149,7 @@ class Orchestrator:
                     interpreted=interpreted,
                     enriched=enriched,
                     settings=self._settings,
+                    t_now=t_now,
                 )
                 log.info("consult.reasoned", resolutions=len(reasoned.resolutions))
                 if reasoned.notes:

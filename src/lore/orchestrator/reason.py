@@ -1,5 +1,6 @@
 """Reason stage: Archivist call."""
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import structlog
@@ -28,6 +29,7 @@ async def reason(
     interpreted: InterpreterOutput,
     enriched: list[SearchResult],
     settings: LoreSettings,
+    t_now: int,
 ) -> ArchivistOutput:
     with start_span("lore.reason"):
         reasoned = await session.archivist.complete(
@@ -40,6 +42,7 @@ async def reason(
                 reasoning=request.reasoning,
                 propositions=interpreted.propositions,
                 retrieved=enriched,
+                today=datetime.fromtimestamp(t_now, tz=UTC).date(),
             ).model_dump_json(),
         )
         log.debug(

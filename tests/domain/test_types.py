@@ -413,6 +413,7 @@ class TestArchivistInput:
             reasoning="Logs show errors in Service X",
             propositions=["Service X failed", "Outage started at 3am"],
             retrieved=[r],
+            today=date(2026, 7, 3),
         )
         assert a.question == "What happened?"
         assert a.hypothesis == "Service X caused the outage"
@@ -420,9 +421,14 @@ class TestArchivistInput:
         assert a.reasoning == "Logs show errors in Service X"
         assert a.propositions == ["Service X failed", "Outage started at 3am"]
         assert a.retrieved == [r]
+        assert a.today == date(2026, 7, 3)
 
-    def test_archivist_input_only_retrieved_required(self) -> None:
-        a = ArchivistInput(retrieved=[])
+    def test_archivist_input_construct_without_today_raises(self) -> None:
+        with pytest.raises(ValidationError, match="today"):
+            ArchivistInput(retrieved=[])  # pyright: ignore[reportCallIssue] - omitting the required field is the behavior under test
+
+    def test_archivist_input_only_retrieved_and_today_required(self) -> None:
+        a = ArchivistInput(retrieved=[], today=date(2026, 7, 3))
         assert a.question is None
         assert a.hypothesis is None
         assert a.context is None
@@ -431,7 +437,7 @@ class TestArchivistInput:
         assert a.retrieved == []
 
     def test_archivist_input_is_frozen(self) -> None:
-        a = ArchivistInput(retrieved=[])
+        a = ArchivistInput(retrieved=[], today=date(2026, 7, 3))
         with pytest.raises(ValidationError, match="frozen"):
             a.question = "changed"  # pyright: ignore[reportAttributeAccessIssue]
 
