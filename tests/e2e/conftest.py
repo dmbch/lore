@@ -1,7 +1,7 @@
 # pyright: reportPrivateUsage=false
 import os
 from collections.abc import AsyncGenerator
-from typing import Any, cast
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 import pytest
@@ -108,11 +108,14 @@ async def judge(
     *,
     answer: str,
     criterion: str,
+    grader: Literal["reasoning", "fast"] = "reasoning",
 ) -> Verdict:
-    # Grade with the reasoning model: judging interpreter outputs with the same
-    # fast model would share its blind spots. The archivist cycle must swap in a
-    # decorrelated judge before trusting its greens (PLAN.md, Group I).
-    return await system._providers.archivist.complete(
+    # Grade with a provider decorrelated from the model under test: a judge that
+    # shares the graded model's blind spots rubber-stamps them. Interpreter
+    # suites grade with the reasoning model, archivist suites with the fast one.
+    providers = system._providers
+    completer = providers.archivist if grader == "reasoning" else providers.interpreter
+    return await completer.complete(
         system=_JUDGE_SYSTEM,
         user=f"Criterion: {criterion}\n\nAnswer: {answer}",
         response_model=Verdict,
