@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import fastmcp
 import pytest
 import structlog
-from fastmcp import FastMCP
+from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import Tool
 from pydantic import SecretStr
@@ -26,8 +26,13 @@ _COMPLETE_TOML = Path(__file__).parents[1] / "fixtures" / "lore_complete.toml"
 
 
 @asynccontextmanager
-async def _noop_system() -> AsyncGenerator[Orchestrator]:
-    yield MagicMock(spec=Orchestrator)
+async def _noop_system(orchestrator: Orchestrator | None = None) -> AsyncGenerator[Orchestrator]:
+    """System CM for tests: yields the given orchestrator, or an inert mock.
+
+    Single-use, like the production system CM: a server built from one
+    instance survives exactly one lifespan entry (one client session).
+    """
+    yield orchestrator if orchestrator is not None else MagicMock(spec=Orchestrator)
 
 
 @pytest.fixture()
@@ -138,18 +143,8 @@ def mock_orchestrator() -> AsyncMock:
 
 @pytest.fixture()
 def wired_server(settings: LoreSettings, mock_orchestrator: AsyncMock) -> FastMCP[Orchestrator]:
-    """Server with a mock orchestrator injected via lifespan."""
-
-    @asynccontextmanager
-    async def fake_system() -> AsyncGenerator[Orchestrator]:
-        yield mock_orchestrator
-
-    srv = create_server(settings=settings, system=fake_system())
-
-    # Inject the mock as the lifespan result so tool handlers can access it.
-    srv._lifespan_result = mock_orchestrator  # pyright: ignore[reportPrivateUsage]
-    srv._lifespan_result_set = True  # pyright: ignore[reportPrivateUsage]
-    return srv
+    """Server whose lifespan yields the mock orchestrator."""
+    return create_server(settings=settings, system=_noop_system(mock_orchestrator))
 
 
 async def test_read_call_delegates_to_orchestrator(
@@ -224,8 +219,9 @@ async def test_correlation_id_distinct_per_consult(
     strings. MCP's session-scoped monotonic request_id is never used as
     the correlation_id.
     """
-    await _call_tool(wired_server, "consult", {"question": "first"})
-    await _call_tool(wired_server, "consult", {"question": "second"})
+    async with Client(wired_server) as client:
+        await client.call_tool("consult", {"question": "first"})
+        await client.call_tool("consult", {"question": "second"})
 
     first, second = mock_orchestrator.consult.call_args_list
     assert first.kwargs["correlation_id"] != second.kwargs["correlation_id"]
@@ -273,12 +269,19 @@ async def test_storage_error_scrubs_to_generic_tool_error_with_correlation_id(
     from lore.domain.errors import StorageError
 
     mock_orchestrator.consult.side_effect = StorageError("disk full at /var/lib/postgres")
-    with pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info:
+    with (
+        structlog.testing.capture_logs() as cap,
+        pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info,
+    ):
         await _call_tool(wired_server, "consult", {"question": "test"})
     payload = str(exc_info.value)
     assert "disk full" not in payload
     assert "/var/lib/postgres" not in payload
-    assert isinstance(exc_info.value.__cause__, StorageError)
+    # The cause chain does not cross the wire; the diagnostic survives in the log.
+    events = [e for e in cap if e.get("event") == "consult.error.internal"]
+    assert len(events) == 1
+    assert events[0]["error_class"] == "StorageError"
+    assert "disk full" in events[0]["error_message"]
 
 
 async def test_storage_error_does_not_leak_constraint_name_to_client(
@@ -310,13 +313,20 @@ async def test_inference_error_scrubs_to_generic_tool_error_with_correlation_id(
     mock_orchestrator.consult.side_effect = InferenceError(
         "openai.RateLimitError: api.openai.com/v1/chat returned 429"
     )
-    with pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info:
+    with (
+        structlog.testing.capture_logs() as cap,
+        pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info,
+    ):
         await _call_tool(wired_server, "consult", {"question": "test"})
     payload = str(exc_info.value)
     assert "openai" not in payload
     assert "api.openai.com" not in payload
     assert "RateLimitError" not in payload
-    assert isinstance(exc_info.value.__cause__, InferenceError)
+    # The cause chain does not cross the wire; the diagnostic survives in the log.
+    events = [e for e in cap if e.get("event") == "consult.error.internal"]
+    assert len(events) == 1
+    assert events[0]["error_class"] == "InferenceError"
+    assert "RateLimitError" in events[0]["error_message"]
 
 
 def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
@@ -548,13 +558,7 @@ async def test_authentication_error_scrubs_to_constant_message_and_logs_diagnost
     ``error_message=`` for operators.
     """
 
-    @asynccontextmanager
-    async def fake_system() -> AsyncGenerator[Orchestrator]:
-        yield mock_orchestrator
-
-    srv = create_server(settings=settings, system=fake_system())
-    srv._lifespan_result = mock_orchestrator  # pyright: ignore[reportPrivateUsage]
-    srv._lifespan_result_set = True  # pyright: ignore[reportPrivateUsage]
+    srv = create_server(settings=settings, system=_noop_system(mock_orchestrator))
 
     fake_token = MagicMock()
     fake_token.claims = claims
@@ -578,37 +582,26 @@ async def test_authentication_error_scrubs_to_constant_message_and_logs_diagnost
     assert diagnostic_fragment in event["error_message"]
 
 
-def test_fastmcp_exposes_lifespan_result_attribute(
-    server: FastMCP[Orchestrator],
+async def test_confidence_out_of_range_rejected_before_orchestrator(
+    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """Structural guard: wired_server injects _lifespan_result directly.
+    """Parameter-level validation surfaces as ToolError through the real client.
 
-    If FastMCP renames or removes this internal attribute, this test fails
-    before the wired_server fixture silently stops working. Validated against
-    fastmcp 3.x. Check on upgrade.
+    fastmcp rejects the arguments before the tool body runs, so the
+    orchestrator is never reached.
     """
-    assert hasattr(server, "_lifespan_result"), (
-        "FastMCP no longer exposes _lifespan_result: update wired_server fixture"
-    )
-
-
-async def test_confidence_out_of_range_raises_validation_error(
-    wired_server: FastMCP[Orchestrator],
-) -> None:
-    from pydantic import ValidationError
-
-    with pytest.raises(ValidationError, match="less than or equal to 1"):
+    with pytest.raises(ToolError, match="less than or equal to 1"):
         await _call_tool(wired_server, "consult", {"question": "test", "confidence": 1.5})
+    mock_orchestrator.consult.assert_not_called()
 
 
-async def test_question_exceeds_max_length_raises_validation_error(
-    wired_server: FastMCP[Orchestrator],
+async def test_question_exceeds_max_length_rejected_before_orchestrator(
+    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    from pydantic import ValidationError
-
     # limits.question is the configured max. Exceed it by a wide margin.
-    with pytest.raises(ValidationError, match="string_too_long"):
+    with pytest.raises(ToolError, match="string_too_long"):
         await _call_tool(wired_server, "consult", {"question": "x" * 1_000_000})
+    mock_orchestrator.consult.assert_not_called()
 
 
 async def test_fully_empty_consult_does_not_reach_orchestrator(
@@ -686,10 +679,16 @@ async def _list_tools(server: FastMCP[Orchestrator]) -> Sequence[Tool]:
     return await server.list_tools()
 
 
-async def _call_tool(
-    server: FastMCP[Orchestrator], name: str, arguments: dict[str, object]
-) -> object:
-    return await server.call_tool(name, arguments)
+async def _call_tool(server: FastMCP[Orchestrator], name: str, arguments: dict[str, object]):
+    """Drive one tool call through the in-memory client.
+
+    Each call opens a fresh client session, entering the real server
+    lifespan. The system CM behind a server is single-use, so a test that
+    makes multiple calls against one server must share a single ``Client``
+    session instead of calling this helper twice.
+    """
+    async with Client(server) as client:
+        return await client.call_tool(name, arguments)
 
 
 async def test_archivist_resolution_error_scrubs_to_generic_tool_error(
@@ -703,12 +702,19 @@ async def test_archivist_resolution_error_scrubs_to_generic_tool_error(
     mock_orchestrator.consult.side_effect = ArchivistResolutionError(
         "corroborates id 'deadbeef-...' did not surface"
     )
-    with pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info:
+    with (
+        structlog.testing.capture_logs() as cap,
+        pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info,
+    ):
         await _call_tool(wired_server, "consult", {"question": "test"})
     payload = str(exc_info.value)
     assert "deadbeef" not in payload
     assert "corroborates" not in payload
-    assert isinstance(exc_info.value.__cause__, ArchivistResolutionError)
+    # The cause chain does not cross the wire; the diagnostic survives in the log.
+    events = [e for e in cap if e.get("event") == "consult.error.internal"]
+    assert len(events) == 1
+    assert events[0]["error_class"] == "ArchivistResolutionError"
+    assert "deadbeef" in events[0]["error_message"]
 
 
 async def test_consult_auth_error_logs_correlation_id(
