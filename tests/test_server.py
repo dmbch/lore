@@ -1,0 +1,139 @@
+"""Tests for lore.server: the fastmcp-run composition root."""
+
+import os
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+from fastmcp import Client, FastMCP
+
+from lore.config import LoreSettings, load_settings
+from lore.domain import StorageError
+from lore.repositories import RepositoryPool
+
+_COMPLETE_TOML = Path(__file__).parent / "fixtures" / "lore_complete.toml"
+
+# The opt-in ``reset_telemetry`` fixture from ``tests/conftest.py`` as a
+# module-scope autouse: the factory tests call ``server()``, which calls
+# ``configure_telemetry()`` whose once-only guard would otherwise trip on
+# the second test in the run.
+pytestmark = pytest.mark.usefixtures("reset_telemetry")
+
+
+def _settings_for(db_path: Path) -> LoreSettings:
+    env = {"DATABASE_URL": f"sqlite:///{db_path}"}
+    with patch.dict(os.environ, env, clear=True):
+        return load_settings(toml_path=_COMPLETE_TOML)
+
+
+async def test_system_yields_wired_orchestrator(tmp_path: Path) -> None:
+    from lore.orchestrator import Orchestrator
+    from lore.server import system
+
+    settings = _settings_for(tmp_path / "test.db")
+    async with system(settings) as orchestrator:
+        assert isinstance(orchestrator, Orchestrator)
+
+
+async def test_system_fills_probe_cell_inside_scope(tmp_path: Path) -> None:
+    """``cell.check()`` passes while the pool is live and raises after exit,
+    so ``/ready`` answers 200 only inside the lifespan scope.
+    """
+    from lore.server import ProbeCell, system
+
+    settings = _settings_for(tmp_path / "test.db")
+    cell = ProbeCell()
+    async with system(settings, cell=cell):
+        await cell.check()
+
+    with pytest.raises(StorageError):
+        await cell.check()
+
+
+async def test_probe_cell_check_before_start_raises_storage_error() -> None:
+    """A fresh cell answers not-ready: the /ready-503 shape before startup."""
+    from lore.server import ProbeCell
+
+    cell = ProbeCell()
+    with pytest.raises(StorageError):
+        await cell.check()
+
+
+async def test_system_closes_pool_when_caller_raises(tmp_path: Path) -> None:
+    """Behavioural port of the old setup test: real SQLite pool, caller
+    raises inside the scope, the pool is released and the cell cleared.
+    """
+    from lore.repositories import connect as real_connect
+    from lore.server import ProbeCell, system
+
+    settings = _settings_for(tmp_path / "test.db")
+    cell = ProbeCell()
+
+    pool_ref: list[RepositoryPool] = []
+
+    async def capturing_connect(settings: LoreSettings) -> RepositoryPool:
+        pool = await real_connect(settings)
+        pool_ref.append(pool)
+        return pool
+
+    with (
+        patch("lore.server.connect", new=capturing_connect),
+        pytest.raises(RuntimeError, match="caller boom"),
+    ):
+        async with system(settings, cell=cell):
+            raise RuntimeError("caller boom")
+
+    # The underlying aiosqlite connection is closed; a fresh session()
+    # attempt fails the SELECT 1 guard with StorageError.
+    session_cm = pool_ref[0].session()
+    with pytest.raises(StorageError):
+        await session_cm.__aenter__()
+
+    # The cell is cleared on the exception exit: /ready answers 503 again.
+    with pytest.raises(StorageError):
+        await cell.check()
+
+
+async def test_server_factory_builds_fastmcp_instance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The no-arg factory returns a FastMCP instance whose lifespan actually
+    runs: the in-memory client enters it and lists the consult tool.
+    """
+    from lore.server import server
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "lore.toml").write_text(_COMPLETE_TOML.read_text())
+    env = {"DATABASE_URL": f"sqlite:///{tmp_path / 'test.db'}"}
+    with patch.dict(os.environ, env, clear=True):
+        instance = server()
+        assert isinstance(instance, FastMCP)
+        async with Client(instance) as client:
+            tools = await client.list_tools()
+        assert [tool.name for tool in tools] == ["consult"]
+
+
+def test_server_factory_configures_telemetry_before_settings() -> None:
+    """Pin the invariant: configure_telemetry runs before load_settings, so
+    the bootstrap.env log routes through the configured structlog wrapper.
+    """
+    from lore.server import server
+
+    call_order: list[str] = []
+
+    def record_telemetry() -> None:
+        call_order.append("configure_telemetry")
+
+    def record_settings() -> LoreSettings:
+        call_order.append("load_settings")
+        return load_settings(toml_path=_COMPLETE_TOML)
+
+    env = {"DATABASE_URL": "sqlite:///:memory:"}
+    with (
+        patch.dict(os.environ, env, clear=True),
+        patch("lore.server.configure_telemetry", side_effect=record_telemetry),
+        patch("lore.server.load_settings", side_effect=record_settings),
+    ):
+        server()
+
+    assert call_order == ["configure_telemetry", "load_settings"]
