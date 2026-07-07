@@ -171,7 +171,7 @@ Model strings come from config (`LoreSettings`), injected at construction.
 
 ### Domain Module
 
-Shared vocabulary for the entire system. The `lore.domain` package defines domain types (frozen Pydantic `BaseModel`s like `TrustSignal`) and domain exceptions (`StorageError`, `InferenceError`, `AuthenticationError`, `DuplicateRecord`, `IntegrityViolation`). No logic, no I/O, just pure data definitions. Every layer imports from `lore.domain`; `lore.domain` imports from nothing. It is the leaf dependency in the import graph.
+Shared vocabulary for the entire system. The `lore.domain` package defines domain types (frozen Pydantic `BaseModel`s like `TrustSignal`) and domain exceptions (`StorageError`, `InferenceError`, `DuplicateRecord`, `IntegrityViolation`). No logic, no I/O, just pure data definitions. Every layer imports from `lore.domain`; `lore.domain` imports from nothing. It is the leaf dependency in the import graph.
 
 Repositories and providers catch implementation-specific errors and raise domain exceptions. The adapter catches domain exceptions and maps them to MCP error responses. No layer ever imports implementation-specific errors from another layer.
 
@@ -248,7 +248,7 @@ Configuration is centralized in `lore.telemetry`. Acquisition is decentralized: 
 
 When `OIDC_URL` is configured, the adapter runs the standard MCP OAuth flow with that IdP and extracts the oracle identity from the `sub` claim. Without `OIDC_URL`, the adapter falls back to the synthetic `_local` identity for every request, which is appropriate for stdio dev and for HTTP topologies that authenticate at an upstream proxy. Oracle identity is a plain string on the ledger; there is no dedicated table and no auto-creation step. No layer below the adapter knows about OAuth; the orchestrator receives a verified oracle identity string, not a token.
 
-The `_*` namespace is reserved for synthetic identities the adapter trusts by construction (`_local`, `_transfer`); IdP-claimed `sub` values matching that prefix are rejected at the adapter boundary so no external principal can impersonate a synthetic in the ledger.
+The `_*` namespace is used by the synthetic identities (`_local`, `_transfer`). IdP-claimed `sub` values pass through verbatim: the IdP is the identity root, and the one name whose collision would matter (`_transfer`, written with full credibility) is refused by the Recorder at the domain layer, where that invariant lives.
 
 **Auth opt-in.** `[auth] required` is the operator-controlled fail-fast. Default `false`: Lore reads the FastMCP env-var contract (`FASTMCP_HOST`, `FASTMCP_TRANSPORT`) and never second-guesses it. Operators who want bootstrap to refuse without OIDC set `required = true` under `[auth]` in `lore.toml`; the missing `OIDC_URL` is then a hard error at startup, raised during settings load before migrations or the server start. The auth↔OIDC pairing is a cross-section invariant on `LoreSettings`, validated as the settings model is built rather than as a separate procedural step. The startup sequence is telemetry → settings (cross-section invariants, including auth↔OIDC, validated here) → migrations → repos → providers → orchestrator → adapter; telemetry comes first so the refusal itself is logged through structlog.
 

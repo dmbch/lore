@@ -21,7 +21,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from lore.domain import LOCAL_ORACLE, ConsultLoreRequest, ConsultLoreResponse
-from lore.domain.errors import AuthenticationError, StorageError
+from lore.domain.errors import StorageError
 from lore.orchestrator import Orchestrator
 from lore.prompts import load_prompt
 
@@ -254,27 +254,17 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
         try:
             token = get_access_token()
             if token:
-                # Claims pass through verbatim: no whitespace stripping, no
-                # normalization. Operators are responsible for IdP ``sub``
-                # hygiene; the ledger treats byte-distinct strings as distinct
-                # oracles. The only shape rules here are the ones that would
-                # either corrupt the data path (missing / mistyped / empty) or
-                # bypass epistemic safety (synthetic-namespace squat: an IdP
-                # issuing ``_transfer`` would write full-credibility attestations).
-                claim = token.claims.get("sub")
-                if claim is None:
-                    msg = "access token missing 'sub' claim"
-                    raise AuthenticationError(msg)
-                if not isinstance(claim, str):
-                    msg = "access token 'sub' claim must be a string"
-                    raise AuthenticationError(msg)
-                if not claim:
-                    msg = "access token 'sub' claim must not be empty"
-                    raise AuthenticationError(msg)
-                if claim.startswith("_"):
-                    msg = "oracle_id must not use the synthetic '_*' namespace"
-                    raise AuthenticationError(msg)
-                oracle_id = claim
+                # Claims pass through verbatim: no normalization, no namespace
+                # rules. The IdP is the identity root (Sybil resistance is
+                # delegated to it), so whatever string it puts in ``sub`` is the
+                # oracle_id. The single gate is the type boundary from untyped
+                # JWT material to the ledger's str identity; the one reserved
+                # name (``_transfer``) is enforced by the Recorder in the domain.
+                sub = token.claims.get("sub")
+                if not isinstance(sub, str):
+                    msg = "authentication failed: access token has no usable 'sub' claim"
+                    raise ToolError(msg)
+                oracle_id = sub
             else:
                 oracle_id = LOCAL_ORACLE
 
@@ -284,13 +274,6 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
             return await orchestrator.consult(
                 oracle_id=oracle_id, request=request, correlation_id=correlation_id
             )
-        except AuthenticationError as exc:
-            # Constant client-facing message: the synthetic-namespace refusal and
-            # the missing/mistyped ``sub`` claims are operator diagnostics, not
-            # contract surface. The diagnostic survives in the fastmcp.errors log,
-            # captured from this ToolError's cause by ErrorHandlingMiddleware.
-            msg = "authentication failed"
-            raise ToolError(msg) from exc
         except ValidationError as exc:
             # A pydantic failure past request construction is our bug, not the
             # oracle's input. Re-raise as a NON-pydantic error: fastmcp's dedicated

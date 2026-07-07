@@ -281,10 +281,10 @@ async def test_consult_masks_internal_errors(
 async def test_consult_auth_failure_is_constant_message(
     wired_server: FastMCP[Orchestrator],
 ) -> None:
-    """A token missing ``sub`` scrubs to exactly ``authentication failed``.
+    """A token without a usable ``sub`` fails with one constant message.
 
-    No correlation id, no which-check detail: the wire message is a constant,
-    so no operator diagnostic can leak through its shape.
+    The wire message is a constant, so nothing token-derived can leak
+    through its shape.
     """
     fake_token = MagicMock()
     fake_token.claims = {"aud": "some-audience"}
@@ -293,7 +293,7 @@ async def test_consult_auth_failure_is_constant_message(
         pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
-    assert str(exc_info.value) == "authentication failed"
+    assert str(exc_info.value) == "authentication failed: access token has no usable 'sub' claim"
 
 
 @pytest.mark.parametrize(
@@ -624,50 +624,6 @@ async def test_token_with_non_string_sub_claim_raises_tool_error(
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
 
 
-@pytest.mark.parametrize(
-    ("claims", "diagnostic_fragment"),
-    [
-        ({"aud": "some-audience"}, "missing 'sub' claim"),
-        ({"sub": 12345}, "must be a string"),
-        ({"sub": ""}, "must not be empty"),
-        ({"sub": "_local"}, "synthetic"),
-        ({"sub": "_transfer"}, "synthetic"),
-    ],
-)
-async def test_authentication_error_scrubs_to_constant_message_and_logs_diagnostic(
-    settings: LoreSettings,
-    mock_orchestrator: AsyncMock,
-    caplog: pytest.LogCaptureFixture,
-    claims: dict[str, object],
-    diagnostic_fragment: str,
-) -> None:
-    """Every AuthenticationError path scrubs the wire payload and logs the diagnostic.
-
-    Walks every code path that raises ``AuthenticationError`` inside the
-    adapter's ``consult`` body. Asserts two contracts at once: the client sees
-    only the constant scrubbed message, and the ``fastmcp.errors`` log preserves
-    the original diagnostic (the middleware captures the ToolError's cause).
-    """
-
-    srv = create_server(settings=settings, system=_noop_system(mock_orchestrator))
-
-    fake_token = MagicMock()
-    fake_token.claims = claims
-    with (
-        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
-        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
-        pytest.raises(ToolError) as exc_info,
-    ):
-        await _call_tool(srv, "consult", {"question": "who am I?"})
-
-    # (a) Wire payload is exactly the constant scrub: no diagnostic content can
-    # leak through this shape.
-    assert str(exc_info.value) == "authentication failed"
-
-    # (b) The fastmcp.errors log preserves the original diagnostic for operators.
-    assert diagnostic_fragment in caplog.text
-
-
 async def test_confidence_out_of_range_rejected_before_orchestrator(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
@@ -708,36 +664,18 @@ async def test_hypothesis_with_zero_confidence_reaches_orchestrator(
     assert request.hypothesis == "a claim"
 
 
-async def test_idp_claim_in_synthetic_namespace_raises_tool_error(
-    wired_server: FastMCP[Orchestrator],
+async def test_idp_sub_passes_through_verbatim_even_in_synthetic_namespace(
+    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """An IdP that claims ``sub='_local'`` is refused at the adapter boundary.
-
-    The synthetic ``_*`` namespace is reserved for identities the adapter
-    trusts by construction (``_local``, ``_transfer``); IdP-claimed values in
-    that namespace would let an external principal impersonate a synthetic in
-    the ledger and bypass trust discounting.
+    """The IdP is the identity root: whatever string it puts in ``sub`` is the
+    oracle_id, ``_*`` names included. The one reserved name (``_transfer``) is
+    enforced by the Recorder at the domain layer, not here.
     """
     fake_token = MagicMock()
     fake_token.claims = {"sub": "_local"}
-    with (
-        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
-        pytest.raises(ToolError),
-    ):
+    with patch("lore.adapter.mcp.get_access_token", return_value=fake_token):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
-
-
-async def test_idp_claim_with_underscore_transfer_namespace_raises_tool_error(
-    wired_server: FastMCP[Orchestrator],
-) -> None:
-    """``sub='_transfer'`` is also refused: the synthetic check is namespace-scoped."""
-    fake_token = MagicMock()
-    fake_token.claims = {"sub": "_transfer"}
-    with (
-        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
-        pytest.raises(ToolError),
-    ):
-        await _call_tool(wired_server, "consult", {"question": "who am I?"})
+    assert mock_orchestrator.consult.call_args.kwargs["oracle_id"] == "_local"
 
 
 async def _list_tools(server: FastMCP[Orchestrator]) -> Sequence[Tool]:
