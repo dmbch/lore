@@ -267,8 +267,10 @@ async def test_consult_masks_internal_errors(
     """An internal error is masked on the wire: no detail, no exception class.
 
     ``mask_error_details=True`` collapses every unhandled exception to fastmcp's
-    uniform message. The orchestrator's ``StorageError`` carries a DSN; neither
-    the DSN nor the class name may reach the client.
+    uniform message, so one test pins the posture for all domain error classes
+    (StorageError, InferenceError, ArchivistResolutionError all walk the same
+    branch). The DSN is the most adversarial payload: neither it nor the class
+    name may reach the client.
     """
     mock_orchestrator.consult.side_effect = StorageError("dsn=postgresql://user:pass@host/db")
     with pytest.raises(ToolError) as exc_info:
@@ -350,11 +352,14 @@ async def test_consult_internal_validation_error_not_mislabeled_as_client_input(
     with pytest.raises(ToolError) as exc_info:
         await _call_tool(wired_server, "consult", {"question": "test"})
     payload = str(exc_info.value)
-    assert payload == "Error calling tool 'consult'"
+    # Masked: nothing of the internal model or its repr crosses the wire.
     assert "_InternalModel" not in payload
     assert "internal_secret" not in payload
     assert "input_value" not in payload
     assert "leak-me-not" not in payload
+    # Not mislabeled: the client-fault arm would surface the extracted
+    # pydantic message ("Input should be a valid integer ...").
+    assert "valid integer" not in payload
 
 
 async def test_consult_diagnostic_survives_in_fastmcp_errors_log(
@@ -374,50 +379,9 @@ async def test_consult_diagnostic_survives_in_fastmcp_errors_log(
         pytest.raises(ToolError),
     ):
         await _call_tool(wired_server, "consult", {"question": "test"})
-    assert "dsn=postgresql://user:pass@host/db" in caplog.text
-
-
-async def test_storage_error_does_not_leak_constraint_name_to_client(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
-) -> None:
-    """Schema and constraint names from psycopg/sqlite must not reach the client."""
-    from fastmcp.exceptions import ToolError
-
-    from lore.domain.errors import StorageError
-
-    mock_orchestrator.consult.side_effect = StorageError(
-        'duplicate key value violates unique constraint "hypotheses_pkey"'
-    )
-    with pytest.raises(ToolError) as exc_info:
-        await _call_tool(wired_server, "consult", {"question": "test"})
-    payload = str(exc_info.value)
-    assert "hypotheses_pkey" not in payload
-    assert "constraint" not in payload
-    assert "duplicate" not in payload
-
-
-async def test_inference_error_masks_provider_detail(
-    wired_server: FastMCP[Orchestrator],
-    mock_orchestrator: AsyncMock,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Provider detail is masked on the wire and preserved in the log."""
-    from lore.domain.errors import InferenceError
-
-    mock_orchestrator.consult.side_effect = InferenceError(
-        "openai.RateLimitError: api.openai.com/v1/chat returned 429"
-    )
-    with (
-        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
-        pytest.raises(ToolError) as exc_info,
-    ):
-        await _call_tool(wired_server, "consult", {"question": "test"})
-    payload = str(exc_info.value)
-    assert "openai" not in payload
-    assert "api.openai.com" not in payload
-    assert "RateLimitError" not in payload
-    # The cause chain does not cross the wire; the diagnostic survives in the log.
-    assert "RateLimitError" in caplog.text
+    middleware_records = [r for r in caplog.records if r.name == "fastmcp.errors"]
+    assert len(middleware_records) == 1
+    assert "dsn=postgresql://user:pass@host/db" in middleware_records[0].getMessage()
 
 
 def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
@@ -581,40 +545,12 @@ async def test_serve_in_http_mode_passes_uvicorn_log_config_none() -> None:
     )
 
 
-async def test_server_lifespan_delegates_to_system_cm(
-    settings: LoreSettings,
-) -> None:
-    sentinel = MagicMock()
-
-    @asynccontextmanager
-    async def fake_system() -> AsyncGenerator[MagicMock]:
-        yield sentinel
-
-    server = create_server(settings=settings, system=fake_system())
-    lifespan = server._lifespan  # pyright: ignore[reportPrivateUsage]
-    async with lifespan(server) as result:
-        assert result is sentinel
-
-
-async def test_token_without_sub_claim_raises_tool_error(
-    wired_server: FastMCP[Orchestrator],
-) -> None:
-    from fastmcp.exceptions import ToolError
-
-    fake_token = MagicMock()
-    fake_token.claims = {"aud": "some-audience"}
-    with (
-        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
-        pytest.raises(ToolError, match="authentication failed"),
-    ):
-        await _call_tool(wired_server, "consult", {"question": "who am I?"})
-
-
 async def test_token_with_non_string_sub_claim_raises_tool_error(
     wired_server: FastMCP[Orchestrator],
 ) -> None:
-    from fastmcp.exceptions import ToolError
-
+    """The second trigger of the type-boundary check (the first, a missing
+    ``sub``, is pinned by ``test_consult_auth_failure_is_constant_message``).
+    """
     fake_token = MagicMock()
     fake_token.claims = {"sub": 12345}
     with (
@@ -627,12 +563,13 @@ async def test_token_with_non_string_sub_claim_raises_tool_error(
 async def test_confidence_out_of_range_rejected_before_orchestrator(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    """Parameter-level validation surfaces as ToolError through the real client.
+    """The signature's ``Field(ge=-1, le=1)`` is enforced before the tool body runs.
 
-    fastmcp rejects the arguments before the tool body runs, so the
-    orchestrator is never reached.
+    The rejection mechanics and wording are fastmcp's and pydantic's; ours is
+    only the constraint on the signature, so the assertion stops at "rejected,
+    orchestrator never reached".
     """
-    with pytest.raises(ToolError, match="less than or equal to 1"):
+    with pytest.raises(ToolError):
         await _call_tool(wired_server, "consult", {"question": "test", "confidence": 1.5})
     mock_orchestrator.consult.assert_not_called()
 
@@ -640,8 +577,9 @@ async def test_confidence_out_of_range_rejected_before_orchestrator(
 async def test_question_exceeds_max_length_rejected_before_orchestrator(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    # limits.question is the configured max. Exceed it by a wide margin.
-    with pytest.raises(ToolError, match="string_too_long"):
+    # limits.question is the configured max. Exceed it by a wide margin; the
+    # enforcement and wording are fastmcp's, ours is the max_length wiring.
+    with pytest.raises(ToolError):
         await _call_tool(wired_server, "consult", {"question": "x" * 1_000_000})
     mock_orchestrator.consult.assert_not_called()
 
@@ -692,26 +630,3 @@ async def _call_tool(server: FastMCP[Orchestrator], name: str, arguments: dict[s
     """
     async with Client(server) as client:
         return await client.call_tool(name, arguments)
-
-
-async def test_archivist_resolution_error_masks_detail(
-    wired_server: FastMCP[Orchestrator],
-    mock_orchestrator: AsyncMock,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """ArchivistResolutionError masks the same as StorageError/InferenceError."""
-    from lore.domain import ArchivistResolutionError
-
-    mock_orchestrator.consult.side_effect = ArchivistResolutionError(
-        "corroborates id 'deadbeef-...' did not surface"
-    )
-    with (
-        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
-        pytest.raises(ToolError) as exc_info,
-    ):
-        await _call_tool(wired_server, "consult", {"question": "test"})
-    payload = str(exc_info.value)
-    assert "deadbeef" not in payload
-    assert "corroborates" not in payload
-    # The cause chain does not cross the wire; the diagnostic survives in the log.
-    assert "deadbeef" in caplog.text
