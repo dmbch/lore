@@ -17,6 +17,10 @@ from fastmcp.tools import Tool
 from mcp.types import TextResourceContents
 from pydantic import SecretStr
 
+from lore.adapter._contract import (  # pyright: ignore[reportPrivateUsage]
+    CONSULT_TOOL,
+    load_server_contract,
+)
 from lore.adapter.mcp import create_server
 from lore.config import LoreSettings, load_settings
 from lore.domain import ConsultLoreRequest, ConsultLoreResponse
@@ -88,22 +92,56 @@ async def test_server_registers_observatory_entry_tool(
     assert "observe" in names
 
 
-def test_mcp_instructions_are_scribe_only(
-    tmp_path: Path,
-    settings: LoreSettings,
+def test_instructions_teach_disbelief_via_negative_confidence(
     server: FastMCP[Orchestrator],
 ) -> None:
-    assert server.instructions == load_prompt(settings.prompts.scribe)
+    """Disbelief-via-negative-confidence teaching lives in the ambient instructions."""
+    text = (server.instructions or "").lower()
+    assert "negative confidence" in text
+    assert "textual negation" in text or "do not negate" in text or "not a textual" in text
 
-    narrative = tmp_path / "narrative.md"
-    narrative.write_text("DOMAIN NARRATIVE MUST NOT LEAK.")
-    prompts = settings.prompts.model_copy(update={"narrative": narrative})
-    leaky = settings.model_copy(update={"prompts": prompts})
-    srv = create_server(settings=leaky, system=_noop_system)
-    instructions = srv.instructions
-    assert instructions is not None
-    assert "DOMAIN NARRATIVE MUST NOT LEAK." not in instructions
-    assert instructions == load_prompt(leaky.prompts.scribe)
+
+def test_instructions_come_from_contract(
+    server: FastMCP[Orchestrator], settings: LoreSettings
+) -> None:
+    """Server instructions are sourced from the contract file, not hardcoded."""
+    contract = load_server_contract(settings.prompts.contract)
+    assert server.instructions == contract.instructions
+
+
+async def test_tool_description_comes_from_contract(
+    server: FastMCP[Orchestrator], settings: LoreSettings
+) -> None:
+    """The consult tool description is sourced from the contract file."""
+    contract = load_server_contract(settings.prompts.contract)
+    consult = next(t for t in await _list_tools(server) if t.name == CONSULT_TOOL)
+    assert consult.description == contract.tools.consult.description
+
+
+async def test_mcp_serves_consult_prompt(
+    server: FastMCP[Orchestrator], settings: LoreSettings
+) -> None:
+    """The Scribe persona is served as the ``consult`` MCP prompt (/mcp__lore__consult)."""
+    from fastmcp.prompts import PromptResult
+    from mcp.types import TextContent
+
+    prompts = await server.list_prompts()
+    assert "consult" in [p.name for p in prompts]
+
+    result = await server.render_prompt("consult")
+    assert isinstance(result, PromptResult)
+    content = result.messages[0].content
+    assert isinstance(content, TextContent)
+    assert content.text == load_prompt(settings.prompts.scribe)
+
+
+async def test_consult_prompt_takes_no_required_arguments(
+    server: FastMCP[Orchestrator],
+) -> None:
+    """The bare /mcp__lore__consult invocation must work: no required arguments."""
+    prompts = await server.list_prompts()
+    consult = next(p for p in prompts if p.name == "consult")
+    assert all(not arg.required for arg in (consult.arguments or []))
 
 
 def test_server_version_defaults_to_dev_marker(

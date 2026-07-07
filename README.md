@@ -348,7 +348,6 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 | `narrative` | path or omit | omitted | Optional preamble prepended to the core reasoning prompts (interpreter and archivist): house voice, mission |
 | `glossary` | path or omit | omitted | Optional glossary prepended to the core reasoning prompts (interpreter and archivist): domain jargon |
 | `scribe` | path | bundled | Scribe system prompt |
-| `consult` | path | bundled | Consult tool description |
 | `interpreter` | path | bundled | Interpreter system prompt |
 | `archivist` | path | bundled | Archivist system prompt |
 

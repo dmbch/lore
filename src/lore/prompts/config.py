@@ -18,6 +18,6 @@ class PromptsConfig(BaseModel):
     narrative: Path | None = None
     glossary: Path | None = None
     scribe: Path
-    consult: Path
     interpreter: Path
     archivist: Path
+    contract: Path

@@ -75,9 +75,9 @@ def make_settings(
         sqlite=sqlite,
         prompts=PromptsConfig(
             scribe=bundled_prompt("scribe"),
-            consult=bundled_prompt("consult"),
             interpreter=bundled_prompt("interpreter"),
             archivist=bundled_prompt("archivist"),
+            contract=bundled_prompt("contract"),
         ),
     )
 
