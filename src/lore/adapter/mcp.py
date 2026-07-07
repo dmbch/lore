@@ -17,6 +17,7 @@ from pydantic import Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from lore.adapter._contract import CONSULT_TOOL, ServerContract, load_server_contract
 from lore.adapter.middleware import OracleIdentityMiddleware
 from lore.adapter.observatory import build_observatory
 from lore.domain import ConsultLoreRequest, ConsultLoreResponse
@@ -28,34 +29,6 @@ if TYPE_CHECKING:
     from lore.config import LoreSettings
 
 log = structlog.get_logger(__name__)
-
-_TOOL_NAME = "consult"
-
-
-# Parameter descriptions: MCP tool schema guidance for the client LLM.
-_PARAM_DESCRIPTIONS = {
-    "question": (
-        "What do you want to know? Searches the shared knowledge base."
-        " Can be combined with a hypothesis to both ask and contribute."
-    ),
-    "context": (
-        "Why are you asking: the problem being solved, the decision being faced."
-        " Improves retrieval and resolution quality."
-    ),
-    "hypothesis": (
-        "A claim to contribute."
-        " Requires a confidence scalar. Lore classifies its relationship"
-        " to existing knowledge."
-    ),
-    "reasoning": ("The logical chain behind the hypothesis. Strengthens resolution quality."),
-    "confidence": (
-        "Directional confidence in [-1, 1]. Positive = belief,"
-        " negative = disbelief, 0 = genuine uncertainty. Rough calibration:"
-        " 0.9 certain, 0.6 fairly sure, 0.3 suspect, 0 no idea,"
-        " -0.5 doubt, -0.8 strongly disbelieve. Err toward center."
-        " Required when hypothesis is present; omit when the user has no view."
-    ),
-}
 
 
 def _bundled_logo() -> str:
@@ -108,12 +81,12 @@ def create_server(
         async with system() as orchestrator:
             yield orchestrator
 
-    instructions = load_prompt(settings.prompts.scribe)
+    contract = load_server_contract(settings.prompts.contract)
     auth = _build_auth(settings)
     server: FastMCP[Orchestrator] = FastMCP(
         name=settings.server.name,
         version=settings.version,
-        instructions=instructions,
+        instructions=contract.instructions,
         icons=[Icon(src=settings.server.icon_url or _bundled_logo())],
         lifespan=lifespan,
         auth=auth,
@@ -123,7 +96,8 @@ def create_server(
         mask_error_details=True,
     )
 
-    _register_tools(server=server, settings=settings)
+    _register_tools(server=server, settings=settings, contract=contract)
+    _register_prompts(server=server, settings=settings)
     server.add_provider(build_observatory())
     _register_healthchecks(server=server, health_probe=health_probe)
 
@@ -184,32 +158,54 @@ def _register_healthchecks(
     _ = ready
 
 
-def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) -> None:
-    limits = settings.limits
-    tool_description = load_prompt(settings.prompts.consult)
+def _register_prompts(*, server: FastMCP[Orchestrator], settings: LoreSettings) -> None:
+    """Register the ``consult`` MCP prompt: the invocable Scribe persona.
 
-    @server.tool(name=_TOOL_NAME, description=tool_description)
+    Served as an MCP prompt so a user can fire it as a slash command
+    (``/mcp__lore__consult``), landing the persona as a real conversation
+    message: the strongest injection channel, where server ``instructions``
+    are the weakest. The prompt and the tool deliberately share the
+    client-facing ``consult`` name.
+    """
+    persona = load_prompt(settings.prompts.scribe)
+
+    @server.prompt(name=CONSULT_TOOL)
+    def consult() -> str:
+        return persona
+
+    # FastMCP registers via decorator side effect; silence pyright "unused".
+    _ = consult
+
+
+def _register_tools(
+    *, server: FastMCP[Orchestrator], settings: LoreSettings, contract: ServerContract
+) -> None:
+    limits = settings.limits
+    tool = contract.tools.consult
+    fields = tool.fields
+
+    @server.tool(name=CONSULT_TOOL, description=tool.description)
     async def consult(
         ctx: Context,
         question: Annotated[
             str | None,
-            Field(max_length=limits.question, description=_PARAM_DESCRIPTIONS["question"]),
+            Field(max_length=limits.question, description=fields.question),
         ] = None,
         context: Annotated[
             str | None,
-            Field(max_length=limits.context, description=_PARAM_DESCRIPTIONS["context"]),
+            Field(max_length=limits.context, description=fields.context),
         ] = None,
         hypothesis: Annotated[
             str | None,
-            Field(max_length=limits.hypothesis, description=_PARAM_DESCRIPTIONS["hypothesis"]),
+            Field(max_length=limits.hypothesis, description=fields.hypothesis),
         ] = None,
         reasoning: Annotated[
             str | None,
-            Field(max_length=limits.reasoning, description=_PARAM_DESCRIPTIONS["reasoning"]),
+            Field(max_length=limits.reasoning, description=fields.reasoning),
         ] = None,
         confidence: Annotated[
             float | None,
-            Field(ge=-1, le=1, description=_PARAM_DESCRIPTIONS["confidence"]),
+            Field(ge=-1, le=1, description=fields.confidence),
         ] = None,
     ) -> ConsultLoreResponse:
         # trace_id of the active span gives one ID across the APM trace and the

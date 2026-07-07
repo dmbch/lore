@@ -189,9 +189,9 @@ def _make_settings() -> LoreSettings:
         postgres=PostgresConfig(min_size=1, max_size=20, timeout=10.0, max_waiting=50),
         prompts=PromptsConfig(
             scribe=_bundled_prompt("scribe"),
-            consult=_bundled_prompt("consult"),
             interpreter=_bundled_prompt("interpreter"),
             archivist=_bundled_prompt("archivist"),
+            contract=_bundled_prompt("contract"),
         ),
     )
 

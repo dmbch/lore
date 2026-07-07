@@ -19,12 +19,6 @@ def test_load_prompt_reads_bundled_scribe() -> None:
     assert len(result) > 0
 
 
-def test_load_prompt_reads_bundled_consult() -> None:
-    settings = _load_test_settings()
-    result = load_prompt(settings.prompts.consult)
-    assert len(result) > 0
-
-
 def test_load_prompt_reads_custom_file(tmp_path: Path) -> None:
     override = tmp_path / "custom_scribe.md"
     override.write_text("Custom scribe prompt")
@@ -38,15 +32,6 @@ def test_archivist_prompt_drops_legacy_vocabulary() -> None:
     assert "confirms" not in text
     assert "hypothesis_id" not in text
     assert "identity match" not in text.lower()
-
-
-def test_scribe_prompt_teaches_disbelief_via_negative_confidence() -> None:
-    settings = _load_test_settings()
-    text = load_prompt(settings.prompts.scribe).lower()
-    # Express disbelief via negative confidence on a positive-form hypothesis,
-    # never as a textual negation.
-    assert "negative confidence" in text
-    assert "textual negation" in text or "do not negate" in text or "not a textual" in text
 
 
 # ---------------------------------------------------------------------------
@@ -67,9 +52,9 @@ def test_build_core_prompt_prepends_narrative_then_glossary(tmp_path: Path) -> N
         narrative=narrative,
         glossary=glossary,
         scribe=settings.prompts.scribe,
-        consult=settings.prompts.consult,
         interpreter=settings.prompts.interpreter,
         archivist=settings.prompts.archivist,
+        contract=settings.prompts.contract,
     )
     result = build_core_prompt(config, base=base)
     assert result == "Domain narrative.\n\nTerm definitions.\n\nBase system prompt."
@@ -82,9 +67,9 @@ def test_build_core_prompt_omits_absent_includes(tmp_path: Path) -> None:
     settings = _load_test_settings()
     config = PromptsConfig(
         scribe=settings.prompts.scribe,
-        consult=settings.prompts.consult,
         interpreter=settings.prompts.interpreter,
         archivist=settings.prompts.archivist,
+        contract=settings.prompts.contract,
     )
     result = build_core_prompt(config, base=base)
     assert result == load_prompt(base)
@@ -100,9 +85,9 @@ def test_build_core_prompt_with_glossary_only_skips_narrative(tmp_path: Path) ->
     config = PromptsConfig(
         glossary=glossary,
         scribe=settings.prompts.scribe,
-        consult=settings.prompts.consult,
         interpreter=settings.prompts.interpreter,
         archivist=settings.prompts.archivist,
+        contract=settings.prompts.contract,
     )
     result = build_core_prompt(config, base=base)
     assert result == "Term definitions.\n\nBase system prompt."
@@ -116,14 +101,13 @@ def test_build_core_prompt_with_glossary_only_skips_narrative(tmp_path: Path) ->
 def test_prompts_config_requires_bundled_paths() -> None:
     pc = PromptsConfig(
         scribe=Path("/tmp/scribe.md"),
-        consult=Path("/tmp/consult.md"),
         interpreter=Path("/tmp/interpreter.md"),
         archivist=Path("/tmp/archivist.md"),
+        contract=Path("/tmp/contract.md"),
     )
     assert pc.narrative is None
     assert pc.glossary is None
     assert pc.scribe == Path("/tmp/scribe.md")
-    assert pc.consult == Path("/tmp/consult.md")
     assert pc.interpreter == Path("/tmp/interpreter.md")
     assert pc.archivist == Path("/tmp/archivist.md")
 
@@ -133,9 +117,9 @@ def test_prompts_config_accepts_narrative_and_glossary() -> None:
         narrative=Path("/tmp/narrative.md"),
         glossary=Path("/tmp/glossary.md"),
         scribe=Path("/tmp/scribe.md"),
-        consult=Path("/tmp/consult.md"),
         interpreter=Path("/tmp/interpreter.md"),
         archivist=Path("/tmp/archivist.md"),
+        contract=Path("/tmp/contract.md"),
     )
     assert pc.narrative == Path("/tmp/narrative.md")
     assert pc.glossary == Path("/tmp/glossary.md")

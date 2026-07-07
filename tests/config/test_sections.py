@@ -167,7 +167,7 @@ def test_auth_config_required_round_trips_from_toml(tmp_path: Path) -> None:
 def test_load_settings_resolves_bundled_prompts() -> None:
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=_TOML_PATH)
-    for name in ("scribe", "consult", "interpreter", "archivist"):
+    for name in ("scribe", "interpreter", "archivist"):
         path = getattr(s.prompts, name)
         assert isinstance(path, Path)
         assert path.name == f"{name}.md"

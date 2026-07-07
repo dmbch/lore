@@ -39,6 +39,6 @@ fulltext_config = "porter unicode61"
 
 [prompts]
 scribe = "bundled:prompts/scribe.md"
-consult = "bundled:prompts/consult.md"
 interpreter = "bundled:prompts/interpreter.md"
 archivist = "bundled:prompts/archivist.md"
+contract = "bundled:prompts/contract.md"

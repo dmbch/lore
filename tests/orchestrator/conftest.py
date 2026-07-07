@@ -226,9 +226,9 @@ def _bundled_prompt(name: str) -> Path:
 def _make_prompts() -> PromptsConfig:
     return PromptsConfig(
         scribe=_bundled_prompt("scribe"),
-        consult=_bundled_prompt("consult"),
         interpreter=_bundled_prompt("interpreter"),
         archivist=_bundled_prompt("archivist"),
+        contract=_bundled_prompt("contract"),
     )
 
 
