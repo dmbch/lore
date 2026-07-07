@@ -10,6 +10,22 @@ Three probe scenarios from the F-WP audit:
 3. Notes channel: deliberately ambiguous composite produces a non-empty
    `notes` field, observable via the `consult.notes` log event.
 
+Reference-time probes for the archivist cycle. Every claim is anchored at a
+reference time: an explicit in-content date if present, else the attestation
+timestamp. Two claims contradict only when their reference times overlap. A fast
+e2e run stamps seed and prober within seconds, so a present-tense claim with no
+in-content date is anchored at that shared "now"; an explicit `as of <date>`
+overrides it.
+
+4. Two claims at different reference times do not contradict: an `as of 2010`
+   reading and an `as of 2025` reading are both true, so no disbelief lands on
+   the older.
+5. Two claims at the same reference time can contradict: undated present-tense
+   claims, both anchored now, that state incompatible values collide.
+6. Complexity tier: one paragraph-scale consult mixing a dated historical event
+   and a differently-referenced value update writes no false contradiction on
+   either seed.
+
 Marked @pytest.mark.e2e, skipped without GEMINI_API_KEY (autouse fixture in
 tests/e2e/conftest.py).
 """
@@ -187,3 +203,120 @@ async def test_ambiguous_composite_emits_consult_notes_log(
 
     notes_events = [e for e in cap if e.get("event") == "consult.notes"]
     assert notes_events, f"Expected `consult.notes` log event for ambiguous input. Events:\n{cap}"
+
+
+async def test_claims_at_different_reference_times_do_not_contradict(
+    system: Orchestrator,
+) -> None:
+    # Two explicit `as of <date>` readings are anchored at different reference times.
+    # The wage was 7 dollars in 2010 and 15 dollars in 2025: both true, so the newer
+    # reading is orthogonal-novel and no disbelief lands on the older. Writing disbelief
+    # would assert the 2010 reading was false, which it was not; decay carries its age.
+    seed_id = await _seed(
+        system,
+        "reftime-diff-seed",
+        "As of 2010, the national minimum wage is 7 dollars per hour.",
+        0.8,
+    )
+
+    await consult(
+        system,
+        hypothesis="As of 2025, the national minimum wage is 15 dollars per hour.",
+        confidence=0.8,
+        oracle="oracle-prober",
+        correlation_id="reftime-diff-probe",
+    )
+
+    rows = await attestations(system, "reftime-diff-probe")
+    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
+    assert not negative, (
+        "Claims at different reference times do not contradict: the 2010 and 2025 wage "
+        f"readings are both true. Expected no disbelief on the older, got {negative}"
+    )
+
+
+async def test_claims_at_the_same_reference_time_can_contradict(
+    system: Orchestrator,
+) -> None:
+    # Two undated present-tense claims, both anchored now, state incompatible values for
+    # one thing. A city has one tallest building; the two candidates cannot both be it at
+    # the same reference time, so the newer reading contradicts the older.
+    seed_id = await _seed(
+        system,
+        "reftime-same-seed",
+        "The tallest building in Harborview is the Meridian Tower.",
+        0.8,
+    )
+
+    await consult(
+        system,
+        hypothesis="The tallest building in Harborview is the Solstice Tower.",
+        confidence=0.8,
+        oracle="oracle-prober",
+        correlation_id="reftime-same-probe",
+    )
+
+    rows = await attestations(system, "reftime-same-probe")
+    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
+    assert negative, (
+        "Claims at the same reference time can contradict: two names for the current "
+        "tallest building are mutually exclusive. Expected a disbelief attestation on the "
+        "seed, got none."
+    )
+
+
+async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
+    system: Orchestrator,
+) -> None:
+    # Complexity tier: one paragraph-scale consult mixing a dated historical event with a
+    # differently-referenced value update. The 1789 event and the 2015 tax reading are
+    # both anchored in the past; the prober's 2018 reading is a different reference again.
+    # No two of these share a reference time, so no false contradiction lands on either
+    # seed. The expensive error is over-contradicting; this case tests restraint.
+    event_id = await _seed(
+        system,
+        "reftime-mixed-event",
+        "The 1789 ratification of the Bill of Rights established the first ten amendments "
+        "to the United States Constitution.",
+        0.8,
+        oracle="oracle-seeder-e",
+    )
+    value_id = await _seed(
+        system,
+        "reftime-mixed-value",
+        "As of 2015, the United States federal corporate tax rate is 35 percent.",
+        0.8,
+        oracle="oracle-seeder-v",
+    )
+
+    await consult(
+        system,
+        hypothesis=(
+            "Building on the framework the Bill of Rights established when it was ratified "
+            "in 1789, tax policy has since changed: as of 2018 the federal corporate tax "
+            "rate is 21 percent, down from the earlier 35 percent."
+        ),
+        confidence=0.75,
+        oracle="oracle-prober",
+        correlation_id="reftime-mixed-probe",
+    )
+
+    rows = await attestations(system, "reftime-mixed-probe")
+
+    event_neg = [
+        r for r in _by_seed(rows, event_id, oracle="oracle-prober") if float(r["c_oracle_raw"]) < 0
+    ]
+    assert not event_neg, (
+        "The 1789 ratification event shares no reference time with a present tax reading: "
+        f"expected no disbelief on the historical event, got {event_neg}"
+    )
+
+    value_neg = [
+        r for r in _by_seed(rows, value_id, oracle="oracle-prober") if float(r["c_oracle_raw"]) < 0
+    ]
+    assert not value_neg, (
+        "The 2015 and 2018 tax readings are at different reference times, both true: "
+        f"expected no disbelief on the 2015 reading, got {value_neg}"
+    )
