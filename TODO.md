@@ -308,3 +308,79 @@ bounds paraphrase detection, and nothing measures either today.
 **Status:** promoted to PLAN.md Group R (2026-07-04): OR the keywords, rank
 multi-keyword matches higher. The recall eval stays a follow-up for tuning weights, not
 a gate for the semantics fix.
+
+---
+
+## Persist FastMCP OAuth state so container recycles stop forcing re-login
+
+**Found:** 2026-07-07, programmer note. API surface verified against the installed
+`fastmcp` 3.4.2 and `py-key-value-aio` 0.4.5, not docs.
+
+**What.** On hosts that recycle (containers, k8s pods), a FastMCP server fronting Google
+Workspace OIDC can push oracles back through login. Reading the shipped 3.4.2 source
+narrowed the original three suspected causes to one real failure plus a refresh-token
+precondition:
+
+- **Real: ephemeral state.** `OIDCProxy(client_storage=None)` defaults to an encrypted
+  file store (`FileTreeStore`, Fernet-wrapped), not an in-memory store, under a
+  `platformdirs` data directory. It persists, but that directory lives inside the
+  container filesystem, so a recycle without a mounted volume wipes it.
+- **Precondition: refresh token.** Google returns a `refresh_token` only with
+  `access_type=offline` and `prompt=consent`, passed via
+  `extra_authorize_params={"access_type": "offline", "prompt": "consent"}` (the parameter
+  is `extra_authorize_params`, not `extra_authorization_params`). Without a stored refresh
+  token, nothing renews a session wherever state lives.
+- **Not a cause on 3.4.2: JWT key rotation.** `jwt_signing_key=None` derives the key from
+  the upstream client secret via PBKDF2 with a fixed salt (`jwt_issuer.derive_jwt_key`),
+  so it is stable across restarts as long as the client secret is; the default
+  storage-encryption key derives the same deterministic way. Pinning `jwt_signing_key`
+  explicitly is hygiene (it survives a client-secret rotation), not the described failure.
+
+So the fix is: persist the OAuth state store across recycles, and force offline+consent so
+a refresh token exists to persist.
+
+**Why it matters.** The GHCR image is our only delivery, aimed at exactly these recycling
+on-prem/private-cloud hosts. A recurring re-login
+tax lands on adoption, the binding constraint named in PLAN.md. Auth state at rest also
+wants deliberate handling, not an incidental patch.
+
+**Options.**
+
+- **Mounted volume (simplest).** Persist the default file store's `platformdirs` path on a
+  mounted volume. No code, no new dependency. Viable wherever the deploy can attach one.
+- **DB-backed store.** Supply `client_storage` as an `AsyncKeyValue` implementation:
+  - Off-the-shelf `key_value.aio.stores.postgresql.PostgreSQLStore`: least code, but pulls
+    `asyncpg` (a second Postgres driver beside our psycopg 3) and opens its own pool. It
+    does not reuse ours.
+  - Custom, in our repository layer: a `BaseStore` subclass implementing
+    `_get`/`_put`/`_delete_managed_entry` over Lore's own connections. It owes both
+    backends, psycopg and SQLite, mirroring `repositories/{postgres,sqlite}` and chosen by
+    the same `factory.py` selection, so OAuth state persists in whichever backend the
+    deployment already runs. `py-key-value-aio` ships a `postgresql` store but no SQLite
+    one, so off-the-shelf cannot give this parity. The FastMCP contract is a KV protocol
+    (collections, relative TTL, `Mapping[str, Any]` values, bulk variants over
+    `ManagedEntry`), so it is a KV adapter at the repo layer, not a reuse of the
+    ledger/archive repos.
+- Either DB path wraps the store in `FernetEncryptionWrapper` (the same wrapper FastMCP
+  applies to its default), keyed by a static secret, so a DB dump does not leak tokens.
+
+**Decision (2026-07-07).** If we go DB-backed rather than a volume, the store lives in the
+repository layer as a KV-protocol adapter with both a Postgres and a SQLite backing,
+mirroring `repositories/{postgres,sqlite}` and chosen by the same backend selection:
+persistence is not epistemic, and a get/put/delete identity/session backend is a clean
+abstraction that belongs there. Off-the-shelf `PostgreSQLStore` is rejected: it covers
+Postgres only (there is no native SQLite KV store), pulls `asyncpg`, and opens its own pool.
+
+**Open questions.**
+
+- Volume vs. DB store: a mounted volume may be enough and is cheaper. DB-backed wins only
+  where the deploy is volume-hostile (stateless-by-policy k8s) or where centralizing state
+  in Postgres is preferred anyway.
+- Static secret provisioning: where `jwt_signing_key` and the store-encryption secret come
+  from (env, secret store), and how rotation stages without stranding live sessions.
+- SQLite single-node: the file-based default store on a mounted volume may already suffice
+  there, so the custom SQLite backing earns its keep only if colocating OAuth state in the
+  app's own SQLite file is worth it.
+
+**Status:** deferred; not urgent until a persistent OIDC deployment is exercised. No code
+yet. Test the mounted-volume path before building a store.
