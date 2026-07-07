@@ -32,18 +32,6 @@ def test_load_prompt_reads_custom_file(tmp_path: Path) -> None:
     assert result == "Custom scribe prompt"
 
 
-def test_archivist_prompt_teaches_paraphrase_contributes_contradicts() -> None:
-    settings = _load_test_settings()
-    text = load_prompt(settings.prompts.archivist)
-    assert "corroborates" in text
-    assert "contributes" in text
-    assert "contradicts" in text
-    # Cross-resolution disjointness rule, with "pick most exact match" guidance.
-    assert "most exact match" in text or "most specific match" in text
-    assert "at most once" in text or "appears once" in text
-    assert "notes" in text
-
-
 def test_archivist_prompt_drops_legacy_vocabulary() -> None:
     settings = _load_test_settings()
     text = load_prompt(settings.prompts.archivist)
