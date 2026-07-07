@@ -148,6 +148,20 @@ def test_fastmcp_logger_records_flow_to_root_renderer(
     assert "from fastmcp" in capsys.readouterr().err
 
 
+def test_fastmcp_errors_child_logger_records_flow_to_root_renderer(
+    isolated_configure: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``ErrorHandlingMiddleware`` logs masked-error diagnostics on the child
+    ``fastmcp.errors``. It must reach the root renderer through the rerouted
+    parent, or operators silently lose every diagnostic the client never sees.
+    (caplog in the adapter tests cannot catch this: pytest attaches its capture
+    handler to non-propagating loggers directly.)
+    """
+    telemetry.configure_telemetry()
+    logging.getLogger("fastmcp.errors").error("diagnostic for operators")
+    assert "diagnostic for operators" in capsys.readouterr().err
+
+
 def test_configure_telemetry_mirrors_log_level_to_otel(isolated_configure: None) -> None:
     with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}):
         telemetry.configure_telemetry()

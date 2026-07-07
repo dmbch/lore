@@ -13,10 +13,10 @@ from lore.repositories import RepositoryPool
 
 _COMPLETE_TOML = Path(__file__).parent / "fixtures" / "lore_complete.toml"
 
-# The opt-in ``reset_telemetry`` fixture from ``tests/conftest.py`` as a
-# module-scope autouse: the factory tests call ``server()``, which calls
-# ``configure_telemetry()`` whose once-only guard would otherwise trip on
-# the second test in the run.
+# Apply the opt-in ``reset_telemetry`` fixture (tests/conftest.py) to every
+# test in this module: the factory tests call ``server()``, whose
+# ``configure_telemetry()`` once-only guard would otherwise trip on the
+# second test in the run.
 pytestmark = pytest.mark.usefixtures("reset_telemetry")
 
 

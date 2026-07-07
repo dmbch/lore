@@ -38,10 +38,13 @@ class ProbeCell:
     probe: Callable[[], Awaitable[None]] | None = None
 
     async def check(self) -> None:
-        if self.probe is None:
+        # Capture once so the lifespan clearing ``self.probe`` cannot race the
+        # call, even if an await ever lands between the check and the call.
+        probe = self.probe
+        if probe is None:
             msg = "system not ready: repository pool is not connected"
             raise StorageError(msg)
-        await self.probe()
+        await probe()
 
 
 @asynccontextmanager
