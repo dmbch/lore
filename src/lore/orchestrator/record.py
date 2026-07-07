@@ -134,8 +134,8 @@ class Recorder:
     ) -> None:
         # _transfer is reserved for _compute_transfer (full credibility, no
         # discount). Accepting it as the principal oracle_id would bypass
-        # trust discounting at the one site it lives. The adapter rejects
-        # IdP-claimed _* values; this is the domain-layer enforcement.
+        # trust discounting at the one site it lives. The adapter passes IdP
+        # subs through verbatim; this guard is the sole enforcement.
         if context.oracle_id == TRANSFER_ORACLE:
             msg = (
                 f"Recorder.context.oracle_id must not equal {TRANSFER_ORACLE!r}:"

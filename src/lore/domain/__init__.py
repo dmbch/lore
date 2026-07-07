@@ -6,7 +6,6 @@ this package imports from nothing.
 
 from lore.domain.errors import (
     ArchivistResolutionError,
-    AuthenticationError,
     DuplicateRecord,
     InferenceError,
     IntegrityViolation,
@@ -37,7 +36,6 @@ __all__ = [
     "ArchivistOutput",
     "ArchivistResolutionError",
     "AttestationComputed",
-    "AuthenticationError",
     "ConsultLoreRequest",
     "ConsultLoreResponse",
     "DuplicateRecord",

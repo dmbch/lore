@@ -29,9 +29,5 @@ class ArchivistResolutionError(Exception):
     """
 
 
-class AuthenticationError(Exception):
-    """Identity failure: missing claims, invalid tokens."""
-
-
 class InferenceError(Exception):
     """Model unavailable, rate limited, timeout, invalid response."""
