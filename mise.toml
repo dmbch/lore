@@ -29,7 +29,7 @@ run = "fastmcp run"
 # run = "fastmcp dev apps fastmcp.json"
 
 [tasks.install-claude-code]
-run = "fastmcp install claude-code fastmcp.json"
+run = "fastmcp install claude-code fastmcp.json --env-file .env.claude"
 
 [tasks.install-claude-desktop]
-run = "fastmcp install claude-desktop fastmcp.json"
+run = "fastmcp install claude-desktop fastmcp.json --env-file .env.claude"
