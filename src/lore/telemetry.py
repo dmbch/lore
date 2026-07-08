@@ -67,7 +67,7 @@ def _configure_logging(log_level: str) -> None:
     # ``log.error(..., exc_info=True)`` call.
     tty = sys.stderr.isatty()
     renderer: structlog.types.Processor = (
-        structlog.dev.ConsoleRenderer(pad_event=0, sort_keys=False)
+        structlog.dev.ConsoleRenderer(pad_event_to=0, sort_keys=False)
         if tty
         else structlog.processors.JSONRenderer()
     )
