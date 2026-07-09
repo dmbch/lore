@@ -85,10 +85,16 @@ def _build_auth(settings: LoreSettings) -> OIDCProxy | None:
 def create_server(
     *,
     settings: LoreSettings,
-    system: AbstractAsyncContextManager[Orchestrator],
+    system: Callable[[], AbstractAsyncContextManager[Orchestrator]],
     health_probe: Callable[[], Awaitable[None]] | None = None,
 ) -> FastMCP[Orchestrator]:
     """Build a FastMCP server wired to a Lore system via lifespan.
+
+    ``system`` is a factory, not a CM instance: FastMCP's lifespan is
+    ref-counted and re-enterable (the in-memory transport cycles it per
+    client session), so each cycle must open a fresh system scope. A
+    single-use ``@asynccontextmanager`` product would die on the second
+    cycle with ``RuntimeError("generator didn't yield")``.
 
     ``health_probe`` is the readiness probe the ``/ready`` route awaits.
     The composition root composes it (``repositories.make_probe(pool)``)
@@ -100,7 +106,7 @@ def create_server(
 
     @asynccontextmanager
     async def lifespan(_server: FastMCP[Orchestrator]) -> AsyncGenerator[Orchestrator]:
-        async with system as orchestrator:
+        async with system() as orchestrator:
             yield orchestrator
 
     instructions = load_prompt(settings.prompts.scribe)

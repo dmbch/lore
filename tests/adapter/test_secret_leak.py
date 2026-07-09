@@ -121,7 +121,7 @@ def test_oidc_client_secret_does_not_leak_to_stderr_or_spans(
     # observe what create_server writes to telemetry around the construction.
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
         mock_proxy.return_value = MagicMock()
-        server = create_server(settings=settings, system=_noop_system())
+        server = create_server(settings=settings, system=_noop_system)
 
     # OIDCProxy must have received the raw secret. The leak we forbid is in
     # telemetry, not the auth path itself. The adapter unwraps the SecretStr

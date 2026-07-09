@@ -3,13 +3,15 @@
 ``server()`` is the factory the fastmcp CLI loads via ``fastmcp.json`` for dev
 and tooling; the image runs the same factory through ``python -m lore``. It
 configures telemetry, loads settings, and returns a FastMCP instance whose
-lifespan enters ``system()``: the async context manager owning migrations,
-health check, pool lifetime, and orchestrator wiring. Outside the layer model.
+lifespan opens a fresh ``system()`` scope per cycle: the async context manager
+owning migrations, health check, pool lifetime, and orchestrator wiring.
+Outside the layer model.
 """
 
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from functools import partial
 
 from fastmcp import FastMCP
 
@@ -29,10 +31,10 @@ class ProbeCell:
 
     Deliberately mutable (the project default is frozen): the factory must
     hand ``create_server`` a stable ``health_probe`` callable before the
-    pool exists. The lifespan fills ``probe`` after connect and clears it
-    on exit, so ``check()`` raises ``StorageError`` (the /ready 503 shape)
-    before startup and after shutdown, and delegates to the live probe in
-    between.
+    pool exists. Each lifespan cycle fills ``probe`` after connect and
+    clears it on exit, so ``check()`` raises ``StorageError`` (the /ready
+    503 shape) whenever no cycle is live, and delegates to the live probe
+    in between.
     """
 
     probe: Callable[[], Awaitable[None]] | None = None
@@ -93,6 +95,9 @@ def server() -> FastMCP[Orchestrator]:
     cell = ProbeCell()
     return create_server(
         settings=settings,
-        system=system(settings, cell=cell),
+        # A factory, not a CM instance: each lifespan cycle opens a fresh
+        # system scope (FastMCP re-enters the lifespan per client session
+        # on the in-memory transport).
+        system=partial(system, settings, cell=cell),
         health_probe=cell.check,
     )
