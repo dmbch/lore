@@ -45,13 +45,11 @@ def bootstrap_env() -> Generator[None]:
 
 @pytest.fixture()
 def settings(bootstrap_env: None) -> LoreSettings:
-    """Load settings with the complete TOML fixture."""
     return load_settings(toml_path=_COMPLETE_TOML)
 
 
 @pytest.fixture()
 def server(settings: LoreSettings) -> FastMCP[Orchestrator]:
-    """Return a FastMCP server built from settings."""
     return create_server(settings=settings, system=_noop_system)
 
 
@@ -135,7 +133,6 @@ def test_create_server_falls_back_to_bundled_logo(settings: LoreSettings) -> Non
 
 @pytest.fixture()
 def mock_orchestrator() -> AsyncMock:
-    """An AsyncMock standing in for Orchestrator.consult."""
     orch = AsyncMock(spec=Orchestrator)
     orch.consult.return_value = ConsultLoreResponse(answer="the answer")
     return orch
@@ -143,7 +140,6 @@ def mock_orchestrator() -> AsyncMock:
 
 @pytest.fixture()
 def wired_server(settings: LoreSettings, mock_orchestrator: AsyncMock) -> FastMCP[Orchestrator]:
-    """Server whose lifespan yields the mock orchestrator."""
     return create_server(settings=settings, system=partial(_noop_system, mock_orchestrator))
 
 
