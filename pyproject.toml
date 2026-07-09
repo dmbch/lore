@@ -30,9 +30,6 @@ dependencies = [
     "fastmcp>=3.4.2",
 ]
 
-[project.scripts]
-lore = "lore.__main__:main"
-
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",

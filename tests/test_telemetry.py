@@ -61,7 +61,7 @@ def test_configure_telemetry_no_op_when_run_outside_wrapper(
 ) -> None:
     """Without opentelemetry-instrument, the API proxies stand in: no exception, logs flow.
 
-    The documented bare-launch shape (``python -m lore`` without the wrapper):
+    The documented bare-launch shape (``fastmcp run`` without the wrapper):
     spans are non-recording, but ``start_span`` is still usable and structlog
     still writes through.
     """

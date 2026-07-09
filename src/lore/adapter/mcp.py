@@ -7,7 +7,6 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import TYPE_CHECKING, Annotated, cast
 from uuid import uuid4
 
-import fastmcp
 import structlog
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
@@ -129,25 +128,6 @@ def create_server(
     server.add_middleware(ErrorHandlingMiddleware(transform_errors=False, include_traceback=True))
 
     return server
-
-
-async def serve(server: FastMCP[Orchestrator]) -> None:
-    """Run the MCP server with the project's logging-posture defaults.
-
-    Banner is always off. For HTTP transport, uvicorn's ``dictConfig`` is
-    suppressed (``log_config=None``) so its loggers propagate to the root
-    structlog handler instead of installing their own. Stdio transport
-    has no uvicorn: passing ``uvicorn_config`` is rejected by FastMCP's
-    stdio dispatch, so the kwarg is gated on transport.
-
-    The transport read goes through ``fastmcp.settings`` rather than the env
-    directly: ``run_async(transport=None)`` resolves to the same singleton, so
-    this is the value FastMCP will dispatch on.
-    """
-    if fastmcp.settings.transport == "stdio":
-        await server.run_async(show_banner=False)
-    else:
-        await server.run_async(show_banner=False, uvicorn_config={"log_config": None})
 
 
 def _register_healthchecks(

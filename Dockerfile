@@ -30,10 +30,15 @@ FROM python:${PYTHON_VERSION}-slim-trixie AS runtime
 # Baked by the publish job (--build-arg LORE_VERSION=<release>); unset from
 # source so create_server reports the "0.0.0+dev" marker instead.
 ARG LORE_VERSION=
+# FASTMCP_* are operator-overridable image defaults: HTTP transport, no
+# banner, no update check (an on-prem image must not phone home).
 ENV LORE_VERSION=${LORE_VERSION} \
     PATH=/opt/lore/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     DATABASE_URL=sqlite:////data/lore.db \
+    FASTMCP_TRANSPORT=http \
+    FASTMCP_SHOW_SERVER_BANNER=false \
+    FASTMCP_CHECK_FOR_UPDATES=off \
     OTEL_TRACES_EXPORTER=none \
     OTEL_METRICS_EXPORTER=none \
     OTEL_LOGS_EXPORTER=none
@@ -43,6 +48,7 @@ LABEL org.opencontainers.image.source="https://github.com/dmbch/lore" \
       org.opencontainers.image.licenses="MIT"
 
 COPY --from=builder /opt/lore /opt/lore
+
 RUN groupadd --gid 1000 lore \
     && useradd --uid 1000 --gid 1000 --home-dir /data --no-create-home \
        --shell /usr/sbin/nologin lore \
@@ -53,6 +59,8 @@ WORKDIR /data
 EXPOSE 8000
 
 # opentelemetry-instrument is the always-on wrapper; with exporters set to
-# "none" it adds no overhead. Config is optional: mount to /etc/lore.toml or
-# drop lore.toml in /data (CWD), per the discovery order in docs/architecture.md.
+# "none" it adds no overhead. `python -m lore` runs the same server() factory
+# dev drives via `fastmcp run`; the wheel-only image has no source tree for the
+# fastmcp CLI's file spec. Config is optional: mount to /etc/lore.toml or drop
+# lore.toml in /data (CWD), per the discovery order in docs/architecture.md.
 ENTRYPOINT ["opentelemetry-instrument", "python", "-m", "lore"]

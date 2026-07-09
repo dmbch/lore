@@ -21,12 +21,12 @@ def require_gemini() -> None:
 
 
 async def _bootstrap(dsn: str, **overrides: object) -> AsyncGenerator[Orchestrator]:
-    from lore.__main__ import bootstrap, setup
+    from lore.server import system
 
     os.environ.setdefault("DATABASE_URL", dsn)
     settings = load_settings()
     settings = settings.model_copy(update={"dsn": dsn, **overrides})
-    async with setup(settings) as pool, bootstrap(settings, pool) as orchestrator:
+    async with system(settings) as orchestrator:
         yield orchestrator
 
 
