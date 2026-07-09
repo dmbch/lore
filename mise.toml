@@ -5,6 +5,7 @@ uv = "0.11.16"
 DATABASE_URL = "sqlite:///lore.db"
 FASTMCP_SHOW_SERVER_BANNER = "false"
 _.file = ".env"
+_.python.venv = ".venv"
 
 [tasks.test]
 run = "uv run pytest"
@@ -17,3 +18,18 @@ run = "uv run ruff check . && uv run ruff format --check ."
 
 [tasks.check]
 depends = ["test", "types", "lint"]
+
+[tasks.serve]
+run = "fastmcp run"
+
+# Shelved: `fastmcp dev apps` needs fastmcp[apps] (prefab-ui), which is not in
+# uv.lock, so any `uv sync` strips it. Re-enable once the dependency is locked;
+# the observatory PR (#44) is the consumer.
+# [tasks.dev]
+# run = "fastmcp dev apps fastmcp.json"
+
+[tasks.install-claude-code]
+run = "fastmcp install claude-code fastmcp.json"
+
+[tasks.install-claude-desktop]
+run = "fastmcp install claude-desktop fastmcp.json"
