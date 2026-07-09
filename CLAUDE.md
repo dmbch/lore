@@ -41,6 +41,8 @@ uv run pyright                                       # strict type checking, zer
 uv run ruff check . && uv run ruff format --check .  # lint + format, read-only
 ```
 
+`mise run check` runs all three in parallel.
+
 Conventional Commits, scope optional. Types: the canonical set (`build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`), enforced by `cz check` (see `[tool.commitizen]`). Enable the local hook once: `git config core.hooksPath .githooks`.
 
 ## Code style
@@ -65,4 +67,4 @@ Spot stale comments, imprecise types, missing edge cases, unclear names. During 
 
 A suppression (`# noqa: CODE`, `# pyright: ignore[rule]`, `# pragma: no cover`) is honest in one case only: **the checker is wrong for this line**, a false positive, a library-imposed signature, or notation correct by design. Then suppress at the narrowest scope, with the specific code and a reason: `# noqa: FBT003 - sqlite3 enable_load_extension is positional-only`. Never a bare `# noqa`; a reason-less suppression is a cheat, a false reason worse. Prefer a documented line-level suppression to a `per-file-ignores` entry: local, precise, self-explaining. Reserve config-level `per-file-ignores` for a property that genuinely spans a file or package (canonical unicode across `lore.math`), never as a blunter stand-in for a line you'd rather not annotate.
 
-Carve-outs that clear this bar: the `__main__` guard's single `# pragma: no cover` (process entry point, untestable without a subprocess; `amain()` fully covered); `RUF002`/`RUF003` across `lore.math` (canonical notation); `FBT003` on sqlite extension-loading (positional-only API).
+Carve-outs that clear this bar: `RUF002`/`RUF003` across `lore.math` (canonical notation); `FBT003` on sqlite extension-loading (positional-only API).
