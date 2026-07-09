@@ -1,5 +1,6 @@
 """Tests for lore.adapter.mcp: FastMCP server and tool registration."""
 
+import logging
 import os
 import re
 from collections.abc import AsyncGenerator, Generator, Sequence
@@ -9,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import fastmcp
 import pytest
-import structlog
 from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import Tool
@@ -261,27 +261,120 @@ async def test_correlation_id_falls_back_to_uuid_hex_without_otel_sdk(
     assert re.fullmatch(r"[0-9a-f]{32}", correlation_id) is not None
 
 
-async def test_storage_error_scrubs_to_generic_tool_error_with_correlation_id(
+async def test_consult_masks_internal_errors(
     wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
 ) -> None:
-    from fastmcp.exceptions import ToolError
+    """An internal error is masked on the wire: no detail, no exception class.
 
-    from lore.domain.errors import StorageError
-
-    mock_orchestrator.consult.side_effect = StorageError("disk full at /var/lib/postgres")
-    with (
-        structlog.testing.capture_logs() as cap,
-        pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info,
-    ):
+    ``mask_error_details=True`` collapses every unhandled exception to fastmcp's
+    uniform message. The orchestrator's ``StorageError`` carries a DSN; neither
+    the DSN nor the class name may reach the client.
+    """
+    mock_orchestrator.consult.side_effect = StorageError("dsn=postgresql://user:pass@host/db")
+    with pytest.raises(ToolError) as exc_info:
         await _call_tool(wired_server, "consult", {"question": "test"})
     payload = str(exc_info.value)
-    assert "disk full" not in payload
-    assert "/var/lib/postgres" not in payload
-    # The cause chain does not cross the wire; the diagnostic survives in the log.
-    events = [e for e in cap if e.get("event") == "consult.error.internal"]
-    assert len(events) == 1
-    assert events[0]["error_class"] == "StorageError"
-    assert "disk full" in events[0]["error_message"]
+    assert "postgresql://user:pass@host/db" not in payload
+    assert "StorageError" not in payload
+
+
+async def test_consult_auth_failure_is_constant_message(
+    wired_server: FastMCP[Orchestrator],
+) -> None:
+    """A token missing ``sub`` scrubs to exactly ``authentication failed``.
+
+    No correlation id, no which-check detail: the wire message is a constant,
+    so no operator diagnostic can leak through its shape.
+    """
+    fake_token = MagicMock()
+    fake_token.claims = {"aud": "some-audience"}
+    with (
+        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
+        pytest.raises(ToolError) as exc_info,
+    ):
+        await _call_tool(wired_server, "consult", {"question": "who am I?"})
+    assert str(exc_info.value) == "authentication failed"
+
+
+@pytest.mark.parametrize(
+    ("arguments", "rule"),
+    [
+        ({}, "consult requires a question, a hypothesis, or both"),
+        ({"hypothesis": "a claim"}, "consult with a hypothesis also requires a confidence scalar"),
+        (
+            {"question": "what?", "confidence": 0.5},
+            "consult with a confidence scalar also requires a hypothesis",
+        ),
+    ],
+)
+async def test_consult_rejects_invalid_input_with_the_violated_rule(
+    wired_server: FastMCP[Orchestrator],
+    mock_orchestrator: AsyncMock,
+    arguments: dict[str, object],
+    rule: str,
+) -> None:
+    """A cross-field rule violation puts exactly the violated rule on the wire.
+
+    The IDEA.md contract sentences, verbatim from the domain validator: specific
+    enough for the Scribe to self-correct (fastmcp's posture for client-fault
+    input), constant so nothing of the payload echoes back. Exact equality is
+    the no-echo guarantee: pydantic's ``str()`` would carry ``input_value=``.
+    The orchestrator is never reached.
+    """
+    with pytest.raises(ToolError) as exc_info:
+        await _call_tool(wired_server, "consult", arguments)
+    assert str(exc_info.value) == rule
+    mock_orchestrator.consult.assert_not_called()
+
+
+async def test_consult_internal_validation_error_not_mislabeled_as_client_input(
+    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
+) -> None:
+    """An internal pydantic failure is masked, not blamed on the client's input.
+
+    A ``ValidationError`` raised past request construction (here, from deep in
+    the orchestrator) is our bug. The adapter re-raises it as a non-pydantic
+    error so masking scrubs it to the uniform message, rather than fastmcp's
+    dedicated pydantic arm echoing the failing value and mislabeling it as
+    client-fault input.
+    """
+    from pydantic import BaseModel, ValidationError
+
+    class _InternalModel(BaseModel):
+        internal_secret: int
+
+    with pytest.raises(ValidationError) as caught:
+        _InternalModel.model_validate({"internal_secret": "leak-me-not"})
+    mock_orchestrator.consult.side_effect = caught.value
+
+    with pytest.raises(ToolError) as exc_info:
+        await _call_tool(wired_server, "consult", {"question": "test"})
+    payload = str(exc_info.value)
+    assert payload == "Error calling tool 'consult'"
+    assert "_InternalModel" not in payload
+    assert "internal_secret" not in payload
+    assert "input_value" not in payload
+    assert "leak-me-not" not in payload
+
+
+async def test_consult_diagnostic_survives_in_fastmcp_errors_log(
+    wired_server: FastMCP[Orchestrator],
+    mock_orchestrator: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Masked on the wire, the cause survives in the ``fastmcp.errors`` log.
+
+    ``ErrorHandlingMiddleware(include_traceback=True)`` is the only log-side
+    record of the cause on the ToolError path (fastmcp logs ToolError with
+    ``exc_info=False``), so operators keep the diagnostic the client never sees.
+    """
+    mock_orchestrator.consult.side_effect = StorageError("dsn=postgresql://user:pass@host/db")
+    with (
+        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
+        pytest.raises(ToolError),
+    ):
+        await _call_tool(wired_server, "consult", {"question": "test"})
+    assert "dsn=postgresql://user:pass@host/db" in caplog.text
 
 
 async def test_storage_error_does_not_leak_constraint_name_to_client(
@@ -303,19 +396,20 @@ async def test_storage_error_does_not_leak_constraint_name_to_client(
     assert "duplicate" not in payload
 
 
-async def test_inference_error_scrubs_to_generic_tool_error_with_correlation_id(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
+async def test_inference_error_masks_provider_detail(
+    wired_server: FastMCP[Orchestrator],
+    mock_orchestrator: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    from fastmcp.exceptions import ToolError
-
+    """Provider detail is masked on the wire and preserved in the log."""
     from lore.domain.errors import InferenceError
 
     mock_orchestrator.consult.side_effect = InferenceError(
         "openai.RateLimitError: api.openai.com/v1/chat returned 429"
     )
     with (
-        structlog.testing.capture_logs() as cap,
-        pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info,
+        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
+        pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "test"})
     payload = str(exc_info.value)
@@ -323,10 +417,7 @@ async def test_inference_error_scrubs_to_generic_tool_error_with_correlation_id(
     assert "api.openai.com" not in payload
     assert "RateLimitError" not in payload
     # The cause chain does not cross the wire; the diagnostic survives in the log.
-    events = [e for e in cap if e.get("event") == "consult.error.internal"]
-    assert len(events) == 1
-    assert events[0]["error_class"] == "InferenceError"
-    assert "RateLimitError" in events[0]["error_message"]
+    assert "RateLimitError" in caplog.text
 
 
 def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
@@ -514,7 +605,7 @@ async def test_token_without_sub_claim_raises_tool_error(
     fake_token.claims = {"aud": "some-audience"}
     with (
         patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
-        pytest.raises(ToolError, match=r"authentication failed \(correlation_id="),
+        pytest.raises(ToolError, match="authentication failed"),
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
 
@@ -528,7 +619,7 @@ async def test_token_with_non_string_sub_claim_raises_tool_error(
     fake_token.claims = {"sub": 12345}
     with (
         patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
-        pytest.raises(ToolError, match=r"authentication failed \(correlation_id="),
+        pytest.raises(ToolError, match="authentication failed"),
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
 
@@ -546,6 +637,7 @@ async def test_token_with_non_string_sub_claim_raises_tool_error(
 async def test_authentication_error_scrubs_to_constant_message_and_logs_diagnostic(
     settings: LoreSettings,
     mock_orchestrator: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
     claims: dict[str, object],
     diagnostic_fragment: str,
 ) -> None:
@@ -553,9 +645,8 @@ async def test_authentication_error_scrubs_to_constant_message_and_logs_diagnost
 
     Walks every code path that raises ``AuthenticationError`` inside the
     adapter's ``consult`` body. Asserts two contracts at once: the client sees
-    only the constant scrubbed message (with the correlation_id), and the
-    structlog event preserves the original ``str(exc)`` under
-    ``error_message=`` for operators.
+    only the constant scrubbed message, and the ``fastmcp.errors`` log preserves
+    the original diagnostic (the middleware captures the ToolError's cause).
     """
 
     srv = create_server(settings=settings, system=_noop_system(mock_orchestrator))
@@ -563,23 +654,18 @@ async def test_authentication_error_scrubs_to_constant_message_and_logs_diagnost
     fake_token = MagicMock()
     fake_token.claims = claims
     with (
-        structlog.testing.capture_logs() as cap,
+        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
         patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
         pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(srv, "consult", {"question": "who am I?"})
 
-    payload = str(exc_info.value)
-    # (a) Wire payload is exactly the constant scrub: only the correlation_id
-    # varies. No diagnostic content can leak through this shape.
-    assert re.fullmatch(r"authentication failed \(correlation_id=[0-9a-f-]+\)", payload), payload
+    # (a) Wire payload is exactly the constant scrub: no diagnostic content can
+    # leak through this shape.
+    assert str(exc_info.value) == "authentication failed"
 
-    # (b) Log event preserves the original diagnostic under error_message=.
-    auth_events = [e for e in cap if e.get("event") == "consult.auth_error"]
-    assert len(auth_events) == 1
-    event = auth_events[0]
-    assert event["error_class"] == "AuthenticationError"
-    assert diagnostic_fragment in event["error_message"]
+    # (b) The fastmcp.errors log preserves the original diagnostic for operators.
+    assert diagnostic_fragment in caplog.text
 
 
 async def test_confidence_out_of_range_rejected_before_orchestrator(
@@ -601,27 +687,6 @@ async def test_question_exceeds_max_length_rejected_before_orchestrator(
     # limits.question is the configured max. Exceed it by a wide margin.
     with pytest.raises(ToolError, match="string_too_long"):
         await _call_tool(wired_server, "consult", {"question": "x" * 1_000_000})
-    mock_orchestrator.consult.assert_not_called()
-
-
-async def test_fully_empty_consult_does_not_reach_orchestrator(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
-) -> None:
-    """An empty consult is rejected by the domain validator before the orchestrator runs.
-
-    The validator raises Pydantic ValidationError, which the adapter scrubs to
-    "invalid consult input": Pydantic's str() includes `input_value=...`.
-    """
-    with pytest.raises(ToolError, match=r"invalid consult input \(correlation_id="):
-        await _call_tool(wired_server, "consult", {})
-    mock_orchestrator.consult.assert_not_called()
-
-
-async def test_hypothesis_without_confidence_does_not_reach_orchestrator(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
-) -> None:
-    with pytest.raises(ToolError, match=r"invalid consult input \(correlation_id="):
-        await _call_tool(wired_server, "consult", {"hypothesis": "a claim"})
     mock_orchestrator.consult.assert_not_called()
 
 
@@ -691,79 +756,24 @@ async def _call_tool(server: FastMCP[Orchestrator], name: str, arguments: dict[s
         return await client.call_tool(name, arguments)
 
 
-async def test_archivist_resolution_error_scrubs_to_generic_tool_error(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
+async def test_archivist_resolution_error_masks_detail(
+    wired_server: FastMCP[Orchestrator],
+    mock_orchestrator: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """ArchivistResolutionError uses the same scrub treatment as StorageError/InferenceError."""
-    from fastmcp.exceptions import ToolError
-
+    """ArchivistResolutionError masks the same as StorageError/InferenceError."""
     from lore.domain import ArchivistResolutionError
 
     mock_orchestrator.consult.side_effect = ArchivistResolutionError(
         "corroborates id 'deadbeef-...' did not surface"
     )
     with (
-        structlog.testing.capture_logs() as cap,
-        pytest.raises(ToolError, match=r"internal error \(correlation_id=") as exc_info,
+        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
+        pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "test"})
     payload = str(exc_info.value)
     assert "deadbeef" not in payload
     assert "corroborates" not in payload
     # The cause chain does not cross the wire; the diagnostic survives in the log.
-    events = [e for e in cap if e.get("event") == "consult.error.internal"]
-    assert len(events) == 1
-    assert events[0]["error_class"] == "ArchivistResolutionError"
-    assert "deadbeef" in events[0]["error_message"]
-
-
-async def test_consult_auth_error_logs_correlation_id(
-    wired_server: FastMCP[Orchestrator],
-) -> None:
-    fake_token = MagicMock()
-    fake_token.claims = {"aud": "some-audience"}  # missing 'sub' claim
-    with (
-        structlog.testing.capture_logs() as cap,
-        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
-        pytest.raises(ToolError, match=r"authentication failed \(correlation_id="),
-    ):
-        await _call_tool(wired_server, "consult", {"question": "who am I?"})
-
-    auth_events = [e for e in cap if e.get("event") == "consult.auth_error"]
-    assert len(auth_events) == 1
-    assert "correlation_id" in auth_events[0]
-
-
-async def test_consult_validation_error_logs_correlation_id(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
-) -> None:
-    with (
-        structlog.testing.capture_logs() as cap,
-        pytest.raises(ToolError, match=r"invalid consult input \(correlation_id="),
-    ):
-        await _call_tool(wired_server, "consult", {})  # empty payload → ValidationError
-    mock_orchestrator.consult.assert_not_called()
-
-    err_events = [e for e in cap if e.get("event") == "consult.error.validation"]
-    assert len(err_events) == 1
-    event = err_events[0]
-    assert "correlation_id" in event
-    assert event["error_class"] == "ValidationError"
-
-
-async def test_consult_internal_error_logs_correlation_id(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
-) -> None:
-    mock_orchestrator.consult.side_effect = StorageError("disk full at /var/lib/postgres")
-    with (
-        structlog.testing.capture_logs() as cap,
-        pytest.raises(ToolError, match=r"internal error \(correlation_id="),
-    ):
-        await _call_tool(wired_server, "consult", {"question": "test"})
-
-    err_events = [e for e in cap if e.get("event") == "consult.error.internal"]
-    assert len(err_events) == 1
-    event = err_events[0]
-    assert "correlation_id" in event
-    assert event["error_class"] == "StorageError"
-    assert "disk full" in event["error_message"]
+    assert "deadbeef" in caplog.text

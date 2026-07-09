@@ -13,6 +13,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.auth.oidc_proxy import OIDCProxy
 from fastmcp.server.dependencies import get_access_token
+from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from mcp.types import Icon
 from opentelemetry import trace as otel_trace
 from pydantic import Field, ValidationError
@@ -112,10 +113,20 @@ def create_server(
         icons=[Icon(src=settings.server.icon_url or _bundled_logo())],
         lifespan=lifespan,
         auth=auth,
+        # Hardcoded posture, deliberately overriding the FASTMCP_* env default:
+        # every unhandled exception scrubs to a uniform client message. Pinned by
+        # the leak test.
+        mask_error_details=True,
     )
 
     _register_tools(server=server, settings=settings)
     _register_healthchecks(server=server, health_probe=health_probe)
+
+    # transform_errors=False is load-bearing: True would rewrap tool errors as
+    # protocol McpError and change tool-error semantics. include_traceback=True
+    # preserves the __cause__ chain in the fastmcp.errors log, the only log-side
+    # record on the ToolError path (fastmcp logs ToolError with exc_info=False).
+    server.add_middleware(ErrorHandlingMiddleware(transform_errors=False, include_traceback=True))
 
     return server
 
@@ -216,11 +227,11 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
             Field(ge=-1, le=1, description=_PARAM_DESCRIPTIONS["confidence"]),
         ] = None,
     ) -> ConsultLoreResponse:
-        # trace_id of the active span gives one ID across the client error,
-        # the APM trace, and the ledger row: the same value the structlog
-        # processor already injects into every log event, so we add no
-        # extra log-line bytes. Bare runs (no SDK TracerProvider) produce
-        # a non-recording span with INVALID context; fall back to a uuid4
+        # trace_id of the active span gives one ID across the APM trace and the
+        # ledger row: the same value the structlog processor already injects into
+        # every log event, so we add no extra log-line bytes. Ledger + trace
+        # identity, no longer client-facing. Bare runs (no SDK TracerProvider)
+        # produce a non-recording span with INVALID context; fall back to a uuid4
         # hex so the PK is still well-formed.
         span_ctx = otel_trace.get_current_span().get_span_context()
         correlation_id = f"{span_ctx.trace_id:032x}" if span_ctx.is_valid else uuid4().hex
@@ -232,6 +243,15 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
                 reasoning=reasoning,
                 confidence=confidence,
             )
+        except ValidationError as exc:
+            # Cross-field rules cannot live in the flat tool signature, so they
+            # surface here. The wire message is exactly the violated rule: a
+            # constant the domain validator wrote for the Scribe. Never str(exc):
+            # pydantic's repr would echo the client's payload back.
+            rules = "; ".join(err["msg"].removeprefix("Value error, ") for err in exc.errors())
+            raise ToolError(rules) from exc
+
+        try:
             token = get_access_token()
             if token:
                 # Claims pass through verbatim: no whitespace stripping, no
@@ -265,48 +285,20 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
                 oracle_id=oracle_id, request=request, correlation_id=correlation_id
             )
         except AuthenticationError as exc:
-            # Authentication errors collapse to a constant client-facing
-            # message: the synthetic-namespace refusal and the missing/
-            # mistyped ``sub`` claims are operator diagnostics, not contract
-            # surface. Full exception + stack in the log under correlation_id.
-            log.error(
-                "consult.auth_error",
-                error_class=type(exc).__name__,
-                error_message=str(exc),
-                correlation_id=correlation_id,
-                exc_info=True,
-            )
-            msg = f"authentication failed (correlation_id={correlation_id})"
+            # Constant client-facing message: the synthetic-namespace refusal and
+            # the missing/mistyped ``sub`` claims are operator diagnostics, not
+            # contract surface. The diagnostic survives in the fastmcp.errors log,
+            # captured from this ToolError's cause by ErrorHandlingMiddleware.
+            msg = "authentication failed"
             raise ToolError(msg) from exc
         except ValidationError as exc:
-            # Pydantic's str() includes `input_value=...`, so surfacing the
-            # message verbatim would echo the client's payload back. Scrub
-            # with a 4xx-shaped signal: the client learns "your input was
-            # invalid" without learning what we saw. Full exception + stack
-            # in the log under correlation_id.
-            log.error(
-                "consult.error.validation",
-                error_class=type(exc).__name__,
-                error_message=str(exc),
-                correlation_id=correlation_id,
-                exc_info=True,
-            )
-            msg = f"invalid consult input (correlation_id={correlation_id})"
-            raise ToolError(msg) from exc
-        except Exception as exc:
-            # Everything else (domain errors carrying DSN host:port / vendor
-            # SDK detail / rejected-ID specifics; stray non-domain leaks like
-            # psycopg OSError) collapses to a 5xx-shaped scrub. Full exception
-            # + stack in the log under correlation_id.
-            log.error(
-                "consult.error.internal",
-                error_class=type(exc).__name__,
-                error_message=str(exc),
-                correlation_id=correlation_id,
-                exc_info=True,
-            )
-            msg = f"internal error (correlation_id={correlation_id})"
-            raise ToolError(msg) from exc
+            # A pydantic failure past request construction is our bug, not the
+            # oracle's input. Re-raise as a NON-pydantic error: fastmcp's dedicated
+            # pydantic arm re-raises raw and echoes the failing value to the client,
+            # bypassing masking. As a RuntimeError it hits the masking arm and
+            # scrubs to the uniform message; the detail survives only in the log.
+            msg = "internal validation failure"
+            raise RuntimeError(msg) from exc
 
     # Keep a reference so pyright doesn't flag as unused.
     _ = consult
