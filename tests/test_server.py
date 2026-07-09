@@ -2,10 +2,8 @@
 
 import os
 from pathlib import Path
-from typing import cast
 from unittest.mock import patch
 
-import httpx
 import pytest
 from fastmcp import Client, FastMCP
 from starlette.testclient import TestClient
@@ -116,16 +114,6 @@ async def test_server_factory_builds_fastmcp_instance(
         assert [tool.name for tool in tools] == ["consult"]
 
 
-def _get(client: TestClient, path: str) -> httpx.Response:
-    """Typed wrapper for ``TestClient.get``.
-
-    Starlette 1.2 annotates ``TestClient.get`` against httpx2 symbols absent
-    in httpx 0.28; the cast restores the return type (same shim as
-    ``tests/adapter/test_healthcheck.py``).
-    """
-    return cast(httpx.Response, client.get(path))  # pyright: ignore[reportUnknownMemberType]
-
-
 def test_server_factory_wires_ready_probe_to_pool_lifetime(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -142,10 +130,10 @@ def test_server_factory_wires_ready_probe_to_pool_lifetime(
     env = {"DATABASE_URL": f"sqlite:///{tmp_path / 'test.db'}"}
     with patch.dict(os.environ, env, clear=True):
         client = TestClient(server().http_app())
-        assert _get(client, "/ready").status_code == 503
+        assert client.get("/ready").status_code == 503
         with client:
-            assert _get(client, "/ready").status_code == 200
-        assert _get(client, "/ready").status_code == 503
+            assert client.get("/ready").status_code == 200
+        assert client.get("/ready").status_code == 503
 
 
 def test_server_factory_emits_bootstrap_env_log_through_structlog(
