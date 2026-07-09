@@ -17,6 +17,11 @@ htmlcov/
 .coverage
 .coverage.*
 
+# Local databases (the mise DATABASE_URL default writes ./lore.db)
+*.db
+*.db-wal
+*.db-shm
+
 # Claude Code
 .claude/worktrees/
 .claude/settings.local.json
@@ -27,6 +32,7 @@ PLAN.md
 # Secrets
 .env
 .env.*
+!.env.example
 references
 
 # IDE

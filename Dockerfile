@@ -2,7 +2,7 @@
 ARG PYTHON_VERSION=3.14
 
 # Pinned uv binary — match the version that resolved uv.lock (verify on bump).
-FROM ghcr.io/astral-sh/uv:0.11.7 AS uv
+FROM ghcr.io/astral-sh/uv:0.11.16 AS uv
 
 FROM python:${PYTHON_VERSION}-slim-trixie AS builder
 COPY --from=uv /uv /usr/local/bin/uv
