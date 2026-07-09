@@ -1,0 +1,19 @@
+[tools]
+uv = "0.11.16"
+
+[env]
+DATABASE_URL = "sqlite:///lore.db"
+FASTMCP_SHOW_SERVER_BANNER = "false"
+_.file = ".env"
+
+[tasks.test]
+run = "uv run pytest"
+
+[tasks.types]
+run = "uv run pyright"
+
+[tasks.lint]
+run = "uv run ruff check . && uv run ruff format --check ."
+
+[tasks.check]
+depends = ["test", "types", "lint"]
