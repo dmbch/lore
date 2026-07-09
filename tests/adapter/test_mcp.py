@@ -5,6 +5,7 @@ import os
 import re
 from collections.abc import AsyncGenerator, Generator, Sequence
 from contextlib import asynccontextmanager
+from functools import partial
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -26,10 +27,10 @@ _COMPLETE_TOML = Path(__file__).parents[1] / "fixtures" / "lore_complete.toml"
 
 @asynccontextmanager
 async def _noop_system(orchestrator: Orchestrator | None = None) -> AsyncGenerator[Orchestrator]:
-    """System CM for tests: yields the given orchestrator, or an inert mock.
+    """System factory for tests: yields the given orchestrator, or an inert mock.
 
-    Single-use, like the production system CM: a server built from one
-    instance survives exactly one lifespan entry (one client session).
+    Passed to ``create_server`` uncalled (or via ``partial``): the server
+    calls it per lifespan cycle, minting a fresh CM each time.
     """
     yield orchestrator if orchestrator is not None else MagicMock(spec=Orchestrator)
 
@@ -51,7 +52,7 @@ def settings(bootstrap_env: None) -> LoreSettings:
 @pytest.fixture()
 def server(settings: LoreSettings) -> FastMCP[Orchestrator]:
     """Return a FastMCP server built from settings."""
-    return create_server(settings=settings, system=_noop_system())
+    return create_server(settings=settings, system=_noop_system)
 
 
 def test_bundled_logo_returns_png_data_uri() -> None:
@@ -85,7 +86,7 @@ def test_mcp_instructions_are_scribe_only(
     narrative.write_text("DOMAIN NARRATIVE MUST NOT LEAK.")
     prompts = settings.prompts.model_copy(update={"narrative": narrative})
     leaky = settings.model_copy(update={"prompts": prompts})
-    srv = create_server(settings=leaky, system=_noop_system())
+    srv = create_server(settings=leaky, system=_noop_system)
     instructions = srv.instructions
     assert instructions is not None
     assert "DOMAIN NARRATIVE MUST NOT LEAK." not in instructions
@@ -102,7 +103,7 @@ def test_server_version_defaults_to_dev_marker(
 def test_server_reports_configured_version(settings: LoreSettings) -> None:
     versioned = create_server(
         settings=settings.model_copy(update={"version": "1.2.3"}),
-        system=_noop_system(),
+        system=_noop_system,
     )
     assert versioned.version == "1.2.3"
 
@@ -115,7 +116,7 @@ def test_create_server_uses_configured_icon_url(settings: LoreSettings) -> None:
             )
         }
     )
-    server = create_server(settings=configured, system=_noop_system())
+    server = create_server(settings=configured, system=_noop_system)
     assert server.icons is not None
     assert len(server.icons) == 1
     assert server.icons[0].src == "https://example.com/lore.png"
@@ -126,7 +127,7 @@ def test_create_server_falls_back_to_bundled_logo(settings: LoreSettings) -> Non
 
     # settings has icon_url=None by default (fixture uses base TOML).
     assert settings.server.icon_url is None  # sanity-check the fixture state
-    server = create_server(settings=settings, system=_noop_system())
+    server = create_server(settings=settings, system=_noop_system)
     assert server.icons is not None
     assert len(server.icons) == 1
     assert server.icons[0].src == _bundled_logo()
@@ -143,7 +144,7 @@ def mock_orchestrator() -> AsyncMock:
 @pytest.fixture()
 def wired_server(settings: LoreSettings, mock_orchestrator: AsyncMock) -> FastMCP[Orchestrator]:
     """Server whose lifespan yields the mock orchestrator."""
-    return create_server(settings=settings, system=_noop_system(mock_orchestrator))
+    return create_server(settings=settings, system=partial(_noop_system, mock_orchestrator))
 
 
 async def test_read_call_delegates_to_orchestrator(
@@ -386,7 +387,7 @@ async def test_consult_diagnostic_survives_in_fastmcp_errors_log(
 def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
     sentinel = MagicMock()
     with patch("lore.adapter.mcp._build_auth", return_value=sentinel):
-        oidc_server = create_server(settings=settings, system=_noop_system())
+        oidc_server = create_server(settings=settings, system=_noop_system)
     assert oidc_server.auth is sentinel
 
 

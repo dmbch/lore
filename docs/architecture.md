@@ -33,18 +33,18 @@ The factory body runs three steps:
 
 1. **Telemetry**: `configure_telemetry()` wires structlog and the LiteLLM OTel callback before any other Lore code can emit logs (see Telemetry). SDK provider wiring is delegated to `opentelemetry-instrument`; the glue works against whichever global providers are already installed. The tracer is resolved lazily at first `start_span()` call. When the wrapper is not used, the global providers are OTel API proxies; spans are non-recording but module-level loggers still emit through structlog.
 2. **Config**: `load_settings()` builds `LoreSettings` from env vars + `lore.toml` (see Config). The settings-time `bootstrap.env` INFO line emits through structlog because step 1 is already up. Fail-fast on invalid values; cross-section invariants (including the auth↔OIDC check) are validated as the settings model is built, not as a separate procedural step.
-3. **Assembly**: `create_server(settings=..., system=system(settings, cell=cell), health_probe=cell.check)` returns the FastMCP instance. `system(settings)` is handed over unentered; the FastMCP lifespan enters it at startup and exits it at shutdown.
+3. **Assembly**: `create_server(settings=..., system=partial(system, settings, cell=cell), health_probe=cell.check)` returns the FastMCP instance. `system` is handed over as a factory, not a CM instance: FastMCP's lifespan is ref-counted and re-enterable (the in-memory transport cycles it per client session), so each cycle opens a fresh `system()` scope.
 
 `system()` is an async context manager owning the full lifecycle as one scope:
 
 1. **Dimensions**: `resolve_dimensions(settings)` resolves the embedding output size, so the schema always gets a concrete `int`.
-2. **Migrations**: `run_migrations(settings, embedding_dim=dim)` applies parameterized SQL schema changes (see Migrations). The `_system` table tracks applied migrations; the run is idempotent, so a `fastmcp run --reload` restart re-applies safely.
+2. **Migrations**: `run_migrations(settings, embedding_dim=dim)` applies parameterized SQL schema changes (see Migrations). The `_system` table tracks applied migrations; the run is idempotent, so a `fastmcp run --reload` restart or a repeated lifespan cycle re-applies safely.
 3. **Health check**: `check_health(settings, embedding_dim=dim)` stores the embedding model name and dimensions on first run, verifies them on subsequent runs. Mismatch means the vector space is inconsistent; fail-fast with `StorageError`.
 4. **Pool**: `connect(settings)` opens the `RepositoryPool`; the scope fills the `ProbeCell` with `make_probe(pool)`.
 5. **Providers and orchestrator**: LiteLLM implementations constructed with model strings from config (`build_providers(settings)`), the math service (`build_math(settings)`), and the wired `Orchestrator` yielded through the lifespan to the adapter. `system()` names factories rather than inlining constructor wiring.
 6. **Teardown**: the `finally` arm clears the cell and closes the pool on any exit, including caller exceptions, so `/ready` never vouches for a dead pool and connections never leak.
 
-**ProbeCell.** The factory must hand `create_server` a stable `health_probe` callable before the pool exists, so `ProbeCell` is a deliberately mutable holder tying the readiness probe to the pool lifetime. `cell.check` raises `StorageError` (the `/ready` 503 shape) before startup and after shutdown, and delegates to the live probe in between. Probe and orchestrator close over the same pool, filled and cleared inside the same scope.
+**ProbeCell.** The factory must hand `create_server` a stable `health_probe` callable before the pool exists, so `ProbeCell` is a deliberately mutable holder tying the readiness probe to the pool lifetime. `cell.check` raises `StorageError` (the `/ready` 503 shape) whenever no lifespan cycle is live, and delegates to the live probe in between. Probe and orchestrator close over the same pool, filled and cleared inside the same scope.
 
 DSNs and API keys come from environment variables (12-factor); behavioral config from TOML. No layer imports the composition root; the composition root imports all layers.
 

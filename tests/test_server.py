@@ -114,6 +114,29 @@ async def test_server_factory_builds_fastmcp_instance(
         assert [tool.name for tool in tools] == ["consult"]
 
 
+async def test_server_factory_survives_sequential_client_sessions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each lifespan cycle opens a fresh ``system()`` scope.
+
+    FastMCP's lifespan manager is ref-counted and re-enterable; the
+    in-memory transport cycles it per client session. A factory handing
+    over a single-use CM instance would die on the second session with
+    ``RuntimeError("generator didn't yield")``.
+    """
+    from lore.server import server
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "lore.toml").write_text(_COMPLETE_TOML.read_text())
+    env = {"DATABASE_URL": f"sqlite:///{tmp_path / 'test.db'}"}
+    with patch.dict(os.environ, env, clear=True):
+        instance = server()
+        for _ in range(2):
+            async with Client(instance) as client:
+                tools = await client.list_tools()
+            assert [tool.name for tool in tools] == ["consult"]
+
+
 def test_server_factory_wires_ready_probe_to_pool_lifetime(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

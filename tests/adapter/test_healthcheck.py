@@ -72,7 +72,7 @@ async def _crashing_probe() -> None:
 def _server(
     settings: LoreSettings, *, health_probe: Callable[[], Awaitable[None]] | None = None
 ) -> FastMCP[Orchestrator]:
-    return create_server(settings=settings, system=_noop_system(), health_probe=health_probe)
+    return create_server(settings=settings, system=_noop_system, health_probe=health_probe)
 
 
 def _client(server: FastMCP[Orchestrator]) -> TestClient:
