@@ -3,8 +3,10 @@
 Bootstrap infrastructure, not a layer. ``connect()`` opens the backend
 named by ``settings.dsn`` and returns a RepositoryPool; the pool creates
 per-request repo bundles. ``run_migrations()`` and ``check_health()`` are
-sync bootstrap utilities that run before the async event loop starts.
-``make_probe()`` returns a readiness-probe closure over a live pool.
+sync bootstrap utilities called from the composition root's lifespan
+before the server accepts work; they block the loop deliberately while
+nothing else is scheduled. ``make_probe()`` returns a readiness-probe
+closure over a live pool.
 
 All four entry points take ``LoreSettings`` whole (except ``make_probe``,
 which takes a pool) and read the backend choice from ``settings.dsn``.
@@ -60,7 +62,8 @@ def run_migrations(*, settings: LoreSettings, embedding_dim: int) -> None:
     ``int`` under ``strict=True``. The migration runner trusts those
     guarantees.
 
-    Sync: runs at bootstrap before the async event loop starts.
+    Sync by design: called from the lifespan before the server accepts
+    work, blocking the loop while nothing else is scheduled.
     """
     params: dict[str, int | str] = {
         "embedding_dim": embedding_dim,
@@ -81,7 +84,8 @@ def check_health(*, settings: LoreSettings, embedding_dim: int) -> None:
     are bound to those choices at schema creation, and silent drift would
     produce wrong retrieval results.
 
-    Sync: runs at bootstrap before the async event loop starts.
+    Sync by design: called from the lifespan before the server accepts
+    work, blocking the loop while nothing else is scheduled.
     """
     fulltext_config = _fulltext_config(settings)
     if is_postgres(settings.dsn):
