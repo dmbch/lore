@@ -20,15 +20,16 @@ Early development.
 
 Lore ships as one batteries-included image: both backends are present (SQLite + sqlite-vec, PostgreSQL + pgvector), and you choose at runtime via `DATABASE_URL`. Images are published to the GitHub Container Registry as `ghcr.io/dmbch/lore`. Each release publishes `:X.Y.Z`, a `:X.Y` minor track that rolls forward, and `:latest`. The examples below use `:latest`; pin `:X.Y.Z` (or the `:X.Y` track) for production.
 
-The image runs as non-root (UID 1000, user `lore`), keeps state under `/data`, exposes port 8000 for the HTTP transport, and shuts down cleanly on `SIGTERM`. OpenTelemetry is opt-in, with exporters defaulting to `none`; see [Telemetry](#telemetry-optional) to ship traces and metrics.
+The image runs as non-root (UID 1000, user `lore`), keeps state under `/data`, defaults to the HTTP transport (`FASTMCP_TRANSPORT=http`, operator-overridable) on port 8000, and shuts down cleanly on `SIGTERM`. OpenTelemetry is opt-in, with exporters defaulting to `none`; see [Telemetry](#telemetry-optional) to ship traces and metrics.
 
 ### Local, single user (stdio)
 
-The default transport is stdio: one user, one process, one machine. SQLite lives at `/data/lore.db`, so a single volume persists everything.
+For one user, one process, one machine, override the image's HTTP default with `FASTMCP_TRANSPORT=stdio`. SQLite lives at `/data/lore.db`, so a single volume persists everything.
 
 ```bash
 docker run -i --rm \
   -v lore-data:/data \
+  -e FASTMCP_TRANSPORT=stdio \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
   ghcr.io/dmbch/lore:latest
 ```
@@ -37,13 +38,12 @@ Point your MCP client (Claude Desktop, the MCP Inspector, …) at that `docker r
 
 ### HTTP, multi-user
 
-Switch transports with `FASTMCP_TRANSPORT=http`. The image doesn't set `FASTMCP_HOST`, so FastMCP binds loopback (`127.0.0.1`), unreachable from outside the container. To accept external traffic, set `FASTMCP_HOST=0.0.0.0` and publish the port.
+HTTP is the image default. The image doesn't set `FASTMCP_HOST`, so FastMCP binds loopback (`127.0.0.1`), unreachable from outside the container. To accept external traffic, set `FASTMCP_HOST=0.0.0.0` and publish the port.
 
 ```bash
 docker run --rm \
   -v lore-data:/data \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
-  -e FASTMCP_TRANSPORT=http \
   -e FASTMCP_HOST=0.0.0.0 \
   -e FASTMCP_PORT=8000 \
   -p 8000:8000 \
@@ -62,7 +62,7 @@ For production, bring your own PostgreSQL with the `pgvector` extension and poin
 docker run --rm \
   -e DATABASE_URL="postgresql://user:pass@db.internal:5432/lore" \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
-  -e FASTMCP_TRANSPORT=http -e FASTMCP_HOST=0.0.0.0 \
+  -e FASTMCP_HOST=0.0.0.0 \
   -p 8000:8000 \
   ghcr.io/dmbch/lore:latest
 ```
@@ -79,7 +79,7 @@ docker run --rm \
   -e OIDC_URL="oidc://client_id:secret@auth.example.com/realms/lore/.well-known/openid-configuration" \
   -e BASE_URL="https://lore.example.com" \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
-  -e FASTMCP_TRANSPORT=http -e FASTMCP_HOST=0.0.0.0 \
+  -e FASTMCP_HOST=0.0.0.0 \
   -p 8000:8000 \
   ghcr.io/dmbch/lore:latest
 ```
@@ -184,10 +184,11 @@ Configuration has two disjoint sources. Secrets and deployment topology come fro
 | `OIDC_URL` | Full OIDC discovery-document URL with embedded credentials (`oidc://client_id:secret@host/.well-known/openid-configuration`) |
 | `BASE_URL` | Public base URL (required with `OIDC_URL` for HTTP mode) |
 | `LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `FASTMCP_TRANSPORT` | MCP transport: `stdio` (FastMCP default) or `http` (image default) |
 | `FASTMCP_PORT` | Server port (default 8000, managed by FastMCP) |
 | `FASTMCP_HOST` | Server host (default 127.0.0.1, managed by FastMCP) |
 
-`FASTMCP_HOST` defaults to `127.0.0.1` (loopback only), the right shape for stdio and for HTTP behind a same-host proxy. Container deployments that accept traffic from outside the container must set `FASTMCP_HOST=0.0.0.0`.
+`FASTMCP_HOST` defaults to `127.0.0.1` (loopback only), the right shape for stdio and for HTTP behind a same-host proxy. Container deployments that accept traffic from outside the container must set `FASTMCP_HOST=0.0.0.0`. The whole `FASTMCP_*` surface (banner, update check, statelessness, ...) is read by FastMCP directly, never mirrored into Lore's config; see [FastMCP settings](https://gofastmcp.com/more/settings).
 
 ### Vendor API keys
 
@@ -357,7 +358,7 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 
 ### Telemetry (optional)
 
-Lore uses the OpenTelemetry Python SDK but ships nothing by default. Bare `lore` records into the OTel API proxies: no spans, no metrics, zero overhead. To export, launch through the auto-config wrapper `opentelemetry-instrument`, which installs SDK providers from `OTEL_*` variables and picks up any installed `opentelemetry-instrumentation-*` packages. The container entrypoint already wraps Lore this way, with every exporter defaulting to `none`; set the standard variables to ship:
+Lore uses the OpenTelemetry Python SDK but ships nothing by default. A bare `fastmcp run` records into the OTel API proxies: no spans, no metrics, zero overhead. To export, launch through the auto-config wrapper `opentelemetry-instrument`, which installs SDK providers from `OTEL_*` variables and picks up any installed `opentelemetry-instrumentation-*` packages. The container entrypoint already wraps Lore this way, with every exporter defaulting to `none`; set the standard variables to ship:
 
 ```bash
 docker run … \
@@ -405,14 +406,22 @@ The ledger and provenance tables always store the raw value; redaction applies o
 
 - Python 3.14+
 - [uv](https://docs.astral.sh/uv/)
+- [mise](https://mise.jdx.dev/) (optional): pins uv, loads env defaults, runs the tasks below
 
 ### Setup
 
 ```bash
+mise install   # or bring your own uv
 uv sync
 ```
 
 ### Quality checks
+
+```bash
+mise run check   # tests + types + lint, in parallel
+```
+
+Or the underlying commands directly:
 
 ```bash
 uv run pytest                # tests
@@ -423,23 +432,33 @@ uv run pyright               # type check
 
 ### Running from source
 
+From a source checkout, run through the fastmcp CLI: `fastmcp run` auto-detects `fastmcp.json`, which points at the `server()` factory in `src/lore/server.py`. (The published image runs the same factory via `python -m lore`, since it ships as a wheel with no source tree.)
+
 ```bash
-DATABASE_URL=sqlite:////tmp/lore-dev.db uv run lore
+mise run serve
 ```
 
-Bare `uv run lore` records into no-op OTel providers. To ship traces, metrics, and logs to a collector, launch through the auto-config wrapper:
+Without mise, set the database and invoke the CLI through uv:
+
+```bash
+DATABASE_URL=sqlite:////tmp/lore-dev.db uv run fastmcp run
+```
+
+A bare run records into no-op OTel providers. To ship traces, metrics, and logs to a collector, launch through the auto-config wrapper:
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889 \
 DATABASE_URL=sqlite:////tmp/lore-dev.db \
-uv run opentelemetry-instrument lore
+uv run opentelemetry-instrument fastmcp run
 ```
 
 To step through tool calls, wrap the command with the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) (needs Node.js):
 
 ```bash
-DATABASE_URL=sqlite:////tmp/lore-dev.db npx @modelcontextprotocol/inspector uv run lore
+DATABASE_URL=sqlite:////tmp/lore-dev.db npx @modelcontextprotocol/inspector uv run fastmcp run
 ```
+
+To register the server with an MCP client, `mise run install-claude-code` and `mise run install-claude-desktop` wrap `fastmcp install`.
 
 For local OTLP traces, logs, and metrics, the [Aspire Dashboard](https://learn.microsoft.com/en-us/dotnet/aspire/fundamentals/dashboard/standalone) runs as a single container:
 

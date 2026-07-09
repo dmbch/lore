@@ -1,10 +1,10 @@
-"""Composition root for ``fastmcp run``: no-arg factory + lifespan-owned system.
+"""Composition root: no-arg factory + lifespan-owned system.
 
-``server()`` is the entrypoint the fastmcp CLI loads (``lore.server:server``).
-It configures telemetry, loads settings, and returns a FastMCP instance whose
+``server()`` is the factory the fastmcp CLI loads via ``fastmcp.json`` for dev
+and tooling; the image runs the same factory through ``python -m lore``. It
+configures telemetry, loads settings, and returns a FastMCP instance whose
 lifespan enters ``system()``: the async context manager owning migrations,
-health check, pool lifetime, and orchestrator wiring. Outside the layer model,
-like ``__main__`` before it.
+health check, pool lifetime, and orchestrator wiring. Outside the layer model.
 """
 
 from collections.abc import AsyncGenerator, Awaitable, Callable
