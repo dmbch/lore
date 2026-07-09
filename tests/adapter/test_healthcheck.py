@@ -81,8 +81,6 @@ def _client(server: FastMCP[Orchestrator]) -> TestClient:
 
 def test_health_returns_ok_unconditionally(settings: LoreSettings) -> None:
     """`/health` is a no-op liveness probe; never touches the probe callable."""
-    # Even with a probe that would raise, /health stays 200, confirming
-    # the route does not call the probe.
     client = _client(_server(settings, health_probe=_failing_probe))
     response = client.get("/health")
     assert response.status_code == 200
