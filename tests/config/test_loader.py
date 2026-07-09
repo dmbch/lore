@@ -130,6 +130,28 @@ def test_settings_reject_auth_required_without_oidc(tmp_path: Path) -> None:
         load_settings(toml_path=toml_file)
 
 
+def test_settings_accept_auth_required_with_oidc(tmp_path: Path) -> None:
+    """``[auth] required = true`` loads cleanly when OIDC_URL and BASE_URL are set."""
+    toml_file = tmp_path / "auth_required.toml"
+    toml_file.write_text(
+        "[auth]\nrequired = true\n"
+        '[embedding]\nmodel = "test/e"\n[fast]\nmodel = "test/f"\n[reasoning]\nmodel = "test/r"\n'
+    )
+    env = {**_BASE_ENV, "OIDC_URL": _OIDC_URL, "BASE_URL": "https://lore.example.com"}
+    with patch.dict(os.environ, env, clear=True):
+        s = load_settings(toml_path=toml_file)
+        assert s.auth.required is True
+        assert s.oidc is not None
+
+
+def test_settings_default_auth_not_required_without_oidc() -> None:
+    """No ``[auth]`` section: required defaults to false, no OIDC demanded."""
+    with patch.dict(os.environ, _BASE_ENV, clear=True):
+        s = load_settings(toml_path=_TOML_PATH)
+        assert s.auth.required is False
+        assert s.oidc is None
+
+
 def test_both_set_returns_http_config() -> None:
     env = {**_BASE_ENV, "BASE_URL": "https://lore.example.com", "OIDC_URL": _OIDC_URL}
     with patch.dict(os.environ, env, clear=True):

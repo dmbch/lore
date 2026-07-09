@@ -2,10 +2,13 @@
 
 import os
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 
+import httpx
 import pytest
 from fastmcp import Client, FastMCP
+from starlette.testclient import TestClient
 
 from lore.config import LoreSettings, load_settings
 from lore.domain import StorageError
@@ -111,6 +114,62 @@ async def test_server_factory_builds_fastmcp_instance(
         async with Client(instance) as client:
             tools = await client.list_tools()
         assert [tool.name for tool in tools] == ["consult"]
+
+
+def _get(client: TestClient, path: str) -> httpx.Response:
+    """Typed wrapper for ``TestClient.get``.
+
+    Starlette 1.2 annotates ``TestClient.get`` against httpx2 symbols absent
+    in httpx 0.28; the cast restores the return type (same shim as
+    ``tests/adapter/test_healthcheck.py``).
+    """
+    return cast(httpx.Response, client.get(path))  # pyright: ignore[reportUnknownMemberType]
+
+
+def test_server_factory_wires_ready_probe_to_pool_lifetime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``/ready`` answers 503 before the lifespan, 200 inside, 503 after.
+
+    Pins the factory's ``health_probe=cell.check`` wiring: an unwired
+    ``None`` probe would answer 200 unconditionally, so the pre-lifespan
+    503 is the observable difference.
+    """
+    from lore.server import server
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "lore.toml").write_text(_COMPLETE_TOML.read_text())
+    env = {"DATABASE_URL": f"sqlite:///{tmp_path / 'test.db'}"}
+    with patch.dict(os.environ, env, clear=True):
+        client = TestClient(server().http_app())
+        assert _get(client, "/ready").status_code == 503
+        with client:
+            assert _get(client, "/ready").status_code == 200
+        assert _get(client, "/ready").status_code == 503
+
+
+def test_server_factory_emits_bootstrap_env_log_through_structlog(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The bootstrap.env diagnostic event reaches the configured structlog renderer.
+
+    The factory calls ``configure_telemetry()`` before ``load_settings()``,
+    so the ``bootstrap.env`` log emitted during settings load routes through
+    the installed renderer instead of being dropped at the stdlib root's
+    default WARNING level.
+    """
+    from lore.server import server
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "lore.toml").write_text(_COMPLETE_TOML.read_text())
+    env = {"DATABASE_URL": "sqlite:///:memory:"}
+    with patch.dict(os.environ, env, clear=True):
+        server()
+
+    rendered = capsys.readouterr().err
+    assert "bootstrap.env" in rendered
 
 
 def test_server_factory_configures_telemetry_before_settings() -> None:

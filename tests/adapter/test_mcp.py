@@ -8,14 +8,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import fastmcp
 import pytest
 from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import Tool
 from pydantic import SecretStr
 
-from lore.adapter.mcp import create_server, serve
+from lore.adapter.mcp import create_server
 from lore.config import LoreSettings, load_settings
 from lore.domain import ConsultLoreRequest, ConsultLoreResponse
 from lore.domain.errors import StorageError
@@ -511,38 +510,6 @@ def test_build_auth_forwards_extra_authorize_params_from_settings(
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
         _build_auth(oidc_settings)
     assert mock_proxy.call_args.kwargs["extra_authorize_params"] == {"hd": "example.com"}
-
-
-async def test_serve_in_stdio_mode_omits_uvicorn_config() -> None:
-    """Stdio transport has no uvicorn: passing ``uvicorn_config`` is rejected.
-
-    The transport read goes through ``fastmcp.settings.transport``, the same
-    singleton ``run_async(transport=None)`` resolves to. Patch the field
-    directly; env-var case handling lives in FastMCP's pydantic-settings,
-    not in ``serve``.
-    """
-    server = MagicMock(spec=FastMCP)
-    server.run_async = AsyncMock()
-    with patch.object(fastmcp.settings, "transport", "stdio"):
-        await serve(server)
-    server.run_async.assert_awaited_once_with(show_banner=False)
-
-
-async def test_serve_in_http_mode_passes_uvicorn_log_config_none() -> None:
-    """For HTTP, uvicorn's ``log_config=None`` suppresses its ``dictConfig``.
-
-    With ``dictConfig`` skipped, uvicorn's loggers stay bare and propagate to
-    the root structlog handler instead of installing their own ``RichHandler``.
-    """
-    server = MagicMock(spec=FastMCP)
-    server.run_async = AsyncMock()
-
-    with patch.object(fastmcp.settings, "transport", "http"):
-        await serve(server)
-
-    server.run_async.assert_awaited_once_with(
-        show_banner=False, uvicorn_config={"log_config": None}
-    )
 
 
 async def test_token_with_non_string_sub_claim_raises_tool_error(

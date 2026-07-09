@@ -38,7 +38,6 @@ import pytest
 import structlog
 from structlog.typing import EventDict
 
-from lore.__main__ import bootstrap, setup
 from lore.config import load_settings
 from lore.domain import TRANSFER_ORACLE
 from lore.orchestrator import Orchestrator
@@ -52,11 +51,13 @@ async def captured_system(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> AsyncGenerator[tuple[Orchestrator, list[EventDict]]]:
     """Per-test orchestrator with structlog event capture for inspecting consult.notes."""
+    from lore.server import system
+
     dsn = f"sqlite:///{tmp_path_factory.mktemp('lore') / 'lore.db'}"
     os.environ.setdefault("DATABASE_URL", dsn)
     settings = load_settings()
     settings = settings.model_copy(update={"dsn": dsn})
-    async with setup(settings) as pool, bootstrap(settings, pool) as orchestrator:
+    async with system(settings) as orchestrator:
         with structlog.testing.capture_logs() as cap:
             yield orchestrator, cap
 
