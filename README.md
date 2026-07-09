@@ -350,6 +350,7 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 | `scribe` | path | bundled | Scribe persona, served as the `consult` prompt |
 | `interpreter` | path | bundled | Interpreter system prompt |
 | `archivist` | path | bundled | Archivist system prompt |
+| `contract` | path | bundled | MCP contract (one sectioned markdown): server instructions, consult tool description, field descriptions |
 
 </details>
 
