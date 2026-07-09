@@ -99,9 +99,8 @@ def create_server(
     ``health_probe`` is the readiness probe the ``/ready`` route awaits.
     The composition root composes it (``repositories.make_probe(pool)``)
     so the adapter never imports the repository layer directly. When
-    ``None``, ``/ready`` returns 200 unconditionally: the right shape
-    for stdio mode (no HTTP transport) and for tests that don't exercise
-    readiness.
+    ``None``, ``/ready`` fails closed with 503: a composition that
+    forgot the probe must not vouch for readiness.
     """
 
     @asynccontextmanager
@@ -148,7 +147,8 @@ def _register_healthchecks(
     ``StorageError`` becomes 503 with a scrubbed body, and any other
     exception collapses to the same scrubbed 503 (full exception + stack
     in structlog under ``ready.error.internal``). When the probe is
-    ``None`` (stdio mode, tests), ``/ready`` returns 200 unconditionally.
+    ``None``, ``/ready`` fails closed: 503 "unconfigured", so a
+    mis-wired composition is loudly visible instead of ready forever.
     """
 
     # FastMCP's @custom_route signature is library-imposed: the handler
@@ -160,7 +160,7 @@ def _register_healthchecks(
     @server.custom_route("/ready", methods=["GET"])
     async def ready(_request: Request) -> Response:
         if health_probe is None:
-            return JSONResponse({"status": "ok"})
+            return JSONResponse({"status": "unconfigured"}, status_code=503)
         try:
             await health_probe()
         except StorageError as exc:

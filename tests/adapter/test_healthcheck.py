@@ -12,8 +12,8 @@ The two routes serve different probe semantics:
 
 The probe is injected into ``create_server`` rather than imported by the
 adapter; this keeps the adapter layer free of repository imports. When
-``health_probe`` is omitted, ``/ready`` returns 200 unconditionally:
-the right shape for stdio mode and tests that don't exercise readiness.
+``health_probe`` is omitted, ``/ready`` fails closed with 503: a
+composition that forgot the probe must not vouch for readiness.
 """
 
 import os
@@ -96,17 +96,17 @@ def test_ready_returns_ok_when_probe_succeeds(settings: LoreSettings) -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_ready_returns_ok_when_no_probe_configured(settings: LoreSettings) -> None:
-    """Without a probe, ``/ready`` returns 200 (the stdio / test shape).
+def test_ready_fails_closed_when_no_probe_configured(settings: LoreSettings) -> None:
+    """Without a probe, ``/ready`` answers 503: fail closed.
 
-    Pins the contract that omitting ``health_probe`` is a valid composition
-    (stdio mode has no HTTP transport; tests that don't exercise readiness
-    shouldn't have to wire a stub probe).
+    A composition root that forgot to wire the probe must not vouch for
+    readiness. The production factory always injects ``cell.check``;
+    stdio mode never serves the route.
     """
     client = _client(_server(settings))
     response = client.get("/ready")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.status_code == 503
+    assert response.json() == {"status": "unconfigured"}
 
 
 def test_ready_returns_503_when_probe_raises_storage_error(settings: LoreSettings) -> None:
