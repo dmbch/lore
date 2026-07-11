@@ -20,30 +20,39 @@ Lore is a shared knowledge engine, reached through the `consult` tool. Source: h
 
 #### description
 
-Consult Lore: a shared knowledge engine.
+Consult Lore, a shared knowledge engine: search what the herd has learned, contribute what the user concluded, or both in one call.
 
-A call needs a question, a hypothesis with confidence, or both. Hypothesis without confidence is rejected.
+**Call preconditions (a call is rejected without these).** A well-formed call carries a `question`, a `hypothesis` paired with `confidence`, or both. A `hypothesis` with no `confidence` has no epistemic content and is rejected. `context` and `reasoning` decorate a call; they cannot make one.
 
-Gather sufficient context before calling. Do not call with premature assumptions: one well-formed consultation beats three speculative ones.
+**Call once, well-formed.** Gather enough to know the user's actual question or actual position before calling. One well-formed consultation beats three speculative ones; a premature call spends a turn and returns thin.
+
+**Represent the user, do not author.** Carry the user's stance as stated: no softening, no sharpening, no invention. Unsure whether the user holds a position on a claim? Omit the `hypothesis`. Silence is not agreement, and a contribution to the ledger cannot be retracted; a missed one is merely missed. On a correction, the most recent statement wins; capture what changed in `reasoning`.
+
+**Disbelief is a negative scalar, never a negated sentence.** To carry disagreement, keep the claim in its positive form and make `confidence` negative. Submit `hypothesis="Service X sustains 10k QPS", confidence=-0.7`, never `hypothesis="Service X does not sustain 10k QPS", confidence=0.7`. Lore matches by content: the positive form lands the user's disbelief on the same hypothesis the herd believes, where fusion can weigh both. A negated sentence forks a separate claim that never meets the herd's scrutiny.
 
 #### fields
 
 ##### question
 
-What do you want to know? Searches the shared knowledge base. Can be combined with a hypothesis to both ask and contribute.
+What the user wants to know. Searches the shared archive. Supplies referents, not assertions: do not smuggle a claim in here (a claim goes in `hypothesis`). May pair with a `hypothesis` to ask and contribute in one call.
 
 ##### context
 
-Why are you asking: the problem being solved, the decision being faced. Improves retrieval and resolution quality.
+Why the user is asking: the problem being solved or the decision being faced. The user's own framing, so it may carry claim content, and it sharpens retrieval and resolution. Distinct from `reasoning`: this is the why-asking, not the chain behind a claim.
 
 ##### hypothesis
 
-A claim to contribute. Requires a confidence scalar. Lore classifies its relationship to existing knowledge.
+A positive-form, self-contained claim the user wants to contribute. Requires a `confidence`. Lore classifies how it relates to existing knowledge, so phrase it to stand on its own away from this conversation.
 
 ##### reasoning
 
-The logical chain behind the hypothesis. Strengthens resolution quality.
+The logical chain behind the `hypothesis`. Also the place to record a mid-conversation correction: when the user changes their mind, the most recent stance wins and the shift is captured here.
 
 ##### confidence
 
-Directional confidence in [-1, 1]. Positive = belief, negative = disbelief, 0 = genuine uncertainty. Rough calibration: 0.9 certain, 0.6 fairly sure, 0.3 suspect, 0 no idea, -0.5 doubt, -0.8 definitely not. Err toward center. Required when hypothesis is present; omit when the user has no view.
+The user's directional confidence for the `hypothesis`. Positive is belief, negative is disbelief, `0` is genuine uncertainty. Read the stance, map it to the scalar:
+
+    "I'm certain" -> 0.9   "fairly sure" -> 0.6   "I suspect" -> 0.3
+    "no idea" -> 0.0   "I doubt it" -> -0.5   "definitely not" -> -0.8
+
+Required with a `hypothesis`. Err toward center: overconfidence corrupts fusion more than underconfidence. Omit when the user holds no view: omitting (no view, no hypothesis) and `0.0` (a stated stance of genuine uncertainty) are different states.
