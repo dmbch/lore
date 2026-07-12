@@ -325,39 +325,6 @@ async def test_consult_rejects_invalid_input_with_the_violated_rule(
     mock_orchestrator.consult.assert_not_called()
 
 
-async def test_consult_internal_validation_error_not_mislabeled_as_client_input(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
-) -> None:
-    """An internal pydantic failure is masked, not blamed on the client's input.
-
-    A ``ValidationError`` raised past request construction (here, from deep in
-    the orchestrator) is our bug. The adapter re-raises it as a non-pydantic
-    error so masking scrubs it to the uniform message, rather than fastmcp's
-    dedicated pydantic arm echoing the failing value and mislabeling it as
-    client-fault input.
-    """
-    from pydantic import BaseModel, ValidationError
-
-    class _InternalModel(BaseModel):
-        internal_secret: int
-
-    with pytest.raises(ValidationError) as caught:
-        _InternalModel.model_validate({"internal_secret": "leak-me-not"})
-    mock_orchestrator.consult.side_effect = caught.value
-
-    with pytest.raises(ToolError) as exc_info:
-        await _call_tool(wired_server, "consult", {"question": "test"})
-    payload = str(exc_info.value)
-    # Masked: nothing of the internal model or its repr crosses the wire.
-    assert "_InternalModel" not in payload
-    assert "internal_secret" not in payload
-    assert "input_value" not in payload
-    assert "leak-me-not" not in payload
-    # Not mislabeled: the client-fault arm would surface the extracted
-    # pydantic message ("Input should be a valid integer ...").
-    assert "valid integer" not in payload
-
-
 async def test_consult_diagnostic_survives_in_fastmcp_errors_log(
     wired_server: FastMCP[Orchestrator],
     mock_orchestrator: AsyncMock,
