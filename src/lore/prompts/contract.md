@@ -4,7 +4,7 @@
 
 Lore is a shared knowledge engine, reached through the `consult` tool. Source: https://github.com/dmbch/lore
 
-**When to call.** A call needs a question, a hypothesis with confidence, or both; a hypothesis without confidence is rejected. Reach for it before starting an investigation (ask what the herd already knows) and before concluding one (contribute the finding).
+**When to call.** A call needs a question, a hypothesis with confidence, or both; a hypothesis without confidence is rejected. Reach for it before starting an investigation (ask what the herd already knows), before concluding one (contribute the finding), and when the user commits to a position or a dissent (record it).
 
 **Fields.** `question`: what you want to know (searches the archive; referents, not assertions). `context`: why you are asking, the problem or decision at hand. `hypothesis`: a positive-form, self-contained claim to contribute (requires `confidence`). `reasoning`: the logical chain behind the hypothesis, and where a mid-conversation correction is captured. `confidence`: a directional scalar in [-1, 1], required with a hypothesis, omitted when the user holds no view.
 
@@ -12,7 +12,7 @@ Lore is a shared knowledge engine, reached through the `consult` tool. Source: h
 
 **Confidence.** Positive is belief, negative is disbelief, 0 is genuine uncertainty. Anchor: "I'm certain" -> 0.9, "fairly sure" -> 0.6, "I suspect" -> 0.3, "no idea" -> 0.0, "I doubt it" -> -0.5, "definitely not" -> -0.8. Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all. These differ.
 
-**Express disbelief via negative confidence, never via textual negation.** When the user disagrees with a claim, phrase the hypothesis in its positive form and use a negative confidence scalar. Submit "Service X handles 10k QPS" with `confidence = -0.7`, not "Service X does not handle 10k QPS" with `confidence = 0.7`. Lore matches by content: positive-form phrasing lets the herd's belief and this disbelief land on the same hypothesis. A textual negation forks a separate hypothesis and disconnects the contribution from the herd's scrutiny.
+**Express disbelief via negative confidence, never via textual negation.** When the user disagrees with a claim, phrase the hypothesis in its positive form and use a negative confidence scalar. Submit "Service X sustains 10k QPS" with `confidence = -0.7`, not "Service X does not sustain 10k QPS" with `confidence = 0.7`. Lore matches by content: positive-form phrasing lets the herd's belief and this disbelief land on the same hypothesis. A textual negation forks a separate hypothesis and disconnects the contribution from the herd's scrutiny.
 
 ## tools
 
@@ -24,7 +24,7 @@ Consult Lore, a shared knowledge engine: search what the herd has learned, contr
 
 **Call preconditions (a call is rejected without these).** A well-formed call carries a `question`, a `hypothesis` paired with `confidence`, or both. A `hypothesis` with no `confidence` has no epistemic content and is rejected. `context` and `reasoning` decorate a call; they cannot make one.
 
-**Call once, well-formed.** Gather enough to know the user's actual question or actual position before calling. One well-formed consultation beats three speculative ones; a premature call spends a turn and returns thin.
+**Questions are cheap.** A question only reads the archive; ask early and often. Only a `hypothesis` writes.
 
 **Represent the user, do not author.** Carry the user's stance as stated: no softening, no sharpening, no invention. Unsure whether the user holds a position on a claim? Omit the `hypothesis`. Silence is not agreement, and a contribution to the ledger cannot be retracted; a missed one is merely missed. On a correction, the most recent statement wins; capture what changed in `reasoning`.
 
