@@ -10,10 +10,12 @@ import time
 from typing import TYPE_CHECKING
 
 import structlog
+from pydantic import ValidationError
 
 from lore.domain import (
     ConsultLoreRequest,
     ConsultLoreResponse,
+    DomainInvariantError,
     RetryableTransactionError,
     WriteContext,
 )
@@ -74,130 +76,137 @@ class Orchestrator:
         intent. See docs/architecture.md, "Orphan request rows are evidence,
         not garbage."
         """
-        path = "write" if request.confidence is not None else "read"
-        with start_span(
-            "lore.consult",
-            path=path,
-            oracle_id=oracle_id,
-        ):
-            log.info("consult.start", path=path)
+        try:
+            path = "write" if request.confidence is not None else "read"
+            with start_span(
+                "lore.consult",
+                path=path,
+                oracle_id=oracle_id,
+            ):
+                log.info("consult.start", path=path)
 
-            t_now = int(time.time())
-
-            async with self._pool.session() as repos:
-                await repos.requests.store(
-                    RequestRecord(
-                        id=correlation_id,
-                        oracle_id=oracle_id,
-                        timestamp=t_now,
-                        question=request.question,
-                        context=request.context,
-                        hypothesis=request.hypothesis,
-                        reasoning=request.reasoning,
-                        confidence=request.confidence,
-                    )
-                )
-
-            async with self._providers.session() as session:
-                interpreted = await interpret(
-                    session=session, request=request, settings=self._settings, t_now=t_now
-                )
-                log.info("consult.interpreted", propositions=len(interpreted.propositions))
-                log.debug(
-                    "consult.interpret.result",
-                    question=interpreted.question,
-                    propositions=interpreted.propositions,
-                    keywords=interpreted.keywords,
-                )
-
-                question = interpreted.question or request.question or ""
-                source_embeddings = await embed_sources(
-                    session=session, interpreted=interpreted, question=question
-                )
+                t_now = int(time.time())
 
                 async with self._pool.session() as repos:
-                    candidates = await search_candidates(
-                        hypotheses=repos.hypotheses,
+                    await repos.requests.store(
+                        RequestRecord(
+                            id=correlation_id,
+                            oracle_id=oracle_id,
+                            timestamp=t_now,
+                            question=request.question,
+                            context=request.context,
+                            hypothesis=request.hypothesis,
+                            reasoning=request.reasoning,
+                            confidence=request.confidence,
+                        )
+                    )
+
+                async with self._providers.session() as session:
+                    interpreted = await interpret(
+                        session=session, request=request, settings=self._settings, t_now=t_now
+                    )
+                    log.info("consult.interpreted", propositions=len(interpreted.propositions))
+                    log.debug(
+                        "consult.interpret.result",
+                        question=interpreted.question,
+                        propositions=interpreted.propositions,
+                        keywords=interpreted.keywords,
+                    )
+
+                    question = interpreted.question or request.question or ""
+                    source_embeddings = await embed_sources(
+                        session=session, interpreted=interpreted, question=question
+                    )
+
+                    async with self._pool.session() as repos:
+                        candidates = await search_candidates(
+                            hypotheses=repos.hypotheses,
+                            interpreted=interpreted,
+                            source_embeddings=source_embeddings,
+                            settings=self._settings,
+                        )
+                        enriched = await enrich(
+                            candidates=candidates,
+                            attestations=repos.attestations,
+                            math=self._math,
+                            t_now=t_now,
+                        )
+
+                    log.info("consult.retrieved", candidates=len(candidates))
+                    log.debug(
+                        "consult.enrich.result",
+                        enriched=[
+                            {
+                                "id": e.id,
+                                "c_herd": e.c_herd,
+                                "attestation_count": e.attestation_count,
+                                "score": e.score,
+                            }
+                            for e in enriched
+                        ],
+                    )
+
+                    reasoned = await reason(
+                        session=session,
+                        request=request,
                         interpreted=interpreted,
-                        source_embeddings=source_embeddings,
+                        enriched=enriched,
                         settings=self._settings,
-                    )
-                    enriched = await enrich(
-                        candidates=candidates,
-                        attestations=repos.attestations,
-                        math=self._math,
                         t_now=t_now,
                     )
+                    log.info("consult.reasoned", resolutions=len(reasoned.resolutions))
+                    if reasoned.notes:
+                        log.info("consult.notes", count=len(reasoned.notes))
+                        log.debug("consult.note_contents", notes=reasoned.notes)
 
-                log.info("consult.retrieved", candidates=len(candidates))
-                log.debug(
-                    "consult.enrich.result",
-                    enriched=[
-                        {
-                            "id": e.id,
-                            "c_herd": e.c_herd,
-                            "attestation_count": e.attestation_count,
-                            "score": e.score,
-                        }
-                        for e in enriched
-                    ],
-                )
-
-                reasoned = await reason(
-                    session=session,
-                    request=request,
-                    interpreted=interpreted,
-                    enriched=enriched,
-                    settings=self._settings,
-                    t_now=t_now,
-                )
-                log.info("consult.reasoned", resolutions=len(reasoned.resolutions))
-                if reasoned.notes:
-                    log.info("consult.notes", count=len(reasoned.notes))
-                    log.debug("consult.note_contents", notes=reasoned.notes)
-
-                validate_resolutions(
-                    reasoned=reasoned,
-                    proposition_count=len(interpreted.propositions),
-                    retrieved_ids=frozenset(e.id for e in enriched),
-                )
-
-                if request.confidence is not None:
-                    novels = [
-                        r.contributes for r in reasoned.resolutions if r.contributes is not None
-                    ]
-                    novel_embeddings = await embed_novels(session=session, novels=novels)
-
-                    context = WriteContext(
-                        oracle_id=oracle_id,
-                        correlation_id=correlation_id,
-                        confidence=request.confidence,
-                        t_now=t_now,
+                    validate_resolutions(
+                        reasoned=reasoned,
+                        proposition_count=len(interpreted.propositions),
+                        retrieved_ids=frozenset(e.id for e in enriched),
                     )
-                    for attempt in range(RECORD_MAX_ATTEMPTS):
-                        try:
-                            async with self._pool.transaction() as repos:
-                                await record(
-                                    repos=repos,
-                                    math=self._math,
-                                    reasoned=reasoned,
-                                    novel_embeddings=novel_embeddings,
-                                    context=context,
-                                    settings=self._settings,
+
+                    if request.confidence is not None:
+                        novels = [
+                            r.contributes for r in reasoned.resolutions if r.contributes is not None
+                        ]
+                        novel_embeddings = await embed_novels(session=session, novels=novels)
+
+                        context = WriteContext(
+                            oracle_id=oracle_id,
+                            correlation_id=correlation_id,
+                            confidence=request.confidence,
+                            t_now=t_now,
+                        )
+                        for attempt in range(RECORD_MAX_ATTEMPTS):
+                            try:
+                                async with self._pool.transaction() as repos:
+                                    await record(
+                                        repos=repos,
+                                        math=self._math,
+                                        reasoned=reasoned,
+                                        novel_embeddings=novel_embeddings,
+                                        context=context,
+                                        settings=self._settings,
+                                    )
+                                break
+                            except RetryableTransactionError:
+                                if attempt == RECORD_MAX_ATTEMPTS - 1:
+                                    raise
+                                log.warning(
+                                    "record.retry",
+                                    attempt=attempt + 1,
+                                    correlation_id=correlation_id,
                                 )
-                            break
-                        except RetryableTransactionError:
-                            if attempt == RECORD_MAX_ATTEMPTS - 1:
-                                raise
-                            log.warning(
-                                "record.retry",
-                                attempt=attempt + 1,
-                                correlation_id=correlation_id,
-                            )
-                            ceiling = _RETRY_BASE_SECONDS * 2**attempt
-                            delay = random.uniform(  # noqa: S311 - retry jitter, not cryptographic
-                                ceiling / 2, ceiling
-                            )
-                            await asyncio.sleep(delay)
+                                ceiling = _RETRY_BASE_SECONDS * 2**attempt
+                                delay = random.uniform(  # noqa: S311 - jitter, not crypto
+                                    ceiling / 2, ceiling
+                                )
+                                await asyncio.sleep(delay)
 
-                return ConsultLoreResponse(answer=reasoned.answer)
+                    return ConsultLoreResponse(answer=reasoned.answer)
+        except ValidationError as exc:
+            # Internal models only: request validation happens in the adapter,
+            # before consult. fastmcp re-raises raw pydantic errors to the
+            # client, so an internal bug must be re-labeled to stay masked.
+            msg = "internal domain model construction failed: a lore bug, not client input"
+            raise DomainInvariantError(msg) from exc
