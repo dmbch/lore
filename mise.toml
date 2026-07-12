@@ -3,6 +3,7 @@ uv = "0.11.16"
 
 [env]
 DATABASE_URL = "sqlite:///lore.db"
+FASTMCP_LOG_ENABLED = "false"
 FASTMCP_SHOW_SERVER_BANNER = "false"
 _.file = ".env"
 _.python.venv = ".venv"

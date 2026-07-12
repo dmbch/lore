@@ -13,9 +13,11 @@ into `OTEL_LOG_LEVEL` via `setdefault` so the OTel SDK shares the gate;
 an explicit operator value wins. `USE_OTEL_LITELLM_REQUEST_SPAN` is
 defaulted to `"true"` the same way: litellm then records each LLM call
 on its own child span instead of decorating Lore's (already ended)
-stage spans. FastMCP and LiteLLM attach their own handlers at import;
-`_configure_logging` resets those loggers so records propagate to the
-root structlog handler, so one gate covers everyone.
+stage spans. LiteLLM attaches its own handlers at import and ships no
+off-switch; `_configure_logging` resets its loggers so records
+propagate to the root structlog handler. fastmcp needs no reset: the
+process entry points set `FASTMCP_LOG_ENABLED=false`, so its logger
+keeps stdlib defaults and propagates natively.
 """
 
 import logging
@@ -96,11 +98,12 @@ def _configure_logging(log_level: str) -> None:
     root.addHandler(handler)
     root.setLevel(level)
 
-    # FastMCP attaches a RichHandler + propagate=False at import; LiteLLM does the
-    # same with a StreamHandler across three logger names. Reset all four to bare
-    # stdlib defaults so records propagate to the root structlog handler and the
-    # one LOG_LEVEL gate covers everyone.
-    for name in ("fastmcp", "LiteLLM", "LiteLLM Proxy", "LiteLLM Router"):
+    # LiteLLM attaches a StreamHandler across three logger names at import and
+    # has no off-switch. Reset the trio to bare stdlib defaults so records
+    # propagate to the root structlog handler and the one LOG_LEVEL gate covers
+    # everyone. fastmcp is handled by FASTMCP_LOG_ENABLED at the process entry
+    # points, not here.
+    for name in ("LiteLLM", "LiteLLM Proxy", "LiteLLM Router"):
         lib = logging.getLogger(name)
         lib.handlers.clear()
         lib.propagate = True

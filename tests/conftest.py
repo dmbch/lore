@@ -4,6 +4,15 @@ Tests that reconfigure ``configure_telemetry()`` opt into
 ``reset_telemetry`` to reach into private globals and unwind them.
 """
 
+import os
+
+# fastmcp's settings singleton snapshots env at ``import fastmcp``, so the
+# off-switch must land before any import that could pull it. pytest loads this
+# conftest before test modules, and ``uv run pytest`` runs without the mise
+# env, so this is the suite's process-wide guarantee. All imports sit below
+# this line by design (see the E402 per-file ignore).
+os.environ.setdefault("FASTMCP_LOG_ENABLED", "false")
+
 import logging
 from collections.abc import Iterator
 
@@ -15,8 +24,8 @@ import lore.telemetry as _telemetry
 
 
 def _reset_telemetry_state() -> None:
-    # Note: the four library loggers ``configure_telemetry`` reroutes (fastmcp,
-    # LiteLLM, LiteLLM Proxy, LiteLLM Router) are not restored. They hold the
+    # Note: the LiteLLM trio ``configure_telemetry`` reroutes (LiteLLM,
+    # LiteLLM Proxy, LiteLLM Router) is not restored. Those loggers hold the
     # bare-stdlib state the reroute leaves them in. No current test depends on
     # the pre-reroute state across the boundary; a future test that does will
     # need to capture and restore those loggers itself.
