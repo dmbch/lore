@@ -311,10 +311,10 @@ class ArchivistOutput(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True)
 
     reasoning: str = Field(
-        description="Step-by-step analysis of how propositions relate to existing knowledge"
+        description="Step-by-step analysis of the consult against the retrieved knowledge"
     )
     answer: str = Field(
-        description="Synthesized explanation of how the input relates to existing knowledge"
+        description="Direct answer to the consult, grounded in the herd's knowledge"
     )
     resolutions: list[Resolution] = Field(
         # Subscripted factory: pyright strict cannot infer the element type
