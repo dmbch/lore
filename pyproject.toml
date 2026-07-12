@@ -81,6 +81,7 @@ max-args = 8
 "tests/math/**"              = ["RUF002", "RUF003"] # math test docstrings mirror the notation
 "src/lore/repositories/**"   = ["S608"]             # SQL is parameterized; S608 heuristic misfires
 "tests/**"                   = ["S101", "S104", "S105", "S108", "S608", "EM", "ASYNC240"] # test-only patterns
+"tests/conftest.py"          = ["E402"]             # every import sits below the FASTMCP_LOG_ENABLED off-switch by design
 
 [tool.pyright]
 include = ["src", "tests"]

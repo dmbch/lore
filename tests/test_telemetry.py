@@ -113,21 +113,32 @@ def test_log_level_warning_suppresses_info(
 
 
 # ---------------------------------------------------------------------------
-# FastMCP / LiteLLM logger reroute, and the OTEL_LOG_LEVEL gate
+# LiteLLM logger reroute, fastmcp hands-off, and the OTEL_LOG_LEVEL gate
 # ---------------------------------------------------------------------------
 
 
-def test_configure_telemetry_reroutes_fastmcp_logger(isolated_configure: None) -> None:
-    """The ``fastmcp`` logger is reset to bare-stdlib defaults so records propagate to root.
+def test_configure_telemetry_leaves_fastmcp_logger_untouched(isolated_configure: None) -> None:
+    """Telemetry never resets the ``fastmcp`` logger: ``FASTMCP_LOG_ENABLED``
+    owns that posture at the process entry points.
 
-    FastMCP attaches a ``RichHandler`` and sets ``propagate = False`` at import. The
-    reroute reverses that so the root structlog handler sees the records.
+    With the off-switch set before ``import fastmcp``, the framework never
+    installs its Rich handler, so there is nothing to undo. Sentinel state
+    pins the hands-off contract.
     """
-    telemetry.configure_telemetry()
     fastmcp_logger = logging.getLogger("fastmcp")
-    assert fastmcp_logger.handlers == []
-    assert fastmcp_logger.propagate is True
-    assert fastmcp_logger.level == logging.NOTSET
+    marker = logging.NullHandler()
+    fastmcp_logger.addHandler(marker)
+    fastmcp_logger.setLevel(logging.CRITICAL)
+    fastmcp_logger.propagate = False
+    try:
+        telemetry.configure_telemetry()
+        assert marker in fastmcp_logger.handlers
+        assert fastmcp_logger.level == logging.CRITICAL
+        assert fastmcp_logger.propagate is False
+    finally:
+        fastmcp_logger.removeHandler(marker)
+        fastmcp_logger.setLevel(logging.NOTSET)
+        fastmcp_logger.propagate = True
 
 
 @pytest.mark.parametrize("name", ["LiteLLM", "LiteLLM Proxy", "LiteLLM Router"])
@@ -143,22 +154,26 @@ def test_configure_telemetry_reroutes_litellm_loggers(isolated_configure: None, 
 def test_fastmcp_logger_records_flow_to_root_renderer(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """With ``FASTMCP_LOG_ENABLED`` off (the conftest default), ``import
+    fastmcp`` never touched the logger, so records propagate to the root
+    structlog handler natively; no telemetry reset involved.
+    """
     telemetry.configure_telemetry()
     logging.getLogger("fastmcp").info("from fastmcp")
     assert "from fastmcp" in capsys.readouterr().err
 
 
-def test_fastmcp_errors_child_logger_records_flow_to_root_renderer(
+def test_fastmcp_server_child_logger_records_flow_to_root_renderer(
     isolated_configure: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """``ErrorHandlingMiddleware`` logs masked-error diagnostics on the child
-    ``fastmcp.errors``. It must reach the root renderer through the rerouted
-    parent, or operators silently lose every diagnostic the client never sees.
-    (caplog in the adapter tests cannot catch this: pytest attaches its capture
-    handler to non-propagating loggers directly.)
+    """fastmcp's native error logging lands on the child ``fastmcp.server.server``
+    (``logger.exception`` on the masked path). It must reach the root renderer
+    through the untouched parent, or operators silently lose every diagnostic
+    the client never sees. (caplog in the adapter tests cannot pin this: pytest
+    attaches its capture handler to non-propagating loggers directly.)
     """
     telemetry.configure_telemetry()
-    logging.getLogger("fastmcp.errors").error("diagnostic for operators")
+    logging.getLogger("fastmcp.server.server").error("diagnostic for operators")
     assert "diagnostic for operators" in capsys.readouterr().err
 
 
