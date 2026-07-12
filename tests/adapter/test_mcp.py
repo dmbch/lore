@@ -198,7 +198,7 @@ async def test_tool_extracts_oracle_id_from_access_token(
     """When an access token is present, oracle_id comes from the 'sub' claim."""
     fake_token = MagicMock()
     fake_token.claims = {"sub": "oracle-42"}
-    with patch("lore.adapter.mcp.get_access_token", return_value=fake_token):
+    with patch("lore.adapter.middleware.get_access_token", return_value=fake_token):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
     call_args = mock_orchestrator.consult.call_args
     oracle_id = call_args.kwargs["oracle_id"]
@@ -287,7 +287,7 @@ async def test_consult_auth_failure_is_constant_message(
     fake_token = MagicMock()
     fake_token.claims = {"aud": "some-audience"}
     with (
-        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
+        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
         pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
@@ -518,7 +518,7 @@ async def test_token_with_non_string_sub_claim_raises_tool_error(
     fake_token = MagicMock()
     fake_token.claims = {"sub": 12345}
     with (
-        patch("lore.adapter.mcp.get_access_token", return_value=fake_token),
+        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
         pytest.raises(ToolError, match="authentication failed"),
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
@@ -566,18 +566,62 @@ async def test_hypothesis_with_zero_confidence_reaches_orchestrator(
     assert request.hypothesis == "a claim"
 
 
-async def test_idp_sub_passes_through_verbatim_even_in_synthetic_namespace(
-    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
+@pytest.mark.parametrize("sub", ["_local", "_transfer"])
+async def test_synthetic_namespace_sub_rejected(
+    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock, sub: str
 ) -> None:
-    """The IdP is the identity root: whatever string it puts in ``sub`` is the
-    oracle_id, ``_*`` names included. The one reserved name (``_transfer``) is
-    enforced by the Recorder at the domain layer, not here.
+    """An IdP-issued ``_*`` sub is refused before the orchestrator runs.
+
+    The synthetic namespace is reserved: a token's ``_local`` would silently
+    merge with the unauthenticated local oracle, and ``_transfer`` would write
+    full-credibility attestations. The identity middleware closes both at the
+    boundary; the Recorder's ``_transfer`` guard stays as defense-in-depth.
     """
     fake_token = MagicMock()
-    fake_token.claims = {"sub": "_local"}
-    with patch("lore.adapter.mcp.get_access_token", return_value=fake_token):
+    fake_token.claims = {"sub": sub}
+    with (
+        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
+        pytest.raises(ToolError) as exc_info,
+    ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
-    assert mock_orchestrator.consult.call_args.kwargs["oracle_id"] == "_local"
+    assert str(exc_info.value) == "authentication failed: access token has no usable 'sub' claim"
+    mock_orchestrator.consult.assert_not_called()
+
+
+async def test_empty_sub_rejected(
+    wired_server: FastMCP[Orchestrator], mock_orchestrator: AsyncMock
+) -> None:
+    """An empty ``sub`` is refused with the same constant message, never a
+    masked 500 downstream."""
+    fake_token = MagicMock()
+    fake_token.claims = {"sub": ""}
+    with (
+        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
+        pytest.raises(ToolError) as exc_info,
+    ):
+        await _call_tool(wired_server, "consult", {"question": "who am I?"})
+    assert str(exc_info.value) == "authentication failed: access token has no usable 'sub' claim"
+    mock_orchestrator.consult.assert_not_called()
+
+
+async def test_consult_without_identity_state_fails_masked(
+    settings: LoreSettings, mock_orchestrator: AsyncMock
+) -> None:
+    """A consult with no resolved identity is an internal bug: masked, no write.
+
+    Simulates a mis-wired composition by swapping the identity middleware for
+    the inert base ``Middleware``, so no ``oracle_id`` lands in request state.
+    The tool-side narrow must fail before the orchestrator, and the wire must
+    carry only fastmcp's masked message, never the internal detail.
+    """
+    from fastmcp.server.middleware import Middleware
+
+    with patch("lore.adapter.mcp.OracleIdentityMiddleware", return_value=Middleware()):
+        srv = create_server(settings=settings, system=partial(_noop_system, mock_orchestrator))
+    with pytest.raises(ToolError) as exc_info:
+        await _call_tool(srv, "consult", {"question": "who am I?"})
+    assert "oracle identity missing" not in str(exc_info.value)
+    mock_orchestrator.consult.assert_not_called()
 
 
 async def _list_tools(server: FastMCP[Orchestrator]) -> Sequence[Tool]:

@@ -11,7 +11,6 @@ import structlog
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.auth.oidc_proxy import OIDCProxy
-from fastmcp.server.dependencies import get_access_token
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from mcp.types import Icon
 from opentelemetry import trace as otel_trace
@@ -19,7 +18,8 @@ from pydantic import Field, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from lore.domain import LOCAL_ORACLE, ConsultLoreRequest, ConsultLoreResponse
+from lore.adapter.middleware import OracleIdentityMiddleware
+from lore.domain import ConsultLoreRequest, ConsultLoreResponse
 from lore.domain.errors import StorageError
 from lore.orchestrator import Orchestrator
 from lore.prompts import load_prompt
@@ -132,6 +132,10 @@ def create_server(
     # record on the ToolError path (fastmcp logs ToolError with exc_info=False).
     server.add_middleware(ErrorHandlingMiddleware(transform_errors=False, include_traceback=True))
 
+    # Identity is cross-cutting: every tool call resolves its oracle here,
+    # never in a tool body.
+    server.add_middleware(OracleIdentityMiddleware())
+
     return server
 
 
@@ -237,23 +241,16 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
             rules = "; ".join(err["msg"].removeprefix("Value error, ") for err in exc.errors())
             raise ToolError(rules) from exc
 
-        try:
-            token = get_access_token()
-            if token:
-                # Claims pass through verbatim: no normalization, no namespace
-                # rules. The IdP is the identity root (Sybil resistance is
-                # delegated to it), so whatever string it puts in ``sub`` is the
-                # oracle_id. The single gate is the type boundary from untyped
-                # JWT material to the ledger's str identity; the one reserved
-                # name (``_transfer``) is enforced by the Recorder in the domain.
-                sub = token.claims.get("sub")
-                if not isinstance(sub, str):
-                    msg = "authentication failed: access token has no usable 'sub' claim"
-                    raise ToolError(msg)
-                oracle_id = sub
-            else:
-                oracle_id = LOCAL_ORACLE
+        # Stashed by OracleIdentityMiddleware on every tool call. get_state is
+        # library-typed Any, so narrow honestly at the boundary. A miss means
+        # the middleware is not registered: an internal bug, and the
+        # RuntimeError takes fastmcp's masked arm.
+        oracle_id = await ctx.get_state("oracle_id")
+        if not isinstance(oracle_id, str):
+            msg = "oracle identity missing from request state"
+            raise RuntimeError(msg)
 
+        try:
             # FastMCP types lifespan_context as dict[str, Any] but returns the
             # lifespan-yielded value directly: our Orchestrator instance.
             orchestrator = cast(Orchestrator, ctx.lifespan_context)
