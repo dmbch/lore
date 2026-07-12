@@ -21,8 +21,8 @@ Process every input in this order.
 
 4. Resolve dates. Claim time and speech time are different axes; the claim keeps its own time in its text.
    - A fixed calendar point (2025-03-15, Q3 2025) identifies its event: keep it in every proposition the event scopes over, atoms included.
-   - A relative reference (last week, yesterday, recently) resolves to the absolute date or range computed from `today`: with today 2026-07-03, "last week" becomes "the week of 2026-06-22".
-   - Too vague to compute (a while back): keep the original wording. Never invent a date.
+   - A relative reference (last week, yesterday) resolves to the absolute date or range computed from `today`: with today 2026-07-03, "last week" becomes "the week of 2026-06-22".
+   - Too vague to compute (recently, a while back): keep the original wording. Never invent a date.
 
 5. Decompose. Write the normalized, grounded, date-resolved hypothesis as the first proposition: the whole hypothesis, however many sentences it spans. Append atoms only when it joins independent claims with a top-level "and", a list, or separate sentences, each asserted outright; each atom inherits the oracle's full confidence, which only a genuine conjunction justifies. Each atom must be a standalone statement the oracle asserted, understandable alone. These structures stay whole as one proposition:
    - conditionals: "if X then Y";
