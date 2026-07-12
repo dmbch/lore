@@ -325,26 +325,33 @@ async def test_consult_rejects_invalid_input_with_the_violated_rule(
     mock_orchestrator.consult.assert_not_called()
 
 
-async def test_consult_diagnostic_survives_in_fastmcp_errors_log(
+async def test_consult_diagnostic_survives_in_fastmcp_log(
     wired_server: FastMCP[Orchestrator],
     mock_orchestrator: AsyncMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Masked on the wire, the cause survives in the ``fastmcp.errors`` log.
+    """Masked on the wire, the cause survives in fastmcp's native log.
 
-    ``ErrorHandlingMiddleware(include_traceback=True)`` is the only log-side
-    record of the cause on the ToolError path (fastmcp logs ToolError with
-    ``exc_info=False``), so operators keep the diagnostic the client never sees.
+    On the masked path fastmcp calls ``logger.exception`` before scrubbing,
+    so operators keep the full diagnostic under ``fastmcp.server.server``
+    with no middleware in between.
     """
     mock_orchestrator.consult.side_effect = StorageError("dsn=postgresql://user:pass@host/db")
     with (
-        caplog.at_level(logging.ERROR, logger="fastmcp.errors"),
-        pytest.raises(ToolError),
+        caplog.at_level(logging.ERROR, logger="fastmcp.server.server"),
+        pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "test"})
-    middleware_records = [r for r in caplog.records if r.name == "fastmcp.errors"]
-    assert len(middleware_records) == 1
-    assert "dsn=postgresql://user:pass@host/db" in middleware_records[0].getMessage()
+    assert "dsn=postgresql://user:pass@host/db" not in str(exc_info.value)
+    native_records = [
+        r for r in caplog.records if r.name == "fastmcp.server.server" and r.exc_info is not None
+    ]
+    assert len(native_records) == 1
+    exc_info = native_records[0].exc_info
+    assert exc_info is not None
+    cause = exc_info[1]
+    assert isinstance(cause, StorageError)
+    assert "dsn=postgresql://user:pass@host/db" in str(cause)
 
 
 def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
