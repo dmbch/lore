@@ -11,7 +11,6 @@ import structlog
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.auth.oidc_proxy import OIDCProxy
-from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from mcp.types import Icon
 from opentelemetry import trace as otel_trace
 from pydantic import Field, ValidationError
@@ -125,12 +124,6 @@ def create_server(
 
     _register_tools(server=server, settings=settings)
     _register_healthchecks(server=server, health_probe=health_probe)
-
-    # transform_errors=False is load-bearing: True would rewrap tool errors as
-    # protocol McpError and change tool-error semantics. include_traceback=True
-    # preserves the __cause__ chain in the fastmcp.errors log, the only log-side
-    # record on the ToolError path (fastmcp logs ToolError with exc_info=False).
-    server.add_middleware(ErrorHandlingMiddleware(transform_errors=False, include_traceback=True))
 
     # Identity is cross-cutting: every tool call resolves its oracle here,
     # never in a tool body.
