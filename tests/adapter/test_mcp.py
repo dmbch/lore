@@ -347,9 +347,9 @@ async def test_consult_diagnostic_survives_in_fastmcp_log(
         r for r in caplog.records if r.name == "fastmcp.server.server" and r.exc_info is not None
     ]
     assert len(native_records) == 1
-    exc_info = native_records[0].exc_info
-    assert exc_info is not None
-    cause = exc_info[1]
+    logged_exc_info = native_records[0].exc_info
+    assert logged_exc_info is not None
+    _, cause, _ = logged_exc_info
     assert isinstance(cause, StorageError)
     assert "dsn=postgresql://user:pass@host/db" in str(cause)
 
