@@ -1,12 +1,15 @@
 """Oracle identity resolution for every MCP tool call."""
 
 import mcp.types as mt
+import structlog
 from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.tools import ToolResult
 
 from lore.domain import LOCAL_ORACLE
+
+log = structlog.get_logger(__name__)
 
 # One constant for every rejection: nothing token-derived can leak through
 # the message shape.
@@ -36,6 +39,10 @@ class OracleIdentityMiddleware(Middleware):
         else:
             sub = token.claims.get("sub")
             if not isinstance(sub, str) or not sub or sub.startswith("_"):
+                # A raise here propagates before fastmcp's log arms, so this
+                # warning is the only server-side record of the rejection.
+                # The wire carries the constant; the log keeps the diagnostic.
+                log.warning("auth.rejected", tool=context.message.name, sub=repr(sub))
                 raise ToolError(_AUTH_FAILED)
             oracle_id = sub
         # fastmcp types fastmcp_context as Context | None. With no Context
