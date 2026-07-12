@@ -10,21 +10,24 @@ Three probe scenarios from the F-WP audit:
 3. Notes channel: deliberately ambiguous composite produces a non-empty
    `notes` field, observable via the `consult.notes` log event.
 
-Reference-time probes for the archivist cycle. Every claim is anchored at a
-reference time: an explicit in-content date if present, else the attestation
-timestamp. Two claims contradict only when their reference times overlap. A fast
-e2e run stamps seed and prober within seconds, so a present-tense claim with no
-in-content date is anchored at that shared "now"; an explicit `as of <date>`
-overrides it.
+Temporal probes for the archivist. A `contradicts` writes disbelief (the claim
+is false, not old) and decay already prices age, so two claims conflict only
+when they cannot both be true of the world. Same-session fixtures always read
+`last_attested == today`; cases 7 and 8 backdate the seed's ledger rows to
+decouple the two.
 
 4. Two claims at different reference times do not contradict: an `as of 2010`
    reading and an `as of 2025` reading are both true, so no disbelief lands on
    the older.
 5. Two claims at the same reference time can contradict: undated present-tense
-   claims, both anchored now, that state incompatible values collide.
+   claims that state incompatible values collide.
 6. Complexity tier: one paragraph-scale consult mixing a dated historical event
    and a differently-referenced value update writes no false contradiction on
    either seed.
+7. Aging does not immunize: an undated standing claim seeded 90 days back is
+   still contradicted by an incompatible present claim.
+8. Aging does not indict: an old `as of <date>` snapshot is not contradicted by
+   a newer reading.
 
 Marked @pytest.mark.e2e, skipped without GEMINI_API_KEY (autouse fixture in
 tests/e2e/conftest.py).
@@ -41,7 +44,7 @@ from structlog.typing import EventDict
 from lore.config import load_settings
 from lore.domain import TRANSFER_ORACLE
 from lore.orchestrator import Orchestrator
-from tests.e2e.conftest import attestations, consult
+from tests.e2e.conftest import age_attestations, attestations, consult
 
 pytestmark = pytest.mark.e2e
 
@@ -320,4 +323,68 @@ async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
     assert not value_neg, (
         "The 2015 and 2018 tax readings are at different reference times, both true: "
         f"expected no disbelief on the 2015 reading, got {value_neg}"
+    )
+
+
+async def test_aged_standing_claim_is_still_contradicted(
+    system: Orchestrator,
+) -> None:
+    # An undated standing claim seeded 90 days back: `last_attested` falls well
+    # before `today`, but a single-valued attribute still cannot hold two values,
+    # so an incompatible present claim contradicts it. Being untouched makes a
+    # claim stale, not immune; this guards against reading age as a wall.
+    seed_id = await _seed(
+        system,
+        "aged-standing-seed",
+        "The language of instruction at the Valletta maritime academy is English.",
+        0.8,
+    )
+    await age_attestations(system, "aged-standing-seed", days=90)
+
+    await consult(
+        system,
+        hypothesis="The language of instruction at the Valletta maritime academy is Italian.",
+        confidence=0.8,
+        oracle="oracle-prober",
+        correlation_id="aged-standing-probe",
+    )
+
+    rows = await attestations(system, "aged-standing-probe")
+    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
+    assert negative, (
+        "An aged standing claim is still contradicted: one academy has one language "
+        "of instruction, however long ago the herd last touched the older reading. "
+        "Expected a disbelief attestation on the seed, got none."
+    )
+
+
+async def test_aged_dated_snapshot_is_not_contradicted(
+    system: Orchestrator,
+) -> None:
+    # The control for case 7: an old dated snapshot aged the same 90 days. The
+    # two readings date themselves to different years, so both are true and the
+    # newer one enters as novel; age must not tip the call toward disbelief.
+    seed_id = await _seed(
+        system,
+        "aged-dated-seed",
+        "As of 2023, Cedarbrook Health employs 1,200 nurses.",
+        0.8,
+    )
+    await age_attestations(system, "aged-dated-seed", days=90)
+
+    await consult(
+        system,
+        hypothesis="As of 2026, Cedarbrook Health employs 2,300 nurses.",
+        confidence=0.8,
+        oracle="oracle-prober",
+        correlation_id="aged-dated-probe",
+    )
+
+    rows = await attestations(system, "aged-dated-probe")
+    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
+    assert not negative, (
+        "An aged dated snapshot is not contradicted: the 2023 and 2026 headcounts "
+        f"are both true of their own years. Expected no disbelief on the seed, got {negative}"
     )

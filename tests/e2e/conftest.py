@@ -64,6 +64,20 @@ async def attestations(
         return [dict(row) for row in rows]
 
 
+async def age_attestations(system: Orchestrator, correlation_id: str, *, days: int) -> None:
+    """Backdate a consult's ledger rows, simulating the passage of time.
+
+    Same-session fixtures always read ``last_attested == today``; backdating
+    decouples the two so temporal behavior on aged evidence is probeable.
+    """
+    raw = cast("SqlitePool", system._pool)._conn
+    async with cast("SqlitePool", system._pool)._lock:
+        await raw.execute(
+            "UPDATE attestations SET timestamp = timestamp - ? WHERE correlation_id = ?",
+            (days * 86400, correlation_id),
+        )
+
+
 async def consult(
     system: Orchestrator,
     *,
