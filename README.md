@@ -187,6 +187,7 @@ Configuration has two disjoint sources. Secrets and deployment topology come fro
 | `FASTMCP_TRANSPORT` | MCP transport: `stdio` (FastMCP default) or `http` (image default) |
 | `FASTMCP_PORT` | Server port (default 8000, managed by FastMCP) |
 | `FASTMCP_HOST` | Server host (default 127.0.0.1, managed by FastMCP) |
+| `FASTMCP_LOG_ENABLED` | fastmcp's own Rich log handler; Lore's entry point and launcher envs default it to `false` so fastmcp records route through structlog. Set `true` to restore the Rich console |
 
 `FASTMCP_HOST` defaults to `127.0.0.1` (loopback only), the right shape for stdio and for HTTP behind a same-host proxy. Container deployments that accept traffic from outside the container must set `FASTMCP_HOST=0.0.0.0`. The whole `FASTMCP_*` surface (banner, update check, statelessness, ...) is read by FastMCP directly, never mirrored into Lore's config; see [FastMCP settings](https://gofastmcp.com/more/settings).
 
