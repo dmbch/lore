@@ -33,7 +33,9 @@ async def test_token_sub_becomes_oracle_id() -> None:
         return_value=_token({"sub": "oracle-42"}),
     ):
         result = await OracleIdentityMiddleware().on_call_tool(context, call_next)
-    context.fastmcp_context.set_state.assert_awaited_once_with("oracle_id", "oracle-42")
+    context.fastmcp_context.set_state.assert_awaited_once_with(
+        "oracle_id", "oracle-42", serializable=False
+    )
     call_next.assert_awaited_once_with(context)
     assert result == "downstream result"
 
@@ -44,7 +46,9 @@ async def test_no_token_falls_back_to_local_oracle() -> None:
     call_next = AsyncMock()
     with patch("lore.adapter.middleware.get_access_token", return_value=None):
         await OracleIdentityMiddleware().on_call_tool(context, call_next)
-    context.fastmcp_context.set_state.assert_awaited_once_with("oracle_id", LOCAL_ORACLE)
+    context.fastmcp_context.set_state.assert_awaited_once_with(
+        "oracle_id", LOCAL_ORACLE, serializable=False
+    )
     call_next.assert_awaited_once_with(context)
 
 
