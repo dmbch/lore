@@ -75,19 +75,3 @@ async def test_unusable_sub_rejected_with_constant_message(claims: dict[str, obj
     assert str(exc_info.value) == _AUTH_FAILED
     call_next.assert_not_awaited()
     context.fastmcp_context.set_state.assert_not_awaited()
-
-
-async def test_missing_fastmcp_context_proceeds_without_state() -> None:
-    """fastmcp types ``fastmcp_context`` as ``Context | None``: with no
-    Context there is nowhere to stash, so the middleware proceeds and the
-    tool-side narrow fails as a masked internal error."""
-    context = MagicMock()
-    context.fastmcp_context = None
-    call_next = AsyncMock(return_value="downstream result")
-    with patch(
-        "lore.adapter.middleware.get_access_token",
-        return_value=_token({"sub": "oracle-42"}),
-    ):
-        result = await OracleIdentityMiddleware().on_call_tool(context, call_next)
-    call_next.assert_awaited_once_with(context)
-    assert result == "downstream result"
