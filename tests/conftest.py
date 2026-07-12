@@ -8,10 +8,12 @@ import os
 
 # fastmcp's settings singleton snapshots env at ``import fastmcp``, so the
 # off-switch must land before any import that could pull it. pytest loads this
-# conftest before test modules, and ``uv run pytest`` runs without the mise
-# env, so this is the suite's process-wide guarantee. All imports sit below
-# this line by design (see the E402 per-file ignore).
-os.environ.setdefault("FASTMCP_LOG_ENABLED", "false")
+# conftest before test modules, so this is the suite's process-wide guarantee.
+# A hard assign, not setdefault: the suite pins the propagate-to-structlog
+# posture, and an ambient FASTMCP_LOG_ENABLED=true from a dev shell must not
+# flip it. All imports sit below this line by design (see the E402 per-file
+# ignore).
+os.environ["FASTMCP_LOG_ENABLED"] = "false"
 
 import logging
 from collections.abc import Iterator

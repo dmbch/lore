@@ -18,6 +18,7 @@ def test_python_m_lore_builds_and_runs_the_factory(monkeypatch: pytest.MonkeyPat
     """
     built = MagicMock()
     monkeypatch.setattr("lore.server.server", lambda: built)
+    monkeypatch.setattr(fastmcp.settings, "transport", "stdio")
 
     runpy.run_module("lore.__main__", run_name="__main__")
 
