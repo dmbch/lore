@@ -250,21 +250,14 @@ def _register_tools(*, server: FastMCP[Orchestrator], settings: LoreSettings) ->
             msg = "oracle identity missing from request state"
             raise RuntimeError(msg)
 
-        try:
-            # FastMCP types lifespan_context as dict[str, Any] but returns the
-            # lifespan-yielded value directly: our Orchestrator instance.
-            orchestrator = cast(Orchestrator, ctx.lifespan_context)
-            return await orchestrator.consult(
-                oracle_id=oracle_id, request=request, correlation_id=correlation_id
-            )
-        except ValidationError as exc:
-            # A pydantic failure past request construction is our bug, not the
-            # oracle's input. Re-raise as a NON-pydantic error: fastmcp's dedicated
-            # pydantic arm re-raises raw and echoes the failing value to the client,
-            # bypassing masking. As a RuntimeError it hits the masking arm and
-            # scrubs to the uniform message; the detail survives only in the log.
-            msg = "internal validation failure"
-            raise RuntimeError(msg) from exc
+        # FastMCP types lifespan_context as dict[str, Any] but returns the
+        # lifespan-yielded value directly: our Orchestrator instance. Internal
+        # ValidationErrors are the orchestrator's to wrap (DomainInvariantError),
+        # so nothing raw-pydantic can reach fastmcp's echo arm from here.
+        orchestrator = cast(Orchestrator, ctx.lifespan_context)
+        return await orchestrator.consult(
+            oracle_id=oracle_id, request=request, correlation_id=correlation_id
+        )
 
     # Keep a reference so pyright doesn't flag as unused.
     _ = consult
