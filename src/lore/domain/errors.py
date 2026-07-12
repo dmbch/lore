@@ -29,5 +29,12 @@ class ArchivistResolutionError(Exception):
     """
 
 
+class DomainInvariantError(Exception):
+    """A domain model was constructed with data violating its invariants.
+
+    An internal bug, never client-facing.
+    """
+
+
 class InferenceError(Exception):
     """Model unavailable, rate limited, timeout, invalid response."""
