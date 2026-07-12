@@ -228,7 +228,7 @@ async def test_correlation_id_uses_trace_id_when_otel_active(
 ) -> None:
     """With a valid OTel span context, correlation_id is the active trace_id.
 
-    One identifier across client error, APM trace lookup, and ledger PK:
+    One identifier across APM trace lookup and ledger PK, never client-facing:
     same value the structlog trace-context processor injects into every
     log event, so no extra log-line bytes.
     """
@@ -505,7 +505,9 @@ async def test_confidence_out_of_range_rejected_before_orchestrator(
 
     The rejection mechanics and wording are fastmcp's and pydantic's; ours is
     only the constraint on the signature, so the assertion stops at "rejected,
-    orchestrator never reached".
+    orchestrator never reached". fastmcp echoes the client's own out-of-range
+    input back as client-fault guidance: its designed behavior, not a leak,
+    and deliberately not asserted here.
     """
     with pytest.raises(ToolError):
         await _call_tool(wired_server, "consult", {"question": "test", "confidence": 1.5})
@@ -517,6 +519,8 @@ async def test_question_exceeds_max_length_rejected_before_orchestrator(
 ) -> None:
     # limits.question is the configured max. Exceed it by a wide margin; the
     # enforcement and wording are fastmcp's, ours is the max_length wiring.
+    # fastmcp echoes the client's own oversized input as client-fault guidance:
+    # designed behavior, not a leak, deliberately not asserted.
     with pytest.raises(ToolError):
         await _call_tool(wired_server, "consult", {"question": "x" * 1_000_000})
     mock_orchestrator.consult.assert_not_called()
