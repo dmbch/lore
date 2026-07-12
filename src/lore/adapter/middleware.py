@@ -42,5 +42,9 @@ class OracleIdentityMiddleware(Middleware):
         # there is nowhere to stash; proceed and let the tool-side narrow
         # fail as a masked internal error.
         if context.fastmcp_context is not None:
-            await context.fastmcp_context.set_state("oracle_id", oracle_id)
+            # serializable=False is fastmcp's request-scoped channel: the
+            # middleware and tool contexts share the in-memory request dict.
+            # The default would write the session store (24h TTL), where a
+            # stale identity could outlive its call.
+            await context.fastmcp_context.set_state("oracle_id", oracle_id, serializable=False)
         return await call_next(context)
