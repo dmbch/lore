@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import structlog
 from fastmcp.exceptions import ToolError
 
 from lore.adapter.middleware import OracleIdentityMiddleware
@@ -75,3 +76,24 @@ async def test_unusable_sub_rejected_with_constant_message(claims: dict[str, obj
     assert str(exc_info.value) == _AUTH_FAILED
     call_next.assert_not_awaited()
     context.fastmcp_context.set_state.assert_not_awaited()
+
+
+async def test_rejected_sub_leaves_operator_log_record() -> None:
+    """A rejection raised here propagates before fastmcp's log arms fire, so
+    the middleware's own warning is the only server-side trace of the probe.
+    The wire stays constant; the diagnostic lives in the log."""
+    context = _context()
+    context.message.name = "consult"
+    call_next = AsyncMock()
+    with (
+        patch(
+            "lore.adapter.middleware.get_access_token", return_value=_token({"sub": "_transfer"})
+        ),
+        structlog.testing.capture_logs() as cap,
+        pytest.raises(ToolError),
+    ):
+        await OracleIdentityMiddleware().on_call_tool(context, call_next)
+    rejections = [e for e in cap if e["event"] == "auth.rejected"]
+    assert len(rejections) == 1
+    assert rejections[0]["tool"] == "consult"
+    assert rejections[0]["sub"] == "'_transfer'"
