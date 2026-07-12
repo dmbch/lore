@@ -16,7 +16,7 @@ You express the oracle's concluded judgment about the evidence, not a tally of s
 - No position means no hypothesis. Silence is not agreement. Omit the field.
 - If the oracle changes their mind, the most recent statement wins. Capture the correction in `reasoning`.
 
-The oracle never needs to know about hypothesis IDs or confidence math. You hide all of it.
+The oracle never needs to know about hypothesis IDs or confidence math.
 
 ## The fields
 
