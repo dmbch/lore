@@ -20,7 +20,7 @@ Early development.
 
 Lore ships as one batteries-included image: both backends are present (SQLite + sqlite-vec, PostgreSQL + pgvector), and you choose at runtime via `DATABASE_URL`. Images are published to the GitHub Container Registry as `ghcr.io/dmbch/lore`. Each release publishes `:X.Y.Z`, a `:X.Y` minor track that rolls forward, and `:latest`. The examples below use `:latest`; pin `:X.Y.Z` (or the `:X.Y` track) for production.
 
-The image runs as non-root (UID 1000, user `lore`), keeps state under `/data`, defaults to the HTTP transport (`FASTMCP_TRANSPORT=http`, operator-overridable) on port 8000, and shuts down cleanly on `SIGTERM`. OpenTelemetry is opt-in, with exporters defaulting to `none`; see [Telemetry](#telemetry-optional) to ship traces and metrics.
+The image runs as non-root (UID 1000, user `lore`), keeps state under `/data`, defaults to the HTTP transport (`FASTMCP_TRANSPORT=http`, operator-overridable) on port 8000 bound to all container interfaces (`FASTMCP_HOST=0.0.0.0`), and shuts down cleanly on `SIGTERM`. OpenTelemetry is opt-in, with exporters defaulting to `none`; see [Telemetry](#telemetry-optional) to ship traces and metrics.
 
 ### Local, single user (stdio)
 
@@ -38,13 +38,12 @@ Point your MCP client (Claude Desktop, the MCP Inspector, …) at that `docker r
 
 ### HTTP, multi-user
 
-HTTP is the image default. The image doesn't set `FASTMCP_HOST`, so FastMCP binds loopback (`127.0.0.1`), unreachable from outside the container. To accept external traffic, set `FASTMCP_HOST=0.0.0.0` and publish the port.
+HTTP is the image default, bound to all container interfaces (`FASTMCP_HOST=0.0.0.0`, operator-overridable); publish the port and traffic flows.
 
 ```bash
 docker run --rm \
   -v lore-data:/data \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
-  -e FASTMCP_HOST=0.0.0.0 \
   -e FASTMCP_PORT=8000 \
   -p 8000:8000 \
   ghcr.io/dmbch/lore:latest
@@ -62,7 +61,6 @@ For production, bring your own PostgreSQL with the `pgvector` extension and poin
 docker run --rm \
   -e DATABASE_URL="postgresql://user:pass@db.internal:5432/lore" \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
-  -e FASTMCP_HOST=0.0.0.0 \
   -p 8000:8000 \
   ghcr.io/dmbch/lore:latest
 ```
@@ -79,7 +77,6 @@ docker run --rm \
   -e OIDC_URL="oidc://client_id:secret@auth.example.com/realms/lore/.well-known/openid-configuration" \
   -e BASE_URL="https://lore.example.com" \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \
-  -e FASTMCP_HOST=0.0.0.0 \
   -p 8000:8000 \
   ghcr.io/dmbch/lore:latest
 ```
@@ -138,7 +135,7 @@ fly deploy
 
 A few Lore-specific notes:
 
-- **`FASTMCP_HOST = "0.0.0.0"` is mandatory here.** Lore inherits FastMCP's loopback default; leave it and Fly's proxy can't reach the machine, so every request times out.
+- **`FASTMCP_HOST = "0.0.0.0"` is the image default**, kept explicit here as declared topology. Images `0.2.0` and older inherit FastMCP's loopback default instead: drop the line on one of those and Fly's proxy can't reach the machine, so every request times out.
 - **`BASE_URL` and `OIDC_URL` are a validated pair**: Lore refuses to start with one but not the other. `BASE_URL` is the public origin the IdP redirects back to; `OIDC_URL` points at the IdP's discovery document with the client credentials in the userinfo. The `?hd=example.com` query rides through to the authorize endpoint, restricting sign-in to a single Google Workspace domain. Drop both to run behind a proxy that authenticates upstream: oracle identity then falls back to `_local`.
 - **`OTEL_EXPORTER_OTLP_HEADERS` is percent-encoded.** The space in `Basic <token>` must be written `%20`; a literal space breaks the header parse.
 - **One machine, because SQLite is single-writer.** To scale horizontally, move to Postgres: point `DATABASE_URL` at a `postgresql://…` DSN (still a secret: it carries credentials) and drop the volume mount. Schema and vector space carry over untouched.
@@ -186,10 +183,10 @@ Configuration has two disjoint sources. Secrets and deployment topology come fro
 | `LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `FASTMCP_TRANSPORT` | MCP transport: `stdio` (FastMCP default) or `http` (image default) |
 | `FASTMCP_PORT` | Server port (default 8000, managed by FastMCP) |
-| `FASTMCP_HOST` | Server host (default 127.0.0.1, managed by FastMCP) |
+| `FASTMCP_HOST` | Server host (FastMCP default 127.0.0.1; image default 0.0.0.0) |
 | `FASTMCP_LOG_ENABLED` | fastmcp's own Rich log handler; Lore's entry point and launcher envs default it to `false` so fastmcp records route through structlog. Set `true` to restore the Rich console |
 
-`FASTMCP_HOST` defaults to `127.0.0.1` (loopback only), the right shape for stdio and for HTTP behind a same-host proxy. Container deployments that accept traffic from outside the container must set `FASTMCP_HOST=0.0.0.0`. The whole `FASTMCP_*` surface (banner, update check, statelessness, ...) is read by FastMCP directly, never mirrored into Lore's config; see [FastMCP settings](https://gofastmcp.com/more/settings).
+FastMCP's own `FASTMCP_HOST` default is `127.0.0.1` (loopback), the right shape for bare-metal dev and for HTTP behind a same-host proxy. The image overrides it to `0.0.0.0`: the container netns is the isolation boundary, and an image that exposes a port should serve it. Set it back to `127.0.0.1` for a same-netns sidecar proxy. The whole `FASTMCP_*` surface (banner, update check, statelessness, ...) is read by FastMCP directly, never mirrored into Lore's config; see [FastMCP settings](https://gofastmcp.com/more/settings).
 
 ### Vendor API keys
 

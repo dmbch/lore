@@ -30,13 +30,16 @@ FROM python:${PYTHON_VERSION}-slim-trixie AS runtime
 # Baked by the publish job (--build-arg LORE_VERSION=<release>); unset from
 # source so create_server reports the "0.0.0+dev" marker instead.
 ARG LORE_VERSION=
-# FASTMCP_* are operator-overridable image defaults: HTTP transport, no
-# banner, no update check (an on-prem image must not phone home).
+# FASTMCP_* are operator-overridable image defaults: HTTP transport bound to
+# the container interface (the netns is the isolation boundary; an image that
+# exposes a port should serve it), no banner, no update check (an on-prem
+# image must not phone home).
 ENV LORE_VERSION=${LORE_VERSION} \
     PATH=/opt/lore/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     DATABASE_URL=sqlite:////data/lore.db \
     FASTMCP_TRANSPORT=http \
+    FASTMCP_HOST=0.0.0.0 \
     FASTMCP_SHOW_SERVER_BANNER=false \
     FASTMCP_CHECK_FOR_UPDATES=off \
     OTEL_TRACES_EXPORTER=none \
