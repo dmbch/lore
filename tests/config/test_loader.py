@@ -444,6 +444,16 @@ def test_oidc_url_missing_credentials() -> None:
         parse_oidc_url("oidc://auth.example.com/.well-known/openid-configuration")
 
 
+def test_malformed_oidc_url_refused_through_load_settings() -> None:
+    """A bad OIDC_URL is a settings refusal like any other, not a bare ValueError."""
+    env = {**_BASE_ENV, "OIDC_URL": "oidc://auth.example.com/.well-known/openid-configuration"}
+    with (
+        patch.dict(os.environ, env, clear=True),
+        pytest.raises(ConfigurationError, match="client_id:client_secret"),
+    ):
+        load_settings(toml_path=_TOML_PATH)
+
+
 def test_oidc_url_none() -> None:
     with patch.dict(os.environ, _BASE_ENV, clear=True):
         s = load_settings(toml_path=_TOML_PATH)

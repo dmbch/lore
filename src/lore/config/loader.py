@@ -21,11 +21,13 @@ log = structlog.get_logger(__name__)
 
 
 class ConfigurationError(Exception):
-    """Settings were refused. The message names fields and rules, never values.
+    """Settings were refused. The message names fields and rules.
 
     The layer producing the guarantee owns the vocabulary: a raw pydantic
     ``ValidationError`` str echoes ``input_value=`` (the merged config,
-    operator TOML included), so it never escapes ``load_settings``.
+    operator TOML included), so it never escapes ``load_settings``. A
+    domain validator may name its own offending numbers (retrieval
+    weights); the merged-config dump never rides along.
     """
 
 
