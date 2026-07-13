@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from lore.domain import AttestationComputed, EvidenceInput, TrustSignal
-from lore.math.confidence import to_confidence, to_opinion
+from lore.math.confidence import to_confidence, to_opinion, to_uncertainty
 from lore.math.conflict import compute_projected_distance
 from lore.math.discount import discount
 from lore.math.hypothesis import OpinionAtTime, compute_hypothesis_state
@@ -110,6 +110,10 @@ class MathService:
         pairs = _to_opinion_at_times(attestations)
         state = compute_hypothesis_state(attestations=pairs, lambda_=self._lambda, t_now=t_now)
         return to_confidence(state)
+
+    def compute_uncertainty(self, confidence: float) -> float:
+        """Project a confidence scalar to its opinion's uncertainty (u = 1 − |c|)."""
+        return to_uncertainty(confidence)
 
     def compute_oracle_trust(
         self,
