@@ -59,6 +59,28 @@ class PostgresHypothesisRepository:
             id=str(row["id"]), content=row["content"], created_at=row["created_at"]
         )
 
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        if limit < 1:
+            msg = "limit must be >= 1"
+            raise ValueError(msg)
+        try:
+            cur = self._conn.cursor(row_factory=dict_row)
+            await cur.execute(
+                "SELECT id, content, created_at FROM hypotheses"
+                " ORDER BY created_at DESC, id LIMIT %s",
+                (limit,),
+            )
+            rows = await cur.fetchall()
+        except psycopg.Error as e:
+            translate(e)
+        # str(): psycopg returns uuid.UUID for UUID columns; records expect str.
+        return [
+            HypothesisRecord.model_construct(
+                id=str(r["id"]), content=r["content"], created_at=r["created_at"]
+            )
+            for r in rows
+        ]
+
     async def search(
         self,
         *,

@@ -47,6 +47,15 @@ class HypothesisRepository(Protocol):
         """
         ...
 
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        """Return up to ``limit`` hypotheses, newest first.
+
+        Ordered by ``created_at`` descending, ties broken by ``id``
+        ascending for determinism. ``limit`` must be >= 1; raises
+        ``ValueError`` otherwise.
+        """
+        ...
+
     async def search(
         self,
         *,

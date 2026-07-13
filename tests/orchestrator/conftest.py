@@ -10,6 +10,7 @@ import importlib.resources
 from collections.abc import AsyncGenerator, Generator, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
+from typing import NoReturn
 from unittest.mock import patch
 
 import structlog
@@ -81,10 +82,19 @@ class StubCompletion:
 
 
 class StubHypotheses:
-    """In-memory hypothesis store with search stub."""
+    """In-memory hypothesis store with search and find_recent stubs.
 
-    def __init__(self, search_results: list[HypothesisResult] | None = None) -> None:
+    ``recent`` seeds ``find_recent``; unseeded (None) it stays a loud
+    NotImplementedError guard for tests that must never reach it.
+    """
+
+    def __init__(
+        self,
+        search_results: list[HypothesisResult] | None = None,
+        recent: list[HypothesisRecord] | None = None,
+    ) -> None:
         self._results = search_results or []
+        self._recent = recent
         self.stored: list[tuple[str, Sequence[float], int]] = []
         self._next_id = 0
 
@@ -101,6 +111,11 @@ class StubHypotheses:
 
     async def find_by_id(self, id: str) -> HypothesisRecord | None:
         raise NotImplementedError
+
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        if self._recent is None:
+            raise NotImplementedError
+        return self._recent[:limit]
 
     async def search(
         self,
@@ -354,6 +369,20 @@ def make_orchestrator(
         attestations=attestations,
         pool=pool,
     )
+
+
+class _InternalModel(BaseModel):
+    value: int
+
+
+def raise_internal_validation_error(*_args: object, **_kwargs: object) -> NoReturn:
+    """Stand-in constructor that fails with a real pydantic ValidationError.
+
+    Monkeypatched over an orchestrator-internal model class to exercise the
+    ``DomainInvariantError`` masking contract.
+    """
+    _InternalModel.model_validate({"value": "not an int"})
+    raise AssertionError("model_validate should have raised")
 
 
 def write_request(

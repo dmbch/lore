@@ -97,6 +97,10 @@ class _OverlapTrackingHypotheses:
         del id
         raise NotImplementedError
 
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        del limit
+        raise NotImplementedError
+
     async def search(
         self,
         *,
@@ -133,6 +137,10 @@ class _KeywordRecordingHypotheses:
 
     async def find_by_id(self, id: str) -> HypothesisRecord | None:
         del id
+        raise NotImplementedError
+
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        del limit
         raise NotImplementedError
 
     async def search(
