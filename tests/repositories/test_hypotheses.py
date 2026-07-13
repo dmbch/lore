@@ -117,6 +117,56 @@ class TestFindById:
         assert await hypothesis_repo.find_by_id("00000000-0000-0000-0000-000000000000") is None
 
 
+class TestFindRecent:
+    async def test_find_recent_returns_newest_first(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        for created_at in (1000, 2000, 3000):
+            await hypothesis_repo.store(
+                content=f"claim at {created_at}",
+                embedding=_embedding(seed=created_at),
+                created_at=created_at,
+            )
+
+        recent = await hypothesis_repo.find_recent(limit=10)
+
+        assert [r.created_at for r in recent] == [3000, 2000, 1000]
+
+    async def test_find_recent_bounded_by_limit(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        for created_at in (1000, 2000, 3000):
+            await hypothesis_repo.store(
+                content=f"claim at {created_at}",
+                embedding=_embedding(seed=created_at),
+                created_at=created_at,
+            )
+
+        recent = await hypothesis_repo.find_recent(limit=2)
+
+        assert [r.created_at for r in recent] == [3000, 2000]
+
+    async def test_find_recent_breaks_created_at_ties_by_id_ascending(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        stored = [
+            await hypothesis_repo.store(
+                content=f"tied claim {i}", embedding=_embedding(seed=i), created_at=5000
+            )
+            for i in range(3)
+        ]
+
+        recent = await hypothesis_repo.find_recent(limit=10)
+
+        assert [r.id for r in recent] == sorted(r.id for r in stored)
+
+    async def test_find_recent_rejects_non_positive_limit(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        with pytest.raises(ValueError, match="limit must be >= 1"):
+            await hypothesis_repo.find_recent(limit=0)
+
+
 class TestSearch:
     async def test_search_empty_query_degrades_gracefully(
         self,
@@ -616,6 +666,15 @@ class TestStorageError:
         await sabotage_connection()
         with pytest.raises(StorageError):
             await hypothesis_repo.find_by_id("00000000-0000-0000-0000-000000000000")
+
+    async def test_find_recent_raises(
+        self,
+        sabotage_connection: Callable[[], Awaitable[None]],
+        hypothesis_repo: HypothesisRepository,
+    ) -> None:
+        await sabotage_connection()
+        with pytest.raises(StorageError):
+            await hypothesis_repo.find_recent(limit=10)
 
     async def test_search_raises(
         self,

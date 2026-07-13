@@ -58,6 +58,9 @@ class _StubHypotheses:
     async def find_by_id(self, id: str) -> HypothesisRecord | None:
         raise NotImplementedError
 
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        raise NotImplementedError
+
     async def search(
         self,
         *,

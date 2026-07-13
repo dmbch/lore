@@ -103,6 +103,10 @@ class _CandidatesHypotheses:
         del id
         raise NotImplementedError
 
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        del limit
+        raise NotImplementedError
+
     async def search(
         self,
         *,

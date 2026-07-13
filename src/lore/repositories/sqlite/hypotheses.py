@@ -68,6 +68,26 @@ class SqliteHypothesisRepository:
             id=str(row["id"]), content=row["content"], created_at=row["created_at"]
         )
 
+    async def find_recent(self, *, limit: int) -> list[HypothesisRecord]:
+        if limit < 1:
+            msg = "limit must be >= 1"
+            raise ValueError(msg)
+        try:
+            cursor = await self._conn.execute(
+                "SELECT id, content, created_at FROM hypotheses"
+                " ORDER BY created_at DESC, id LIMIT ?",
+                (limit,),
+            )
+            rows = await cursor.fetchall()
+        except (sqlite3.Error, ValueError) as e:
+            raise StorageError(str(e)) from e
+        return [
+            HypothesisRecord.model_construct(
+                id=str(r["id"]), content=r["content"], created_at=r["created_at"]
+            )
+            for r in rows
+        ]
+
     async def search(
         self,
         *,
