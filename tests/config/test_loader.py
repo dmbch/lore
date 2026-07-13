@@ -6,10 +6,9 @@ from unittest.mock import patch
 
 import pytest
 import structlog
-from pydantic import ValidationError
 
 from lore.adapter import OidcConfig
-from lore.config import load_settings, redact_dsn
+from lore.config import ConfigurationError, load_settings, redact_dsn
 from lore.config.loader import discover_toml, parse_oidc_url
 
 # Minimal valid env for most tests. DATABASE_URL is the only DSN env var.
@@ -33,7 +32,7 @@ _90_DAYS = 90 * 86400.0
 def test_settings_no_dsn_env_raises() -> None:
     with (
         patch.dict(os.environ, {}, clear=True),
-        pytest.raises(ValueError, match="DATABASE_URL"),
+        pytest.raises(ConfigurationError, match="DATABASE_URL"),
     ):
         load_settings(toml_path=_TOML_PATH)
 
@@ -56,7 +55,7 @@ def test_settings_empty_dsn_raises() -> None:
     env = {"DATABASE_URL": "  "}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValueError, match="DATABASE_URL"),
+        pytest.raises(ConfigurationError, match="DATABASE_URL"),
     ):
         load_settings(toml_path=_TOML_PATH)
 
@@ -98,7 +97,7 @@ def test_base_url_without_oidc_url_raises() -> None:
     env = {**_BASE_ENV, "BASE_URL": "https://lore.example.com"}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValidationError, match="BASE_URL requires OIDC_URL"),
+        pytest.raises(ConfigurationError, match="BASE_URL requires OIDC_URL"),
     ):
         load_settings(toml_path=_TOML_PATH)
 
@@ -107,7 +106,7 @@ def test_oidc_url_without_base_url_raises() -> None:
     env = {**_BASE_ENV, "OIDC_URL": _OIDC_URL}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValidationError, match="OIDC_URL requires BASE_URL"),
+        pytest.raises(ConfigurationError, match="OIDC_URL requires BASE_URL"),
     ):
         load_settings(toml_path=_TOML_PATH)
 
@@ -125,7 +124,7 @@ def test_settings_reject_auth_required_without_oidc(tmp_path: Path) -> None:
     )
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match=r"\[auth\] required = true requires OIDC_URL"),
+        pytest.raises(ConfigurationError, match=r"\[auth\] required = true requires OIDC_URL"),
     ):
         load_settings(toml_path=toml_file)
 
@@ -208,7 +207,7 @@ def test_settings_reject_legacy_decay_section(tmp_path: Path) -> None:
     )
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="extra_forbidden"),
+        pytest.raises(ConfigurationError, match="decay: Extra inputs are not permitted"),
     ):
         load_settings(toml_path=toml_file)
 
@@ -222,7 +221,7 @@ def test_settings_reject_legacy_trust_section(tmp_path: Path) -> None:
     )
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="extra_forbidden"),
+        pytest.raises(ConfigurationError, match="trust: Extra inputs are not permitted"),
     ):
         load_settings(toml_path=toml_file)
 
@@ -335,16 +334,35 @@ def test_toml_overrides_vendor_defaults() -> None:
 def test_no_vendor_no_toml_models_raises() -> None:
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="fast"),
+        pytest.raises(ConfigurationError, match="fast"),
     ):
         load_settings(toml_path=_NO_TOML)
+
+
+def test_refusal_names_fields_never_values() -> None:
+    """The refusal lists every failing field and rule; config values stay out.
+
+    pydantic's raw ``ValidationError`` str echoes ``input_value=`` (the merged
+    config, operator TOML included); the wrapped message must not.
+    """
+    with (
+        patch.dict(os.environ, _BASE_ENV, clear=True),
+        pytest.raises(ConfigurationError) as excinfo,
+    ):
+        load_settings(toml_path=_NO_TOML)
+    message = str(excinfo.value)
+    assert "embedding: Field required" in message
+    assert "fast.model: Field required" in message
+    assert "reasoning: Field required" in message
+    assert "input_value" not in message
+    assert "Lore" not in message  # the bundled [server] name: a value, not a field
 
 
 def test_no_vendor_partial_toml_raises() -> None:
     partial = Path(__file__).parent.parent / "fixtures" / "lore_embedding_only.toml"
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="fast"),
+        pytest.raises(ConfigurationError, match="fast"),
     ):
         load_settings(toml_path=partial)
 
@@ -354,7 +372,7 @@ def test_embedding_section_without_model_raises() -> None:
     no_model = Path(__file__).parent.parent / "fixtures" / "lore_embedding_no_model.toml"
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="model"),
+        pytest.raises(ConfigurationError, match="model"),
     ):
         load_settings(toml_path=no_model)
 

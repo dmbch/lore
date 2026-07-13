@@ -18,10 +18,19 @@ def main() -> None:
     os.environ.setdefault("FASTMCP_LOG_ENABLED", "false")
 
     import fastmcp
+    import structlog
 
+    from lore.config import ConfigurationError
     from lore.server import server
 
-    srv = server()
+    try:
+        srv = server()
+    except ConfigurationError as exc:
+        # A refusal is operator input to fix, not a crash: one structured
+        # event instead of a traceback, and a nonzero exit. configure_telemetry
+        # is server()'s first statement, so structlog is already routed.
+        structlog.get_logger(__name__).error("bootstrap.refused", reason=str(exc))
+        raise SystemExit(1) from exc
     if fastmcp.settings.transport == "stdio":
         # The stdio dispatch rejects the uvicorn kwarg.
         srv.run()

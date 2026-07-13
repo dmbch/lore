@@ -12,12 +12,31 @@ from typing import Any, cast
 from urllib.parse import parse_qs, unquote, urlparse, urlsplit, urlunsplit
 
 import structlog
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from lore.adapter.config import OidcConfig
 from lore.config.types import LoreSettings
 
 log = structlog.get_logger(__name__)
+
+
+class ConfigurationError(Exception):
+    """Settings were refused. The message names fields and rules, never values.
+
+    The layer producing the guarantee owns the vocabulary: a raw pydantic
+    ``ValidationError`` str echoes ``input_value=`` (the merged config,
+    operator TOML included), so it never escapes ``load_settings``.
+    """
+
+
+def _refusal_message(exc: ValidationError) -> str:
+    details = "; ".join(
+        f"{'.'.join(str(part) for part in err['loc']) or 'settings'}: "
+        f"{err['msg'].removeprefix('Value error, ')}"
+        for err in exc.errors()
+    )
+    return f"invalid settings: {details}"
+
 
 # ---------------------------------------------------------------------------
 # OIDC URL parsing
@@ -143,9 +162,12 @@ def _resolve_env() -> tuple[str, OidcConfig | None, str | None]:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn or not dsn.strip():
         msg = "DATABASE_URL environment variable is required"
-        raise ValueError(msg)
+        raise ConfigurationError(msg)
     oidc_url = os.environ.get("OIDC_URL")
-    oidc = parse_oidc_url(oidc_url) if oidc_url else None
+    try:
+        oidc = parse_oidc_url(oidc_url) if oidc_url else None
+    except ValueError as exc:
+        raise ConfigurationError(str(exc)) from exc
     base_url = os.environ.get("BASE_URL") or None
     return dsn, oidc, base_url
 
@@ -189,6 +211,7 @@ def load_settings(
     Settings-time INFO log (``bootstrap.env``) emits through the module-level
     structlog logger, which routes to whatever wrapper ``configure_telemetry``
     has installed. ``toml_path`` overrides TOML discovery (useful for tests).
+    Every refusal surfaces as ``ConfigurationError``.
     """
     dsn, oidc, base_url = _resolve_env()
 
@@ -221,7 +244,10 @@ def load_settings(
     # default) leaves the dev marker on LoreSettings.version.
     if version := os.environ.get("LORE_VERSION"):
         config["version"] = version
-    settings = LoreSettings.model_validate(config)
+    try:
+        settings = LoreSettings.model_validate(config)
+    except ValidationError as exc:
+        raise ConfigurationError(_refusal_message(exc)) from exc
     _log_bootstrap_env(settings)
     return settings
 
