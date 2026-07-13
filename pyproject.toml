@@ -27,7 +27,7 @@ dependencies = [
     "instructor[litellm]>=1.15.4",
     "aiosqlite>=0.22.1",
     "pydantic>=2.13.4,<3",
-    "fastmcp>=3.4.2",
+    "fastmcp>=3.4.4",
 ]
 
 [dependency-groups]
