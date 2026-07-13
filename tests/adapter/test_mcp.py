@@ -12,7 +12,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.server.dependencies import get_context
 from fastmcp.tools import Tool
+from mcp.types import TextResourceContents
 from pydantic import SecretStr
 
 from lore.adapter.mcp import create_server
@@ -203,6 +205,34 @@ async def test_tool_extracts_oracle_id_from_access_token(
     call_args = mock_orchestrator.consult.call_args
     oracle_id = call_args.kwargs["oracle_id"]
     assert oracle_id == "oracle-42"
+
+
+async def test_oracle_identity_does_not_outlive_its_tool_call(
+    wired_server: FastMCP[Orchestrator],
+) -> None:
+    """The identity stash is request-scoped: a later request in the same
+    session must not see the previous call's identity. The probe is a
+    resource read, which no tool middleware guards. fastmcp's session-store
+    default (24h TTL) would leak the identity here; this pins the
+    ``serializable=False`` scoping contract across fastmcp upgrades.
+    """
+
+    async def probe_oracle_id() -> str:
+        return repr(await get_context().get_state("oracle_id"))
+
+    wired_server.resource("state://oracle-id")(probe_oracle_id)
+
+    fake_token = MagicMock()
+    fake_token.claims = {"sub": "oracle-42"}
+    async with Client(wired_server) as client:
+        with patch("lore.adapter.middleware.get_access_token", return_value=fake_token):
+            await client.call_tool("consult", {"question": "who am I?"})
+        contents = await client.read_resource("state://oracle-id")
+
+    assert isinstance(contents, list)
+    [content] = contents
+    assert isinstance(content, TextResourceContents)
+    assert content.text == "None"
 
 
 async def test_correlation_id_distinct_per_consult(
