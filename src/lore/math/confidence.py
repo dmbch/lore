@@ -42,6 +42,15 @@ def to_opinion(c: float) -> Opinion:
     return VACUOUS
 
 
+def to_uncertainty(c: float) -> float:
+    """Project a scalar confidence to the uncertainty of its opinion.
+
+    u = 1 − |c| for uncertainty-maximized opinions. Inherits the [-1, 1]
+    domain guard from to_opinion. See docs/logic.md, "Scalar Confidence Mapping."
+    """
+    return to_opinion(c).u
+
+
 def to_confidence(opinion: Opinion) -> float:
     """Map an opinion back to a scalar confidence.
 

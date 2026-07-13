@@ -16,9 +16,10 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from lore.math.confidence import to_confidence, to_opinion
+from lore.math.confidence import to_confidence, to_opinion, to_uncertainty
 from lore.math.fusion import fuse
 from lore.math.opinion import EPSILON, VACUOUS, Opinion
+from lore.math.service import MathService
 
 from .conftest import PROP_TOL, opinion_strategy
 
@@ -190,3 +191,28 @@ def test_to_confidence_range_property(opinion: Opinion) -> None:
     """to_confidence output ∈ [-1, 1] for all valid opinions."""
     v = to_confidence(opinion)
     assert -1.0 - PROP_TOL <= v <= 1.0 + PROP_TOL
+
+
+# --- Uncertainty projection: c → u ---
+class TestToUncertainty:
+    def test_to_uncertainty_of_vacuous_is_one(self) -> None:
+        assert abs(to_uncertainty(0.0) - 1.0) < EPSILON
+
+    def test_to_uncertainty_of_dogmatic_is_zero(self) -> None:
+        assert abs(to_uncertainty(1.0) - 0.0) < EPSILON
+        assert abs(to_uncertainty(-1.0) - 0.0) < EPSILON
+
+    def test_to_uncertainty_out_of_range_raises(self) -> None:
+        with pytest.raises(ValueError):
+            to_uncertainty(1.5)
+
+
+@given(c=confidence_strategy)
+def test_to_uncertainty_is_one_minus_abs_confidence(c: float) -> None:
+    """u = 1 − |c| for uncertainty-maximized opinions."""
+    assert abs(to_uncertainty(c) - (1.0 - abs(c))) < PROP_TOL
+
+
+def test_compute_uncertainty_of_partial_confidence_is_complement() -> None:
+    service = MathService(c_half_life=86400.0, t_half_life=86400.0, maturity_k=1.0)
+    assert service.compute_uncertainty(0.6) == pytest.approx(0.4)
