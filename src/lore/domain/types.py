@@ -34,6 +34,13 @@ def _check_confidence(*, value: float, field_name: str | None) -> float:
     return value
 
 
+def _check_non_negative(*, value: int, field_name: str | None) -> int:
+    if value < 0:
+        msg = f"{field_name} must be >= 0, got {value}"
+        raise ValueError(msg)
+    return value
+
+
 # --- MCP boundary ---
 
 
@@ -172,11 +179,8 @@ class SearchResult(BaseModel):
 
     @field_validator("attestation_count")
     @classmethod
-    def _validate_attestation_count(cls, v: int) -> int:
-        if v < 0:
-            msg = f"attestation_count must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
+    def _validate_non_negative_int(cls, v: int, info: ValidationInfo) -> int:
+        return _check_non_negative(value=v, field_name=info.field_name)
 
 
 # --- Reason stage ---
@@ -353,21 +357,10 @@ class TrustSignal(BaseModel):
     def _validate_confidence(cls, v: float, info: ValidationInfo) -> float:
         return _check_confidence(value=v, field_name=info.field_name)
 
-    @field_validator("timestamp")
+    @field_validator("timestamp", "n_oracle_prior")
     @classmethod
-    def _validate_timestamp(cls, v: int) -> int:
-        if v < 0:
-            msg = f"timestamp must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("n_oracle_prior")
-    @classmethod
-    def _validate_n_oracle_prior(cls, v: int) -> int:
-        if v < 0:
-            msg = f"n_oracle_prior must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
+    def _validate_non_negative_int(cls, v: int, info: ValidationInfo) -> int:
+        return _check_non_negative(value=v, field_name=info.field_name)
 
 
 class EvidenceInput(NamedTuple):
