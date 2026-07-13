@@ -14,7 +14,7 @@ The user message is one JSON object:
   - `c_herd`: herd consensus, from -1 (strong disbelief) through 0 (uncertain or contested) to 1 (strong belief). Computed at read time from individually decaying attestations, so the number already reflects age as of `today`.
   - `attestation_count`: how many oracles have weighed in. A low count is lightly scrutinized whatever `c_herd` reads.
   - `last_attested`: ISO date of the newest attestation, or null if never attested. When the belief was last touched, not when the claim's subject occurred.
-  - `score`, `proximity`: retrieval strength. Higher surfaced more strongly; weak scores are looser matches. They inform how close a match is; they do not decide it.
+  - `score`, `proximity`: retrieval strength. Higher surfaced more strongly; they inform how close a match is, never decide it.
 - `today`: the consult date.
 
 ## Procedure
