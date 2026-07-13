@@ -27,7 +27,9 @@ def test_python_m_lore_builds_and_runs_the_factory(monkeypatch: pytest.MonkeyPat
 
 def test_main_defaults_fastmcp_log_enabled_off(monkeypatch: pytest.MonkeyPatch) -> None:
     """The entry point owns the log posture: with no operator env, ``main()``
-    lands the fastmcp off-switch before the framework can snapshot it.
+    lands ``FASTMCP_LOG_ENABLED=false``. The setdefault-before-import ordering
+    is not observable in-process (the suite imports fastmcp long before this
+    test); the load-bearing-order comment in ``lore.__main__`` carries it.
     """
     from lore.__main__ import main
 

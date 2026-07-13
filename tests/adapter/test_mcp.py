@@ -610,9 +610,8 @@ async def _call_tool(server: FastMCP[Orchestrator], name: str, arguments: dict[s
     """Drive one tool call through the in-memory client.
 
     Each call opens a fresh client session, entering the real server
-    lifespan. The system CM behind a server is single-use, so a test that
-    makes multiple calls against one server must share a single ``Client``
-    session instead of calling this helper twice.
+    lifespan; the server mints a fresh system scope per cycle, so calling
+    this helper repeatedly against one server is fine.
     """
     async with Client(server) as client:
         return await client.call_tool(name, arguments)
