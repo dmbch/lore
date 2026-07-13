@@ -10,6 +10,7 @@ from lore.domain.types import (
     ArchivistOutput,
     ConsultLoreRequest,
     ConsultLoreResponse,
+    FrontierEntry,
     InterpreterInput,
     InterpreterOutput,
     Resolution,
@@ -719,3 +720,64 @@ class TestWriteContextImmutability:
         c = _valid_context()
         with pytest.raises(ValidationError, match="frozen"):
             c.oracle_id = "other"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+# --- Observe stage ---
+
+
+def _valid_frontier_entry(**overrides: object) -> FrontierEntry:
+    defaults: dict[str, object] = {
+        "id": "hyp-001",
+        "content": "Service X switched to gRPC in Q3",
+        "c_herd": 0.4,
+        "uncertainty": 0.6,
+        "attestation_count": 3,
+        "last_attested": date(2023, 11, 14),
+    }
+    defaults.update(overrides)
+    return FrontierEntry(**defaults)  # pyright: ignore[reportArgumentType]
+
+
+class TestFrontierEntry:
+    """FrontierEntry: one uncertainty-frontier row with its epistemic snapshot."""
+
+    def test_frontier_entry_accepts_valid(self) -> None:
+        e = _valid_frontier_entry()
+        assert e.id == "hyp-001"
+        assert e.content == "Service X switched to gRPC in Q3"
+        assert e.c_herd == 0.4
+        assert e.uncertainty == 0.6
+        assert e.attestation_count == 3
+        assert e.last_attested == date(2023, 11, 14)
+
+    def test_frontier_entry_is_frozen(self) -> None:
+        e = _valid_frontier_entry()
+        with pytest.raises(ValidationError, match="frozen"):
+            e.uncertainty = 0.1  # pyright: ignore[reportAttributeAccessIssue]
+
+    def test_frontier_entry_rejects_out_of_range_uncertainty(self) -> None:
+        with pytest.raises(ValidationError, match="uncertainty"):
+            _valid_frontier_entry(uncertainty=1.5)
+
+    def test_frontier_entry_rejects_out_of_range_c_herd(self) -> None:
+        with pytest.raises(ValidationError, match="c_herd"):
+            _valid_frontier_entry(c_herd=1.5)
+
+    def test_frontier_entry_rejects_negative_attestation_count(self) -> None:
+        with pytest.raises(ValidationError, match="attestation_count"):
+            _valid_frontier_entry(attestation_count=-1)
+
+    def test_frontier_entry_last_attested_none_means_never_attested(self) -> None:
+        e = _valid_frontier_entry(last_attested=None)
+        assert e.last_attested is None
+
+    def test_frontier_entry_last_attested_rejects_epoch_int(self) -> None:
+        # The pre-migration representation; strict mode keeps it out.
+        with pytest.raises(ValidationError, match="last_attested"):
+            _valid_frontier_entry(last_attested=1700000000)
+
+    def test_frontier_entry_accepts_boundary_values(self) -> None:
+        assert _valid_frontier_entry(uncertainty=0.0).uncertainty == 0.0
+        assert _valid_frontier_entry(uncertainty=1.0).uncertainty == 1.0
+        assert _valid_frontier_entry(c_herd=-1.0).c_herd == -1.0
+        assert _valid_frontier_entry(c_herd=1.0).c_herd == 1.0
