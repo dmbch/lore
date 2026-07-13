@@ -1,7 +1,8 @@
 """Orchestrator: the consult execution loop.
 
-One method (``consult``) wires the five stages: interpret, retrieve,
-reason, validate, record, each implemented in its own module.
+``consult`` wires the five stages: interpret, retrieve, reason, validate,
+record, each implemented in its own module. ``frontier`` is the read-only
+observe path over the same session machinery.
 """
 
 import asyncio
@@ -16,6 +17,7 @@ from lore.domain import (
     ConsultLoreRequest,
     ConsultLoreResponse,
     DomainInvariantError,
+    FrontierEntry,
     RetryableTransactionError,
     WriteContext,
 )
@@ -24,6 +26,8 @@ from lore.repositories import RepositoryPool, RequestRecord
 from lore.telemetry import start_span
 
 from .interpret import interpret
+from .observe import FRONTIER_LIMIT
+from .observe import frontier as compute_frontier
 from .reason import reason
 from .record import record
 from .retrieve import embed_novels, embed_sources, enrich, search_candidates
@@ -208,5 +212,25 @@ class Orchestrator:
             # Internal models only: request validation happens in the adapter,
             # before consult. fastmcp re-raises raw pydantic errors to the
             # client, so an internal bug must be re-labeled to stay masked.
+            msg = "internal domain model construction failed: a lore bug, not client input"
+            raise DomainInvariantError(msg) from exc
+
+    async def frontier(self, *, limit: int = FRONTIER_LIMIT) -> list[FrontierEntry]:
+        """Return the current uncertainty frontier: newest hypotheses, most uncertain first.
+
+        A read-only fan-out: opens an autocommit session, fetches and enriches
+        the newest `limit` hypotheses, and delegates the fusion and ordering to
+        the observe read path.
+        """
+        try:
+            with start_span("lore.frontier", limit=limit):
+                t_now = int(time.time())
+                async with self._pool.session() as repos:
+                    return await compute_frontier(
+                        repos=repos, math=self._math, limit=limit, t_now=t_now
+                    )
+        except ValidationError as exc:
+            # Same masking contract as consult: FrontierEntry construction is
+            # internal, never client input.
             msg = "internal domain model construction failed: a lore bug, not client input"
             raise DomainInvariantError(msg) from exc
