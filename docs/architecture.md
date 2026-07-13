@@ -229,7 +229,7 @@ verification = "FACT_VERIFICATION"
 | OpenAI | `text-embedding-3-small` | `gpt-4.1-mini` | `o4-mini` |
 | Bedrock | `titan-embed-text-v2:0` | `nova-2-lite-v1:0` | `nova-2-pro-preview-20251202-v1:0` |
 
-No overlap: env vars do not override TOML fields. Single validated object: a bad DSN or missing models fail fast at startup, surfacing as a `ConfigurationError` that names fields and rules, never config values. Vendor auto-detection fills model defaults from API keys (first lexical match wins: Bedrock > Gemini > OpenAI) when TOML is silent; TOML overrides vendor defaults per-role. TOML is discovered from conventional paths: `./lore.toml` (project-local) then `/etc/lore.toml` (system-wide). First found wins. Neither found → defaults only.
+No overlap: env vars do not override TOML fields. Single validated object: a bad DSN or missing models fail fast at startup, surfacing as a `ConfigurationError` that names fields and rules, never pydantic's `input_value` dump of the merged config. Vendor auto-detection fills model defaults from API keys (first lexical match wins: Bedrock > Gemini > OpenAI) when TOML is silent; TOML overrides vendor defaults per-role. TOML is discovered from conventional paths: `./lore.toml` (project-local) then `/etc/lore.toml` (system-wide). First found wins. Neither found → defaults only.
 
 `OIDC_URL` encodes the IdP's full OIDC discovery-document URL plus client credentials in one DSN-style string (`oidc://client_id:secret@host[:port]/.well-known/openid-configuration`). The path is used verbatim as the OIDCProxy `config_url`: Lore appends no discovery suffix. Bootstrap parses it, strips credentials before any telemetry is active. Credentials are never logged.
 

@@ -11,9 +11,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
 
-from lore.config import load_settings
+from lore.config import ConfigurationError, load_settings
 from lore.config.loader import (
     _resolve_prompts,  # pyright: ignore[reportPrivateUsage]
 )
@@ -130,7 +129,7 @@ def test_load_settings_rejects_partial_weight_override(tmp_path: Path) -> None:
     env = {**_BASE_ENV, "GEMINI_API_KEY": "fake-key"}
     with (
         patch.dict(os.environ, env, clear=True),
-        pytest.raises(ValidationError, match=r"sum to 1\.0"),
+        pytest.raises(ConfigurationError, match=r"sum to 1\.0"),
     ):
         load_settings(toml_path=toml_file)
 
@@ -226,7 +225,7 @@ def test_postgres_config_unknown_key_in_toml_raises(tmp_path: Path) -> None:
     )
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="extra_forbidden"),
+        pytest.raises(ConfigurationError, match=r"postgres\.num_workers"),
     ):
         load_settings(toml_path=toml_file)
 

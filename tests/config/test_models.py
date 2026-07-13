@@ -9,9 +9,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
 
-from lore.config import load_settings
+from lore.config import ConfigurationError, load_settings
 from lore.config.loader import (
     _load_bundled_toml,  # pyright: ignore[reportPrivateUsage]
 )
@@ -107,7 +106,7 @@ def test_partial_user_toml_missing_fast_raises() -> None:
     partial = Path(__file__).parent.parent / "fixtures" / "lore_missing_fast.toml"
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="fast"),
+        pytest.raises(ConfigurationError, match="fast"),
     ):
         load_settings(toml_path=partial)
 
@@ -147,7 +146,7 @@ def test_build_model_missing_model_key_raises() -> None:
     toml = Path(__file__).parent.parent / "fixtures" / "lore_missing_model_key.toml"
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="model"),
+        pytest.raises(ConfigurationError, match="model"),
     ):
         load_settings(toml_path=toml)
 
@@ -179,7 +178,7 @@ def test_top_level_toml_typo_raises(tmp_path: Path) -> None:
     )
     with (
         patch.dict(os.environ, _BASE_ENV, clear=True),
-        pytest.raises(ValidationError, match="extra_forbidden"),
+        pytest.raises(ConfigurationError, match="halff_life: Extra inputs are not permitted"),
     ):
         load_settings(toml_path=toml_file)
 
