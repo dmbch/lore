@@ -183,6 +183,46 @@ class SearchResult(BaseModel):
         return _check_non_negative(value=v, field_name=info.field_name)
 
 
+# --- Observe stage ---
+
+
+class FrontierEntry(BaseModel):
+    """One uncertainty-frontier row: a hypothesis with its current epistemic snapshot.
+
+    ``c_herd`` is the projected herd consensus scalar in ``[-1, 1]``;
+    ``uncertainty`` is the projected uncertainty in ``[0, 1]``.
+    ``last_attested`` is the UTC calendar date of the newest attestation,
+    ``None`` when the hypothesis has never been attested.
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    id: str
+    content: str
+    c_herd: float
+    uncertainty: float
+    attestation_count: int
+    last_attested: date | None
+
+    @field_validator("c_herd")
+    @classmethod
+    def _validate_c_herd(cls, v: float, info: ValidationInfo) -> float:
+        return _check_confidence(value=v, field_name=info.field_name)
+
+    @field_validator("uncertainty")
+    @classmethod
+    def _validate_uncertainty(cls, v: float, info: ValidationInfo) -> float:
+        if not math.isfinite(v) or v < 0.0 or v > 1.0:
+            msg = f"{info.field_name} must be in [0, 1], got {v}"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("attestation_count")
+    @classmethod
+    def _validate_non_negative_int(cls, v: int, info: ValidationInfo) -> int:
+        return _check_non_negative(value=v, field_name=info.field_name)
+
+
 # --- Reason stage ---
 
 
