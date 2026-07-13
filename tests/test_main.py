@@ -6,6 +6,9 @@ from unittest.mock import MagicMock
 
 import fastmcp
 import pytest
+import structlog
+
+from lore.config import ConfigurationError
 
 
 def test_python_m_lore_builds_and_runs_the_factory(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -23,6 +26,31 @@ def test_python_m_lore_builds_and_runs_the_factory(monkeypatch: pytest.MonkeyPat
     runpy.run_module("lore.__main__", run_name="__main__")
 
     built.run.assert_called_once_with()
+
+
+def test_main_refused_settings_logs_one_event_and_exits_nonzero(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A settings refusal is operator input to fix, not a crash: ``main()``
+    logs one structured ``bootstrap.refused`` event and exits 1, no traceback.
+    """
+    from lore.__main__ import main
+
+    def refuse() -> object:
+        raise ConfigurationError("fast.model: Field required")
+
+    monkeypatch.setattr("lore.server.server", refuse)
+
+    with (
+        structlog.testing.capture_logs() as cap,
+        pytest.raises(SystemExit) as excinfo,
+    ):
+        main()
+
+    assert excinfo.value.code == 1
+    refused = [e for e in cap if e["event"] == "bootstrap.refused"]
+    assert len(refused) == 1
+    assert "fast.model" in refused[0]["reason"]
 
 
 def test_main_defaults_fastmcp_log_enabled_off(monkeypatch: pytest.MonkeyPatch) -> None:
