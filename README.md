@@ -450,10 +450,16 @@ DATABASE_URL=sqlite:////tmp/lore-dev.db \
 uv run opentelemetry-instrument fastmcp run
 ```
 
-To step through tool calls, wrap the command with the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) (needs Node.js):
+To step through tool calls, `fastmcp dev` wraps the server with the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) (needs Node.js):
 
 ```bash
-DATABASE_URL=sqlite:////tmp/lore-dev.db npx @modelcontextprotocol/inspector uv run fastmcp run
+mise run dev   # fastmcp dev inspector fastmcp.json
+```
+
+To render the observatory's MCP Apps UI in a live browser iframe:
+
+```bash
+mise run app   # fastmcp dev apps fastmcp.json
 ```
 
 To register the server with an MCP client, `mise run install-claude-code` and `mise run install-claude-desktop` wrap `fastmcp install`.
