@@ -40,7 +40,7 @@ dev = [
     "testcontainers[postgres]>=4.14.2",
     "python-semantic-release>=10.6.1",
     "pytest-asyncio>=1.4.0",
-    "commitizen>=4.16.4",
+    "commitizen>=4.16.5",
     "httpx2>=2.7.0",
 ]
 
