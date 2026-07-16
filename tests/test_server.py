@@ -99,7 +99,7 @@ async def test_server_factory_builds_fastmcp_instance(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The no-arg factory returns a FastMCP instance whose lifespan actually
-    runs: the in-memory client enters it and lists the consult tool.
+    runs: the in-memory client enters it and lists the model-facing tools.
     """
     from lore.server import server
 
@@ -111,7 +111,9 @@ async def test_server_factory_builds_fastmcp_instance(
         assert isinstance(instance, FastMCP)
         async with Client(instance) as client:
             tools = await client.list_tools()
-        assert [tool.name for tool in tools] == ["consult"]
+        # The entire model-facing surface: app-scoped observatory tools stay
+        # invisible (IDEA.md's one-tool discipline, survived as two).
+        assert [tool.name for tool in tools] == ["consult", "observe"]
 
 
 async def test_server_factory_survives_sequential_client_sessions(
@@ -134,7 +136,7 @@ async def test_server_factory_survives_sequential_client_sessions(
         for _ in range(2):
             async with Client(instance) as client:
                 tools = await client.list_tools()
-            assert [tool.name for tool in tools] == ["consult"]
+            assert [tool.name for tool in tools] == ["consult", "observe"]
 
 
 def test_server_factory_wires_ready_probe_to_pool_lifetime(

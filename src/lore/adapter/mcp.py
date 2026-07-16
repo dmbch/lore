@@ -18,6 +18,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from lore.adapter.middleware import OracleIdentityMiddleware
+from lore.adapter.observatory import build_observatory
 from lore.domain import ConsultLoreRequest, ConsultLoreResponse
 from lore.domain.errors import StorageError
 from lore.orchestrator import Orchestrator
@@ -123,6 +124,7 @@ def create_server(
     )
 
     _register_tools(server=server, settings=settings)
+    server.add_provider(build_observatory())
     _register_healthchecks(server=server, health_probe=health_probe)
 
     # Identity is cross-cutting: every tool call resolves its oracle here,
