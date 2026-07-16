@@ -41,7 +41,7 @@ dev = [
     "python-semantic-release>=10.6.1",
     "pytest-asyncio>=1.4.0",
     "commitizen>=4.16.4",
-    "httpx2>=2.5.0",
+    "httpx2>=2.7.0",
 ]
 
 [tool.ruff]
