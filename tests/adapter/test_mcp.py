@@ -75,6 +75,19 @@ async def test_server_registers_tool_with_configured_name(
     assert "consult" in names
 
 
+async def test_server_registers_observatory_entry_tool(
+    server: FastMCP[Orchestrator],
+) -> None:
+    """The composed server carries the observatory: ``observe`` is model-visible.
+
+    Pins the ``add_provider`` wiring in ``create_server``, which also puts the
+    observatory tools behind the server's masking and identity middleware.
+    """
+    tools = await _list_tools(server)
+    names = [t.name for t in tools]
+    assert "observe" in names
+
+
 def test_mcp_instructions_are_scribe_only(
     tmp_path: Path,
     settings: LoreSettings,
