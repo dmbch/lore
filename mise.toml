@@ -23,11 +23,13 @@ depends = ["test", "types", "lint"]
 [tasks.serve]
 run = "fastmcp run"
 
-# Shelved: `fastmcp dev apps` needs fastmcp[apps] (prefab-ui), which is not in
-# uv.lock, so any `uv sync` strips it. Re-enable once the dependency is locked;
-# the observatory PR (#44) is the consumer.
-# [tasks.dev]
-# run = "fastmcp dev apps fastmcp.json"
+# MCP Inspector: interactive tool/resource/prompt poking.
+[tasks.dev]
+run = "fastmcp dev inspector fastmcp.json"
+
+# MCP Apps dev harness: live iframe render of the observatory.
+[tasks.app]
+run = "fastmcp dev apps fastmcp.json"
 
 [tasks.install-claude-code]
 run = "fastmcp install claude-code fastmcp.json --env-file .env.claude"
