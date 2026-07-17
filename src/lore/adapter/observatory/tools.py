@@ -22,12 +22,6 @@ from lore.orchestrator import Orchestrator
 
 _APP_NAME = "Observatory"
 
-_OBSERVE_DESCRIPTION = (
-    "Show the herd's uncertainty frontier: the most recent hypotheses, ranked by "
-    "how little the archive knows about each. Call this when the oracle asks what "
-    "to explore, re-attest, or adjudicate next."
-)
-
 
 async def _frontier(ctx: Context) -> list[FrontierEntry]:
     """Return the current uncertainty frontier. App-scoped: the UI calls this."""
@@ -45,9 +39,13 @@ async def _observe(ctx: Context) -> Component:
     return render_frontier(entries)
 
 
-def build_observatory() -> FastMCPApp:
-    """Build the Observatory app: the ``observe`` entry point over app-scoped tools."""
+def build_observatory(*, description: str) -> FastMCPApp:
+    """Build the Observatory app: the ``observe`` entry point over app-scoped tools.
+
+    ``description`` is the model-facing ``observe`` blurb, sourced from the MCP
+    contract so all client-facing prose has one home.
+    """
     app = FastMCPApp(_APP_NAME)
     app.tool(name="frontier")(_frontier)
-    app.ui(name="observe", description=_OBSERVE_DESCRIPTION)(_observe)
+    app.ui(name="observe", description=description)(_observe)
     return app

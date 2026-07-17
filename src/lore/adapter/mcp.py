@@ -98,7 +98,7 @@ def create_server(
 
     _register_tools(server=server, settings=settings, contract=contract)
     _register_prompts(server=server, settings=settings)
-    server.add_provider(build_observatory())
+    server.add_provider(build_observatory(description=contract.tools.observe.description))
     _register_healthchecks(server=server, health_probe=health_probe)
 
     # Identity is cross-cutting: every tool call resolves its oracle here,

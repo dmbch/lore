@@ -24,6 +24,10 @@ from lore.domain import FrontierEntry
 from lore.domain.errors import StorageError
 from lore.orchestrator import Orchestrator
 
+# Stand-in for the contract's observe blurb: injected into build_observatory the
+# way create_server threads contract.tools.observe.description at runtime.
+_DESCRIPTION = "Show the herd's uncertainty frontier: what to explore next."
+
 
 def _entry(content: str = "a claim") -> FrontierEntry:
     return FrontierEntry(
@@ -43,7 +47,7 @@ def _ctx_with(orchestrator: object) -> MagicMock:
 
 
 async def test_frontier_tool_is_registered_but_not_model_visible() -> None:
-    app = build_observatory()
+    app = build_observatory(description=_DESCRIPTION)
     server: FastMCP[object] = FastMCP("test")
     server.add_provider(app)
 
@@ -83,7 +87,7 @@ async def test_observe_masks_internal_errors_on_the_wire() -> None:
     orchestrator = AsyncMock(spec=Orchestrator)
     orchestrator.frontier.side_effect = StorageError("dsn=postgresql://user:pass@host/db")
     server: FastMCP[object] = FastMCP("test", mask_error_details=True)
-    server.add_provider(build_observatory())
+    server.add_provider(build_observatory(description=_DESCRIPTION))
     server._lifespan_result = orchestrator  # pyright: ignore[reportPrivateUsage]
     server._lifespan_result_set = True  # pyright: ignore[reportPrivateUsage]
 
@@ -105,7 +109,7 @@ def _observe_ctx(*, entries: list[FrontierEntry]) -> MagicMock:
 
 async def test_observe_tool_is_model_visible() -> None:
     server: FastMCP[object] = FastMCP("test")
-    server.add_provider(build_observatory())
+    server.add_provider(build_observatory(description=_DESCRIPTION))
 
     names = [t.name for t in await server.list_tools()]
 
@@ -115,7 +119,7 @@ async def test_observe_tool_is_model_visible() -> None:
 async def test_observe_tool_description_addresses_the_model() -> None:
     """The Scribe reads a curated when-to-call description, not the docstring."""
     server: FastMCP[object] = FastMCP("test")
-    server.add_provider(build_observatory())
+    server.add_provider(build_observatory(description=_DESCRIPTION))
 
     observe = next(t for t in await server.list_tools() if t.name == "observe")
 
@@ -138,7 +142,7 @@ async def test_observe_call_tool_carries_prefab_structured_content() -> None:
     orchestrator = AsyncMock(spec=Orchestrator)
     orchestrator.frontier.return_value = [_entry("desktop claim")]
     server: FastMCP[object] = FastMCP("test")
-    server.add_provider(build_observatory())
+    server.add_provider(build_observatory(description=_DESCRIPTION))
     server._lifespan_result = orchestrator  # pyright: ignore[reportPrivateUsage]
     server._lifespan_result_set = True  # pyright: ignore[reportPrivateUsage]
 

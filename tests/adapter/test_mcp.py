@@ -118,6 +118,15 @@ async def test_tool_description_comes_from_contract(
     assert consult.description == contract.tools.consult.description
 
 
+async def test_observe_description_comes_from_contract(
+    server: FastMCP[Orchestrator], settings: LoreSettings
+) -> None:
+    """The observe tool description is sourced from the contract file."""
+    contract = load_server_contract(settings.prompts.contract)
+    observe = next(t for t in await _list_tools(server) if t.name == "observe")
+    assert observe.description == contract.tools.observe.description
+
+
 async def test_mcp_serves_consult_prompt(
     server: FastMCP[Orchestrator], settings: LoreSettings
 ) -> None:
