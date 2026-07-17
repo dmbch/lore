@@ -21,10 +21,13 @@ def _fields_block(names: tuple[str, ...]) -> str:
 
 
 def _valid(instructions: str = "server instructions", *, fields: tuple[str, ...] = _FIELDS) -> str:
+    # observe precedes consult so a trailing field appended by a caller lands
+    # inside consult's fields block, not under observe.
     return (
         f"# Lore\n"
         f"## instructions\n{instructions}\n"
         f"## tools\n"
+        f"### observe\n#### description\nobserve description\n"
         f"### {CONSULT_TOOL}\n"
         f"#### description\ntool description\n"
         f"{_fields_block(fields)}"
@@ -47,6 +50,7 @@ def test_load_server_contract_builds_nested_contract(tmp_path: Path) -> None:
     tool = contract.tools.consult
     assert tool.description == "tool description"
     assert tool.fields.question == "question description"
+    assert contract.tools.observe.description == "observe description"
 
 
 def test_load_server_contract_rejects_multiple_servers(tmp_path: Path) -> None:
@@ -66,6 +70,15 @@ def test_load_server_contract_rejects_missing_consult_tool(tmp_path: Path) -> No
         "### other\n#### description\nd\n#### fields\n##### x\ny\n"
     )
     with pytest.raises(ValueError, match=CONSULT_TOOL):
+        load_server_contract(_write(tmp_path, text))
+
+
+def test_load_server_contract_rejects_missing_observe_tool(tmp_path: Path) -> None:
+    text = (
+        f"# Lore\n## instructions\ni\n## tools\n### {CONSULT_TOOL}\n"
+        f"#### description\nd\n{_fields_block(_FIELDS)}"
+    )
+    with pytest.raises(ValueError, match="observe"):
         load_server_contract(_write(tmp_path, text))
 
 
@@ -98,4 +111,5 @@ def test_load_server_contract_rejects_duplicate_tool(tmp_path: Path) -> None:
 def test_bundled_contract_loads() -> None:
     contract = load_server_contract(_bundled_contract())
     assert contract.tools.consult.fields.question.strip() != ""
+    assert contract.tools.observe.description.strip() != ""
     assert contract.instructions.strip() != ""

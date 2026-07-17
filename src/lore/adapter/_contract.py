@@ -2,16 +2,18 @@
 
 Parsed from a sectioned markdown file (``prompts/contract.md``) whose headings
 mirror MCP's object model: a ``#`` server holds a ``## tools`` collection of
-``###`` tools, each holding a ``#### description`` and a ``#### fields``
-collection of ``#####`` fields. Heading titles are these models' field names,
-so the section mapping validates straight in. The shape is fixed (one tool,
-``consult``, with exactly five fields), so it is spelled out as types rather
-than re-checked at runtime: ``extra="forbid"`` plus required fields makes a
-drifted or malformed contract fail loud at server construction.
+``###`` tools. The ``consult`` tool holds a ``#### description`` and a ``####
+fields`` collection of ``#####`` fields; the ``observe`` UI tool holds a
+``#### description`` alone. Heading titles are these models' field names, so the
+section mapping validates straight in. The shape is fixed (two tools, ``consult``
+with exactly five fields and ``observe`` with a description alone), so it is
+spelled out as types rather than re-checked at runtime: ``extra="forbid"`` plus
+required fields makes a drifted or malformed contract fail loud at server
+construction.
 
 ``ServerContract`` is the one public model. The sub-models are private: a
 consumer holds the typed root and reaches its parts by attribute, e.g.
-``contract.tools.consult.fields.question``.
+``contract.tools.consult.fields.question`` or ``contract.tools.observe.description``.
 """
 
 from collections.abc import Mapping
@@ -46,10 +48,17 @@ class _ConsultTool(_Strict):
     fields: _ConsultFields
 
 
+class _ObserveTool(_Strict):
+    """The observe UI tool's client-facing docs: a description, no params."""
+
+    description: str
+
+
 class _Tools(_Strict):
-    """The server's tool set: exactly one tool, consult."""
+    """The server's tool set: consult (the write path) and observe (the UI)."""
 
     consult: _ConsultTool
+    observe: _ObserveTool
 
 
 class ServerContract(_Strict):

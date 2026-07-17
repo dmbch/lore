@@ -56,3 +56,9 @@ The user's directional confidence for the `hypothesis`. Positive is belief, nega
     "no idea" -> 0.0   "I doubt it" -> -0.5   "definitely not" -> -0.8
 
 Required with a `hypothesis`. Err toward center: overconfidence corrupts fusion more than underconfidence. Omit when the user holds no view: omitting (no view, no hypothesis) and `0.0` (a stated stance of genuine uncertainty) are different states.
+
+### observe
+
+#### description
+
+Show the herd's uncertainty frontier: the most recent hypotheses, ranked by how little the archive knows about each. Call this when the oracle asks what to explore, re-attest, or adjudicate next.
