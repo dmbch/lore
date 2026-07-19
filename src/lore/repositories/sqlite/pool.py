@@ -20,6 +20,7 @@ from lore.domain import StorageError
 from lore.repositories.protocols import Repositories, RepositoryPool
 from lore.repositories.sqlite.attestations import SqliteAttestationsRepository
 from lore.repositories.sqlite.bootstrap import strip_dsn
+from lore.repositories.sqlite.cache import SqliteCacheRepository
 from lore.repositories.sqlite.connection import connect as sqlite_connect
 from lore.repositories.sqlite.hypotheses import SqliteHypothesisRepository
 from lore.repositories.sqlite.requests import SqliteRequestRepository
@@ -42,6 +43,7 @@ class SqlitePool:
             hypotheses=SqliteHypothesisRepository(self._conn),
             attestations=SqliteAttestationsRepository(self._conn),
             requests=SqliteRequestRepository(self._conn),
+            cache=SqliteCacheRepository(self._conn),
         )
 
     @asynccontextmanager

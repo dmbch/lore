@@ -18,6 +18,7 @@ from psycopg_pool import AsyncConnectionPool
 from lore.domain import RetryableTransactionError, StorageError
 from lore.repositories.config import PostgresConfig
 from lore.repositories.postgres.attestations import PostgresAttestationsRepository
+from lore.repositories.postgres.cache import PostgresCacheRepository
 from lore.repositories.postgres.connection import create_pool
 from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository
 from lore.repositories.postgres.requests import PostgresRequestRepository
@@ -48,6 +49,7 @@ class PostgresPool:
             ),
             attestations=PostgresAttestationsRepository(raw),
             requests=PostgresRequestRepository(raw),
+            cache=PostgresCacheRepository(raw),
         )
 
     async def _acquire(self) -> psycopg.AsyncConnection[Any]:

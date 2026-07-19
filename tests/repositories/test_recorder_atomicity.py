@@ -121,6 +121,7 @@ class _RealBackendPool:
                 hypotheses=repos.hypotheses,
                 attestations=cast("AttestationsRepository", wrapper),
                 requests=repos.requests,
+                cache=repos.cache,
             )
 
     async def close(self) -> None:

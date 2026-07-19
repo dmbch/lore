@@ -13,6 +13,7 @@ from typing import NamedTuple, Protocol
 from lore.domain import TrustSignal
 from lore.repositories.records import (
     AttestationRecord,
+    CacheEntry,
     HypothesisRecord,
     HypothesisResult,
     RequestRecord,
@@ -149,6 +150,38 @@ class RequestRepository(Protocol):
         ...
 
 
+class CacheRepository(Protocol):
+    """Operational key-value cache: OAuth client registrations, upstream
+    tokens, and MCP session state, isolated by ``collection``.
+
+    ``put_entry`` is an upsert: a second write to the same ``(collection,
+    key)`` overwrites the row. A deliberate departure from the Ledger's
+    append-only invariant: OAuth token refresh churns the same key
+    repeatedly, and this table holds operational cache state, not
+    epistemic evidence.
+    """
+
+    async def get_entry(self, *, collection: str, key: str) -> CacheEntry | None:
+        """Return the stored entry, or None if absent."""
+        ...
+
+    async def put_entry(
+        self,
+        *,
+        collection: str,
+        key: str,
+        value: str,
+        created_at: int,
+        expires_at: int | None,
+    ) -> None:
+        """Insert or overwrite the row for ``(collection, key)``."""
+        ...
+
+    async def delete_entry(self, *, collection: str, key: str) -> bool:
+        """Delete the row. True if a row existed, False otherwise."""
+        ...
+
+
 class Repositories(NamedTuple):
     """Bundle of all repository Protocols. Yielded by the pool's scope CMs.
 
@@ -159,6 +192,7 @@ class Repositories(NamedTuple):
     hypotheses: HypothesisRepository
     attestations: AttestationsRepository
     requests: RequestRepository
+    cache: CacheRepository
 
 
 class RepositoryPool(Protocol):

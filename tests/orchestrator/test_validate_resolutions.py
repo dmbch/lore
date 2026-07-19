@@ -59,6 +59,7 @@ from lore.repositories import (
     RequestRecord,
     RetrievalConfig,
 )
+from tests.orchestrator.conftest import StubCache
 
 # ---------------------------------------------------------------------------
 # Shared stubs: minimal shapes that satisfy the orchestrator's Protocols
@@ -204,7 +205,10 @@ def _make_orchestrator(
 ) -> Orchestrator:
     hypotheses = _CandidatesHypotheses(candidates)
     repos = Repositories(
-        hypotheses=hypotheses, attestations=_NoopAttestations(), requests=_NoopRequests()
+        hypotheses=hypotheses,
+        attestations=_NoopAttestations(),
+        requests=_NoopRequests(),
+        cache=StubCache(),
     )
     pool = _StubPool(repos)
     providers = Providers(

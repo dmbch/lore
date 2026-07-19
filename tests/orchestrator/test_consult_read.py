@@ -20,6 +20,7 @@ from lore.repositories import (
 )
 from tests.orchestrator.conftest import (
     StubAttestations,
+    StubCache,
     StubCompletion,
     StubEmbedder,
     StubHypotheses,
@@ -263,6 +264,7 @@ class TestRequestStoreErrorPropagates:
             hypotheses=StubHypotheses(),
             attestations=StubAttestations(),
             requests=_FailingRequests(),
+            cache=StubCache(),
         )
         pool = StubPool(repos)
         providers = Providers(

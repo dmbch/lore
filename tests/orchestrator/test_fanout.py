@@ -21,6 +21,7 @@ from lore.repositories import (
 from tests.orchestrator.conftest import (
     STUB_EMBEDDING,
     StubAttestations,
+    StubCache,
     StubCompletion,
     StubEmbedder,
     StubHypotheses,
@@ -153,6 +154,7 @@ class TestFanOutDeduplicatesByHypothesisId:
             hypotheses=hypotheses,
             attestations=StubAttestations(),
             requests=request_store,
+            cache=StubCache(),
         )
         pool = StubPool(repos)
         providers = Providers(
@@ -217,6 +219,7 @@ class TestFanOutEmbeddingFailureFailsEntireRequest:
             hypotheses=StubHypotheses(),
             attestations=StubAttestations(),
             requests=StubRequests(),
+            cache=StubCache(),
         )
         pool = StubPool(repos)
         providers = Providers(
@@ -258,6 +261,7 @@ class TestFanOutSearchPerEmbedding:
             hypotheses=hypotheses,
             attestations=StubAttestations(),
             requests=request_store,
+            cache=StubCache(),
         )
         pool = StubPool(repos)
         providers = Providers(
@@ -299,6 +303,7 @@ class TestMaxKeywordsTruncation:
             hypotheses=hypotheses,
             attestations=StubAttestations(),
             requests=StubRequests(),
+            cache=StubCache(),
         )
         base = make_settings()
         settings = LoreSettings.model_construct(
@@ -354,6 +359,7 @@ class TestOrchestratorForwardsFanOutToSearch:
             hypotheses=hypotheses,
             attestations=StubAttestations(),
             requests=StubRequests(),
+            cache=StubCache(),
         )
         base = make_settings()
         # ``fan_out=7`` is arbitrary but deliberately distinct from the
