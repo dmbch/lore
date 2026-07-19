@@ -34,6 +34,7 @@ from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
     AttestationRecord,
+    CacheEntry,
     HypothesisRecord,
     HypothesisResult,
     PostgresConfig,
@@ -170,6 +171,30 @@ class StubRequests:
 
     async def store(self, record: RequestRecord) -> None:
         self.stored.append(record)
+
+
+class StubCache:
+    """Loud guard: the orchestrator never touches the OAuth token cache."""
+
+    async def get_entry(self, *, collection: str, key: str) -> CacheEntry | None:
+        raise NotImplementedError
+
+    async def put_entry(
+        self,
+        *,
+        collection: str,
+        key: str,
+        value: str,
+        created_at: int,
+        expires_at: int | None,
+    ) -> None:
+        raise NotImplementedError
+
+    async def delete_entry(self, *, collection: str, key: str) -> bool:
+        raise NotImplementedError
+
+    async def delete_expired(self, *, now: int) -> int:
+        raise NotImplementedError
 
 
 class StubPool:
@@ -345,6 +370,7 @@ def make_orchestrator(
         hypotheses=hypotheses,
         attestations=attestations,
         requests=request_store,
+        cache=StubCache(),
     )
     pool = StubPool(repos)
     providers = Providers(

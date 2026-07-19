@@ -30,6 +30,7 @@ from lore.config import LoreSettings
 from lore.repositories import (
     AttestationRecord,
     AttestationsRepository,
+    CacheRepository,
     HypothesisRepository,
     PostgresConfig,
     Repositories,
@@ -42,10 +43,12 @@ from lore.repositories import (
     run_migrations,
 )
 from lore.repositories.postgres.attestations import PostgresAttestationsRepository
+from lore.repositories.postgres.cache import PostgresCacheRepository
 from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository
 from lore.repositories.postgres.pool import PostgresPool
 from lore.repositories.postgres.requests import PostgresRequestRepository
 from lore.repositories.sqlite.attestations import SqliteAttestationsRepository
+from lore.repositories.sqlite.cache import SqliteCacheRepository
 from lore.repositories.sqlite.hypotheses import SqliteHypothesisRepository
 from lore.repositories.sqlite.pool import SqlitePool
 from lore.repositories.sqlite.requests import SqliteRequestRepository
@@ -91,8 +94,9 @@ EPSILON: float = 1e-9
 
 # All domain tables, ordered for DELETE (children before parents).
 # attestations → requests (via correlation_id FK) and → hypotheses (via
-# hypothesis_id FK), so attestations must be deleted first.
-_DOMAIN_TABLES = ("attestations", "requests", "hypotheses")
+# hypothesis_id FK), so attestations must be deleted first. _cache
+# has no FK; its position is unconstrained.
+_DOMAIN_TABLES = ("attestations", "requests", "hypotheses", "_cache")
 # SQLite virtual tables with their own storage: not cleaned by DELETE FROM hypotheses.
 _SQLITE_VIRTUAL_TABLES = ("vec_hypotheses", "fts_hypotheses")
 
@@ -104,6 +108,7 @@ class BackendFixture(NamedTuple):
     hypotheses: HypothesisRepository
     attestations: AttestationsRepository
     requests: RequestRepository
+    cache: CacheRepository
     raw_conn: aiosqlite.Connection | psycopg.AsyncConnection[Any]
 
 
@@ -147,7 +152,9 @@ def drop_pg_tables(dsn: str) -> None:
     """Drop all domain and migration-tracking tables from a PostgreSQL database."""
     conn = psycopg.connect(dsn, autocommit=True)
     try:
-        conn.execute("DROP TABLE IF EXISTS _system, attestations, requests, hypotheses CASCADE")
+        conn.execute(
+            "DROP TABLE IF EXISTS _system, attestations, requests, hypotheses, _cache CASCADE"
+        )
     finally:
         conn.close()
 
@@ -169,6 +176,7 @@ def _bundle_for_sqlite(raw: aiosqlite.Connection) -> Repositories:
         hypotheses=SqliteHypothesisRepository(raw),
         attestations=SqliteAttestationsRepository(raw),
         requests=SqliteRequestRepository(raw),
+        cache=SqliteCacheRepository(raw),
     )
 
 
@@ -177,6 +185,7 @@ def _bundle_for_postgres(raw: psycopg.AsyncConnection[Any]) -> Repositories:
         hypotheses=PostgresHypothesisRepository(conn=raw, fulltext_config=PG_FULLTEXT_CONFIG),
         attestations=PostgresAttestationsRepository(raw),
         requests=PostgresRequestRepository(raw),
+        cache=PostgresCacheRepository(raw),
     )
 
 
@@ -233,6 +242,7 @@ async def backend(pool: RepositoryPool) -> AsyncGenerator[BackendFixture]:
             hypotheses=repos.hypotheses,
             attestations=repos.attestations,
             requests=repos.requests,
+            cache=repos.cache,
             raw_conn=raw,
         )
         return
@@ -246,6 +256,7 @@ async def backend(pool: RepositoryPool) -> AsyncGenerator[BackendFixture]:
             hypotheses=repos.hypotheses,
             attestations=repos.attestations,
             requests=repos.requests,
+            cache=repos.cache,
             raw_conn=pg_raw,
         )
     finally:
@@ -275,6 +286,11 @@ def attestations_repo(backend: BackendFixture) -> AttestationsRepository:
 @pytest.fixture
 def request_repo(backend: BackendFixture) -> RequestRepository:
     return backend.requests
+
+
+@pytest.fixture
+def cache_repo(backend: BackendFixture) -> CacheRepository:
+    return backend.cache
 
 
 @pytest.fixture

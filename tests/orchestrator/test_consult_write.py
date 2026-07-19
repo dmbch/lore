@@ -28,6 +28,7 @@ from lore.repositories import (
 from tests.orchestrator.conftest import (
     STUB_EMBEDDING,
     StubAttestations,
+    StubCache,
     StubCompletion,
     StubEmbedder,
     StubHypotheses,
@@ -246,6 +247,7 @@ class TestRecordUsesPostTransactionAttestationState:
             hypotheses=hypotheses,
             attestations=attestations,
             requests=request_store,
+            cache=StubCache(),
         )
         pool = StubPool(repos)
         providers = Providers(
@@ -516,6 +518,7 @@ class TestWritePathOrphanRequestRowOnInterpreterFailure:
             hypotheses=hypotheses,
             attestations=attestations,
             requests=request_store,
+            cache=StubCache(),
         )
         pool = StubPool(repos)
         providers = Providers(

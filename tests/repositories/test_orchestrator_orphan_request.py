@@ -103,6 +103,7 @@ class _RealBackendPool:
                 hypotheses=repos.hypotheses,
                 attestations=self._attestations,
                 requests=repos.requests,
+                cache=repos.cache,
             )
 
     @asynccontextmanager
@@ -112,6 +113,7 @@ class _RealBackendPool:
                 hypotheses=repos.hypotheses,
                 attestations=self._attestations,
                 requests=repos.requests,
+                cache=repos.cache,
             )
 
     async def close(self) -> None:

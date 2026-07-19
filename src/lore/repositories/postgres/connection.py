@@ -20,9 +20,11 @@ async def _configure_connection(conn: psycopg.AsyncConnection[Any]) -> None:
     """Called by the pool for each new connection.
 
     Registers pgvector and pins the isolation level to SERIALIZABLE so every
-    transaction the connection opens is safe against write-skew. The
-    autocommit ``session()`` scope is unaffected: isolation level is
-    irrelevant when each statement is its own transaction.
+    transaction the connection opens is safe against write-skew. The pin
+    reaches the autocommit ``session()`` scope too: each statement runs as
+    its own implicit SERIALIZABLE transaction, so even a one-shot statement
+    can lose a serialization race (see ``cache.py``'s session-scope
+    translation).
     """
     await register_vector_async(conn)
     await conn.set_isolation_level(IsolationLevel.SERIALIZABLE)

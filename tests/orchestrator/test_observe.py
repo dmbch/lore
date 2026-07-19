@@ -30,6 +30,7 @@ from lore.repositories import (
 
 from .conftest import (
     StubAttestations,
+    StubCache,
     StubCompletion,
     StubEmbedder,
     StubHypotheses,
@@ -58,6 +59,7 @@ def _repos(
         hypotheses=StubHypotheses(recent=records),
         attestations=StubAttestations(by_hypotheses=by_hypotheses),
         requests=StubRequests(),
+        cache=StubCache(),
     )
 
 

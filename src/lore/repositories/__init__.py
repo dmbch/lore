@@ -4,6 +4,7 @@ from lore.repositories.config import PostgresConfig, RetrievalConfig, SqliteConf
 from lore.repositories.factory import check_health, connect, make_probe, run_migrations
 from lore.repositories.protocols import (
     AttestationsRepository,
+    CacheRepository,
     HypothesisRepository,
     Repositories,
     RepositoryPool,
@@ -11,6 +12,7 @@ from lore.repositories.protocols import (
 )
 from lore.repositories.records import (
     AttestationRecord,
+    CacheEntry,
     HypothesisRecord,
     HypothesisResult,
     RequestRecord,
@@ -19,6 +21,8 @@ from lore.repositories.records import (
 __all__ = [
     "AttestationRecord",
     "AttestationsRepository",
+    "CacheEntry",
+    "CacheRepository",
     "HypothesisRecord",
     "HypothesisRepository",
     "HypothesisResult",

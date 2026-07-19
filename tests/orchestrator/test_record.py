@@ -36,7 +36,7 @@ from lore.repositories import (
     Repositories,
     RequestRecord,
 )
-from tests.orchestrator.conftest import make_settings
+from tests.orchestrator.conftest import StubCache, make_settings
 
 
 class _StubHypotheses:
@@ -163,7 +163,12 @@ def _make_recorder(
     attestations = _StubAttestations()
     math_service = MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0)
     attestation_map = {_CONTRADICTED_ID: [_attestation_with_c_herd(c_herd_of_contradicted)]}
-    repos = Repositories(hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests())
+    repos = Repositories(
+        hypotheses=hypotheses,
+        attestations=attestations,
+        requests=_NoopRequests(),
+        cache=StubCache(),
+    )
     context = WriteContext(
         oracle_id=oracle_id,
         correlation_id=_CORRELATION_ID,
@@ -337,7 +342,10 @@ class TestComputeTransferBalancedContradictionsSkipsTransfer:
         hypotheses = _StubHypotheses()
         attestations = _StubAttestations()
         repos = Repositories(
-            hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests()
+            hypotheses=hypotheses,
+            attestations=attestations,
+            requests=_NoopRequests(),
+            cache=StubCache(),
         )
         context = WriteContext(
             oracle_id="oracle-1",
@@ -481,7 +489,10 @@ class TestRecorderPassesDistinctOracleCountToAppend:
         hypotheses = _StubHypotheses()
         attestations = _StubAttestations()
         repos = Repositories(
-            hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests()
+            hypotheses=hypotheses,
+            attestations=attestations,
+            requests=_NoopRequests(),
+            cache=StubCache(),
         )
         context = WriteContext(
             oracle_id="oracle-1",
@@ -515,7 +526,10 @@ class TestRecorderPassesDistinctOracleCountToAppend:
         hypotheses = _StubHypotheses()
         attestations = _StubAttestations()
         repos = Repositories(
-            hypotheses=hypotheses, attestations=attestations, requests=_NoopRequests()
+            hypotheses=hypotheses,
+            attestations=attestations,
+            requests=_NoopRequests(),
+            cache=StubCache(),
         )
         context = WriteContext(
             oracle_id="oracle-1",

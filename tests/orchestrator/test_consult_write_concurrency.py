@@ -24,6 +24,7 @@ from lore.providers import Providers
 from lore.repositories import Repositories
 from tests.orchestrator.conftest import (
     StubAttestations,
+    StubCache,
     StubCompletion,
     StubEmbedder,
     StubHypotheses,
@@ -96,6 +97,7 @@ class TestOrchestratorRecordRetry:
             hypotheses=hypotheses,
             attestations=attestations,
             requests=request_store,
+            cache=StubCache(),
         )
         raise_count = 1
         pool = _RetryingStubPool(repos, raise_count=raise_count)
@@ -128,6 +130,7 @@ class TestOrchestratorRecordRetry:
             hypotheses=hypotheses,
             attestations=attestations,
             requests=request_store,
+            cache=StubCache(),
         )
         raise_count = 2
         pool = _RetryingStubPool(repos, raise_count=raise_count)
@@ -159,6 +162,7 @@ class TestOrchestratorRecordRetry:
             hypotheses=hypotheses,
             attestations=attestations,
             requests=request_store,
+            cache=StubCache(),
         )
         pool = _RetryingStubPool(repos, raise_count=RECORD_MAX_ATTEMPTS + 5)
         orchestrator = _make_orchestrator_with_pool(pool)

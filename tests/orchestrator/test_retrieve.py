@@ -47,6 +47,7 @@ from lore.repositories import (
     RequestRecord,
     RetrievalConfig,
 )
+from tests.orchestrator.conftest import StubCache
 
 # ---------------------------------------------------------------------------
 # Stubs: exercise the orchestrator's concurrency contract, not the backend
@@ -262,6 +263,7 @@ def _make_orchestrator(
         hypotheses=hypotheses,
         attestations=_NoopAttestations(),
         requests=_NoopRequests(),
+        cache=StubCache(),
     )
     pool = _StubPool(repos)
     providers = Providers(
