@@ -8,13 +8,15 @@ nor spans replicas; backing both with ``CacheRepository`` puts that state
 in the ``_cache`` table, wherever the ledger lives. ``LoreCacheStore``
 implements the three ``BaseStore`` primitives; ``PoolCell`` defers the pool
 reference until the server lifespan connects it (the readiness probe rides
-the same cell); ``sweep_expired_cache`` is the expiry sweep the
-composition root schedules. The store is deliberately ignorant of what it
-holds: the composition root injects a bare instance into the adapter, and
-the adapter Fernet-wraps the OAuth lane itself, since the key material
-(the OIDC client secret) is adapter-owned and never reaches this layer.
+the same cell); ``sweep_cache_loop`` is the expiry sweep the composition
+root runs as a lifespan-owned task, at ``[cache] sweep_interval``. The
+store is deliberately ignorant of what it holds: the composition root
+injects a bare instance into the adapter, and the adapter Fernet-wraps
+the OAuth lane itself, since the key material (the OIDC client secret)
+is adapter-owned and never reaches this layer.
 """
 
+import asyncio
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -134,3 +136,10 @@ async def sweep_expired_cache(pool: RepositoryPool) -> None:
     if deleted:
         # Routine housekeeping, not operator-actionable: debug, not info.
         log.debug("cache.sweep", deleted=deleted)
+
+
+async def sweep_cache_loop(pool: RepositoryPool, *, interval: float) -> None:
+    """Sweep immediately (restart-heavy deployments boot often), then every ``interval``."""
+    while True:
+        await sweep_expired_cache(pool)
+        await asyncio.sleep(interval)

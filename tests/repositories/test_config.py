@@ -1,7 +1,8 @@
 """Tests for repository-layer config models.
 
-Covers Retrieval, Postgres, Sqlite: pure construction and validation. The
-section→field loader mapping for these types lives in tests/config/test_sections.py.
+Covers Cache, Retrieval, Postgres, Sqlite: pure construction and validation.
+The section→field loader mapping for these types lives in
+tests/config/test_sections.py.
 """
 
 import math
@@ -9,7 +10,42 @@ import math
 import pytest
 from pydantic import ValidationError
 
-from lore.repositories import PostgresConfig, RetrievalConfig, SqliteConfig
+from lore.repositories import CacheConfig, PostgresConfig, RetrievalConfig, SqliteConfig
+
+# ---------------------------------------------------------------------------
+# CacheConfig
+# ---------------------------------------------------------------------------
+
+
+def test_cache_config_default_sweep_interval_is_hourly() -> None:
+    assert CacheConfig().sweep_interval == 3600.0
+
+
+def test_cache_config_is_frozen() -> None:
+    cc = CacheConfig()
+    with pytest.raises(ValidationError, match="frozen"):
+        cc.sweep_interval = 60.0  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_cache_config_parses_duration_strings() -> None:
+    cc = CacheConfig(sweep_interval="30m")  # pyright: ignore[reportArgumentType]
+    assert cc.sweep_interval == 1800.0
+
+
+def test_cache_config_malformed_interval_names_the_field() -> None:
+    with pytest.raises(ValidationError, match="invalid sweep_interval"):
+        CacheConfig(sweep_interval="soon")  # pyright: ignore[reportArgumentType]
+
+
+def test_cache_config_nonpositive_interval_raises() -> None:
+    with pytest.raises(ValidationError, match="sweep_interval must be positive"):
+        CacheConfig(sweep_interval=0.0)
+
+
+def test_cache_config_rejects_unknown_keys() -> None:
+    with pytest.raises(ValidationError, match="extra"):
+        CacheConfig(sweep_intervall="1h")  # pyright: ignore[reportCallIssue]
+
 
 # ---------------------------------------------------------------------------
 # RetrievalConfig

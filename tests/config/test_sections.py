@@ -1,9 +1,10 @@
 """Tests for lore.config section configs: loader integration.
 
-Covers the Epistemics, Limits, Retrieval, Server, Prompts, Postgres, and Sqlite
-sections as they map through ``load_settings``. Pure model-construction tests
-for ``EpistemicsConfig`` live in ``tests/math/test_config.py`` (the math layer
-owns that type).
+Covers the Epistemics, Limits, Retrieval, Cache, Server, Prompts, Postgres,
+and Sqlite sections as they map through ``load_settings``. Pure
+model-construction tests for ``EpistemicsConfig`` live in
+``tests/math/test_config.py`` (the math layer owns that type); ``CacheConfig``
+construction tests live in ``tests/repositories/test_config.py``.
 """
 
 import os
@@ -116,6 +117,23 @@ def test_retrieval_config_from_toml() -> None:
         assert s.retrieval.limit == 20
         assert s.retrieval.fan_out == 3
         assert s.retrieval.max_keywords == 10
+
+
+def test_cache_bundled_default_is_hourly() -> None:
+    with patch.dict(os.environ, _BASE_ENV, clear=True):
+        s = load_settings(toml_path=_TOML_PATH)
+        assert s.cache.sweep_interval == 3600.0
+
+
+def test_cache_sweep_interval_from_toml(tmp_path: Path) -> None:
+    toml_file = tmp_path / "cache.toml"
+    toml_file.write_text(
+        '[cache]\nsweep_interval = "30m"\n'
+        '[embedding]\nmodel = "test/e"\n[fast]\nmodel = "test/f"\n[reasoning]\nmodel = "test/r"\n'
+    )
+    with patch.dict(os.environ, _BASE_ENV, clear=True):
+        s = load_settings(toml_path=toml_file)
+        assert s.cache.sweep_interval == 1800.0
 
 
 def test_load_settings_rejects_partial_weight_override(tmp_path: Path) -> None:

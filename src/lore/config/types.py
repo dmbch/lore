@@ -8,7 +8,7 @@ from lore.adapter.config import AuthConfig, LimitsConfig, OidcConfig, ServerConf
 from lore.math.config import EpistemicsConfig
 from lore.prompts.config import PromptsConfig
 from lore.providers.config import EmbeddingModelConfig, ModelConfig
-from lore.repositories.config import PostgresConfig, RetrievalConfig, SqliteConfig
+from lore.repositories.config import CacheConfig, PostgresConfig, RetrievalConfig, SqliteConfig
 
 
 class LoreSettings(BaseModel):
@@ -35,6 +35,7 @@ class LoreSettings(BaseModel):
     auth: AuthConfig = AuthConfig()
     postgres: PostgresConfig
     sqlite: SqliteConfig = SqliteConfig()
+    cache: CacheConfig = CacheConfig()
     prompts: PromptsConfig
 
     @model_validator(mode="after")

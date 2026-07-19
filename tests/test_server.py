@@ -131,6 +131,36 @@ async def test_system_sweeps_expired_cache_rows_on_start(tmp_path: Path) -> None
             pytest.fail("expired row was not swept on lifespan start")
 
 
+async def test_system_sweeps_at_the_configured_interval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``[cache] sweep_interval`` reaches the sweep loop: the schedule is
+    config, not a constant.
+    """
+    import asyncio
+
+    from lore.repositories import CacheConfig
+    from lore.server import system
+
+    captured: dict[str, float] = {}
+
+    async def fake_loop(pool: object, *, interval: float) -> None:
+        captured["interval"] = interval
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr("lore.server.sweep_cache_loop", fake_loop)
+    settings = _settings_for(tmp_path / "test.db").model_copy(
+        update={"cache": CacheConfig(sweep_interval=123.0)}
+    )
+
+    async with system(settings):
+        # One yield to the event loop: the sweep task is created inside
+        # system() but first runs at the next suspension point.
+        await asyncio.sleep(0)
+
+    assert captured["interval"] == 123.0
+
+
 async def test_system_closes_pool_when_caller_raises(tmp_path: Path) -> None:
     """Behavioural port of the old setup test: real SQLite pool, caller
     raises inside the scope, the pool is released and the cell cleared.

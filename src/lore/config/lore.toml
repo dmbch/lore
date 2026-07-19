@@ -37,6 +37,9 @@ fulltext_config = "english"
 [sqlite]
 fulltext_config = "porter unicode61"
 
+[cache]
+sweep_interval = "1h"
+
 [prompts]
 scribe = "bundled:prompts/scribe.md"
 interpreter = "bundled:prompts/interpreter.md"

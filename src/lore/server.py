@@ -25,27 +25,13 @@ from lore.providers import build_providers, resolve_dimensions
 from lore.repositories import (
     LoreCacheStore,
     PoolCell,
-    RepositoryPool,
     check_health,
     connect,
     make_probe,
     run_migrations,
-    sweep_expired_cache,
+    sweep_cache_loop,
 )
 from lore.telemetry import configure_telemetry
-
-# Hourly: fastmcp stamps _cache TTLs from five minutes (OAuth auth codes)
-# to a year (refresh tokens), with 24-hour session state in between, so no
-# tick rate is ever tight and hourly keeps dead rows bounded to an hour of
-# churn. Not a config knob until a deployment needs one.
-_CACHE_SWEEP_INTERVAL_SECONDS = 3600.0
-
-
-async def _sweep_loop(pool: RepositoryPool, *, interval: float) -> None:
-    """Sweep immediately (restart-heavy deployments boot often), then hourly."""
-    while True:
-        await sweep_expired_cache(pool)
-        await asyncio.sleep(interval)
 
 
 async def _check_ready(cell: PoolCell) -> None:
@@ -80,7 +66,7 @@ async def system(
     run_migrations(settings=settings, embedding_dim=dim)
     check_health(settings=settings, embedding_dim=dim)
     pool = await connect(settings)
-    sweep = asyncio.create_task(_sweep_loop(pool, interval=_CACHE_SWEEP_INTERVAL_SECONDS))
+    sweep = asyncio.create_task(sweep_cache_loop(pool, interval=settings.cache.sweep_interval))
     try:
         if pool_cell is not None:
             pool_cell.pool = pool
