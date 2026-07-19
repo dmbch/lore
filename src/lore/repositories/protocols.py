@@ -181,6 +181,18 @@ class CacheRepository(Protocol):
         """Delete the row. True if a row existed, False otherwise."""
         ...
 
+    async def delete_expired(self, *, now: int) -> int:
+        """Delete rows whose ``expires_at`` has passed. Returns the count.
+
+        Rows with ``expires_at IS NULL`` (OAuth client registrations) are
+        never touched: they persist by design. Call inside
+        ``transaction()``: the PostgreSQL implementation guards the sweep
+        with a transaction-scoped advisory try-lock so concurrent replicas
+        do not scan redundantly; a lock held elsewhere makes the sweep a
+        no-op returning 0.
+        """
+        ...
+
 
 class Repositories(NamedTuple):
     """Bundle of all repository Protocols. Yielded by the pool's scope CMs.

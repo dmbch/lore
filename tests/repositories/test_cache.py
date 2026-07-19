@@ -16,9 +16,11 @@ import pytest
 from pydantic import ValidationError
 
 from lore.domain import StorageError
+from lore.repositories import connect
 from lore.repositories.postgres.cache import PostgresCacheRepository
 from lore.repositories.protocols import CacheRepository, RepositoryPool
 from lore.repositories.records import CacheEntry
+from tests.repositories._orchestrator_fixtures import make_settings
 from tests.repositories.conftest import BackendFixture
 
 
@@ -225,6 +227,95 @@ async def _seed_corrupt_row(
         "INSERT INTO _cache (collection, key, value, created_at) VALUES (%s, %s, %s, %s)",
         params,
     )
+
+
+class TestSweep:
+    async def test_delete_expired_removes_only_expired_rows(
+        self, cache_repo: CacheRepository
+    ) -> None:
+        """Expired rows go; live rows and NULL-expiry rows (client
+        registrations, which persist by design) stay.
+        """
+        await cache_repo.put_entry(
+            collection="mcp-oauth-transactions",
+            key="stale",
+            value="{}",
+            created_at=0,
+            expires_at=100,
+        )
+        await cache_repo.put_entry(
+            collection="mcp-oauth-transactions",
+            key="live",
+            value="{}",
+            created_at=0,
+            expires_at=10_000,
+        )
+        await cache_repo.put_entry(
+            collection="mcp-oauth-proxy-clients",
+            key="registration",
+            value="{}",
+            created_at=0,
+            expires_at=None,
+        )
+
+        deleted = await cache_repo.delete_expired(now=5_000)
+
+        assert deleted == 1
+        stale = await cache_repo.get_entry(collection="mcp-oauth-transactions", key="stale")
+        assert stale is None
+        live = await cache_repo.get_entry(collection="mcp-oauth-transactions", key="live")
+        assert live is not None
+        eternal = await cache_repo.get_entry(
+            collection="mcp-oauth-proxy-clients", key="registration"
+        )
+        assert eternal is not None
+
+    async def test_delete_expired_on_clean_table_returns_zero(
+        self, cache_repo: CacheRepository
+    ) -> None:
+        assert await cache_repo.delete_expired(now=5_000) == 0
+
+    async def test_delete_expired_on_closed_connection_raises(
+        self,
+        sabotage_connection: Callable[[], Awaitable[None]],
+        cache_repo: CacheRepository,
+    ) -> None:
+        await sabotage_connection()
+        with pytest.raises(StorageError):
+            await cache_repo.delete_expired(now=5_000)
+
+
+async def test_delete_expired_skips_while_another_session_holds_the_sweep_lock(
+    pg_dsn_session: str,
+) -> None:
+    """PostgreSQL only: with several replicas on the same schedule, one
+    sweeps and the rest no-op. The advisory lock is transaction-scoped, so
+    the rival closing its transaction reopens the sweep.
+    """
+    settings = make_settings(dsn=pg_dsn_session)
+    pool = await connect(settings)
+    try:
+        async with pool.session() as repos:
+            await repos.cache.put_entry(
+                collection="mcp-oauth-transactions",
+                key="stale",
+                value="{}",
+                created_at=0,
+                expires_at=100,
+            )
+
+        rival = psycopg.connect(pg_dsn_session)
+        try:
+            rival.execute("SELECT pg_try_advisory_xact_lock(hashtext('lore_cache_sweep'))")
+            async with pool.transaction() as repos:
+                assert await repos.cache.delete_expired(now=5_000) == 0
+        finally:
+            rival.close()
+
+        async with pool.transaction() as repos:
+            assert await repos.cache.delete_expired(now=5_000) == 1
+    finally:
+        await pool.close()
 
 
 class TestStorageError:

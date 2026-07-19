@@ -100,3 +100,24 @@ class PostgresCacheRepository:
         except psycopg.Error as e:
             _translate_session_statement(e)
         return cur.rowcount > 0
+
+    async def delete_expired(self, *, now: int) -> int:
+        # Transaction-scoped advisory try-lock: when several replicas sweep
+        # on the same schedule, one does the work and the rest skip. Released
+        # automatically at COMMIT/ROLLBACK, so it cannot leak on a pooled
+        # connection; outside a transaction it is a per-statement no-op and
+        # the sweep simply runs unguarded.
+        try:
+            cur = await self._conn.execute(
+                "SELECT pg_try_advisory_xact_lock(hashtext('lore_cache_sweep'))"
+            )
+            row = await cur.fetchone()
+            if row is None or not row[0]:
+                return 0
+            cur = await self._conn.execute(
+                "DELETE FROM _cache WHERE expires_at IS NOT NULL AND expires_at < %s",
+                (now,),
+            )
+        except psycopg.Error as e:
+            translate(e)
+        return cur.rowcount
