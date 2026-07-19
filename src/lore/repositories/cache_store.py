@@ -8,22 +8,26 @@ nor spans replicas; backing both with ``CacheRepository`` puts that state
 in the ``_cache`` table, wherever the ledger lives. ``LoreCacheStore``
 implements the three ``BaseStore`` primitives; ``PoolCell`` defers the pool
 reference until the server lifespan connects it (the readiness probe rides
-the same cell). The store is deliberately ignorant of what it holds: the
-composition root injects bare instances into the adapter, and the adapter
-Fernet-wraps the OAuth lane itself, since the key material (the OIDC
-client secret) is adapter-owned and never reaches this layer.
+the same cell); ``sweep_expired_cache`` is the expiry sweep the
+composition root schedules. The store is deliberately ignorant of what it
+holds: the composition root injects a bare instance into the adapter, and
+the adapter Fernet-wraps the OAuth lane itself, since the key material
+(the OIDC client secret) is adapter-owned and never reaches this layer.
 """
 
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+import structlog
 from key_value.aio._utils.managed_entry import ManagedEntry, load_from_json
 from key_value.aio.errors import DeserializationError
 from key_value.aio.stores.base import BaseStore
 
 from lore.domain import StorageError
 from lore.repositories.protocols import RepositoryPool
+
+log = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -109,3 +113,24 @@ class LoreCacheStore(BaseStore):
     async def _delete_managed_entry(self, *, key: str, collection: str) -> bool:
         async with self._connected_pool().session() as repos:
             return await repos.cache.delete_entry(collection=collection, key=key)
+
+
+async def sweep_expired_cache(pool: RepositoryPool) -> None:
+    """One sweep of expired ``_cache`` rows; failures are logged, not raised.
+
+    A missed sweep costs nothing but disk until the next tick, so no error
+    here may take down the caller's lifespan. The broad catch is
+    deliberate: for a fire-and-forget task, a propagating exception means
+    dying unobserved mid-lifespan and hijacking teardown when the
+    ``finally`` awaits it. Cancellation still passes: ``CancelledError``
+    is a ``BaseException``.
+    """
+    try:
+        async with pool.transaction() as repos:
+            deleted = await repos.cache.delete_expired(now=int(time.time()))
+    except Exception:
+        log.warning("cache.sweep.failed", exc_info=True)
+        return
+    if deleted:
+        # Routine housekeeping, not operator-actionable: debug, not info.
+        log.debug("cache.sweep", deleted=deleted)

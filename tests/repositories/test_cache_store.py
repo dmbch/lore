@@ -12,7 +12,7 @@ and tested in ``tests/adapter/test_oauth_storage.py``.
 import sqlite3
 import time
 from collections.abc import AsyncGenerator
-from contextlib import closing
+from contextlib import AbstractAsyncContextManager, closing
 from pathlib import Path
 
 import pytest
@@ -20,7 +20,15 @@ from key_value.aio._utils.managed_entry import ManagedEntry
 from key_value.aio.protocols.key_value import AsyncKeyValueProtocol
 
 from lore.domain import StorageError
-from lore.repositories import LoreCacheStore, PoolCell, RepositoryPool, connect, run_migrations
+from lore.repositories import (
+    LoreCacheStore,
+    PoolCell,
+    Repositories,
+    RepositoryPool,
+    connect,
+    run_migrations,
+    sweep_expired_cache,
+)
 from tests.repositories._orchestrator_fixtures import make_settings
 
 # Schema dimension for the throwaway test database. The cache store never
@@ -187,6 +195,40 @@ class TestBulkDefaults:
             {"b": 2},
             None,
         ]
+
+
+class TestSweepMechanism:
+    async def test_sweep_survives_storage_errors(self, db_path: Path) -> None:
+        """A failed sweep logs and returns: the caller's lifespan must
+        never die over it.
+        """
+        settings = make_settings(dsn=f"sqlite:///{db_path}")
+        run_migrations(settings=settings, embedding_dim=_SCHEMA_DIM)
+        pool = await connect(settings)
+        await pool.close()
+
+        await sweep_expired_cache(pool)
+
+    async def test_sweep_survives_unexpected_errors(self) -> None:
+        """The broad catch is the contract, not just the StorageError arm.
+
+        A bug raising past ``sweep_expired_cache`` would kill the caller's
+        sweep loop unobserved, then resurface from the lifespan's ``await
+        sweep`` inside ``finally``, skipping cell clearing and pool close.
+        """
+
+        class ExplodingPool:
+            def session(self) -> AbstractAsyncContextManager[Repositories]:
+                raise NotImplementedError
+
+            def transaction(self) -> AbstractAsyncContextManager[Repositories]:
+                msg = "sweep bug"
+                raise RuntimeError(msg)
+
+            async def close(self) -> None:
+                raise NotImplementedError
+
+        await sweep_expired_cache(ExplodingPool())
 
 
 class TestSessionStatePosture:
