@@ -207,6 +207,50 @@ class RequestRecord(BaseModel):
         return v
 
 
+class CacheEntry(BaseModel):
+    """A stored key-value row: operational cache state, not epistemic evidence.
+
+    Serves OAuth client registrations, upstream tokens, and MCP session
+    state, isolated by ``collection``. ``value`` is an opaque JSON blob
+    (ciphertext where encryption wraps the store). Timestamps are epoch
+    seconds, matching every other timestamp column in the schema;
+    ``expires_at`` is ``None`` for entries without TTL.
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    collection: str
+    key: str
+    value: str
+    created_at: int
+    expires_at: int | None = None
+
+    @field_validator("collection", "key")
+    @classmethod
+    def _validate_non_empty_fields(cls, v: str, info: ValidationInfo) -> str:
+        if not v:
+            field_name = info.field_name
+            msg = f"{field_name} must be non-empty"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("created_at")
+    @classmethod
+    def _validate_created_at(cls, v: int) -> int:
+        if v < 0:
+            msg = f"created_at must be >= 0, got {v}"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("expires_at")
+    @classmethod
+    def _validate_expires_at(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            msg = f"expires_at must be >= 0, got {v}"
+            raise ValueError(msg)
+        return v
+
+
 # ---------------------------------------------------------------------------
 # Record construction helpers: used by backend implementations, not exported.
 # ---------------------------------------------------------------------------

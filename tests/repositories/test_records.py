@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from lore.repositories.records import (
     AttestationRecord,
+    CacheEntry,
     HypothesisRecord,
     HypothesisResult,
     RequestRecord,
@@ -413,3 +414,47 @@ class TestRequestRecordValidation:
         r = _valid_request()
         with pytest.raises(ValidationError, match="frozen"):
             r.question = "mutated"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def _valid_cache_entry(**overrides: object) -> CacheEntry:
+    defaults: dict[str, object] = {
+        "collection": "oauth-client-registrations",
+        "key": "client-abc",
+        "value": '{"token": "opaque"}',
+        "created_at": 1000,
+        "expires_at": 2000,
+    }
+    defaults.update(overrides)
+    # Builder pattern: same rationale as _valid_attestation above. The pyright
+    # ignore below covers the **kwargs splat.
+    return CacheEntry(**defaults)  # pyright: ignore[reportArgumentType]
+
+
+class TestCacheEntry:
+    def test_cache_entry_round_trips_all_fields(self) -> None:
+        r = _valid_cache_entry()
+        assert r.collection == "oauth-client-registrations"
+        assert r.key == "client-abc"
+        assert r.value == '{"token": "opaque"}'
+        assert r.created_at == 1000
+        assert r.expires_at == 2000
+
+    def test_cache_entry_rejects_empty_collection(self) -> None:
+        with pytest.raises(ValueError, match="collection"):
+            _valid_cache_entry(collection="")
+
+    def test_cache_entry_rejects_empty_key(self) -> None:
+        with pytest.raises(ValueError, match="key"):
+            _valid_cache_entry(key="")
+
+    def test_cache_entry_rejects_negative_created_at(self) -> None:
+        with pytest.raises(ValueError, match="created_at"):
+            _valid_cache_entry(created_at=-1)
+
+    def test_cache_entry_rejects_negative_expires_at(self) -> None:
+        with pytest.raises(ValueError, match="expires_at"):
+            _valid_cache_entry(expires_at=-1)
+
+    def test_cache_entry_allows_none_expires_at(self) -> None:
+        r = _valid_cache_entry(expires_at=None)
+        assert r.expires_at is None
