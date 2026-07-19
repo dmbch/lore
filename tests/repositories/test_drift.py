@@ -20,7 +20,7 @@ import psycopg
 import pytest
 
 # Tables that must exist in both backends with matching columns.
-_RELATIONAL_TABLES = ("hypotheses", "attestations", "requests")
+_RELATIONAL_TABLES = ("hypotheses", "attestations", "requests", "_cache")
 
 # Columns expected only in one backend (implementation-specific).
 # - embedding: pgvector VECTOR column (SQLite uses vec_hypotheses virtual table)
@@ -139,6 +139,28 @@ def _pg_index_methods(conn: psycopg.Connection[Any], table: str) -> dict[str, st
         " JOIN pg_class t ON t.oid = ix.indrelid"
         " JOIN pg_class i ON i.oid = ix.indexrelid"
         " JOIN pg_am am ON am.oid = i.relam"
+        " WHERE t.relname = %s AND NOT ix.indisprimary AND NOT ix.indisunique",
+        (table,),
+    ).fetchall()
+    return {row[0]: row[1] for row in rows}
+
+
+def _sqlite_index_partiality(conn: sqlite3.Connection, table: str) -> dict[str, bool]:
+    """Return {index_name: is_partial} for explicit CREATE INDEX indexes.
+
+    PRAGMA index_list columns: seq, name, unique, origin, partial.
+    """
+    indexes = conn.execute(f"PRAGMA index_list({table})").fetchall()
+    return {idx[1]: bool(idx[4]) for idx in indexes if idx[3] == "c"}
+
+
+def _pg_index_partiality(conn: psycopg.Connection[Any], table: str) -> dict[str, bool]:
+    """Return {index_name: is_partial} for non-constraint indexes."""
+    rows = conn.execute(
+        "SELECT i.relname, ix.indpred IS NOT NULL"
+        " FROM pg_index ix"
+        " JOIN pg_class t ON t.oid = ix.indrelid"
+        " JOIN pg_class i ON i.oid = ix.indexrelid"
         " WHERE t.relname = %s AND NOT ix.indisprimary AND NOT ix.indisunique",
         (table,),
     ).fetchall()
@@ -370,6 +392,10 @@ class TestSchemaDrift:
         sq_cols = _sqlite_columns(sq, table)
         pg_cols = _pg_columns(pg, table)
 
+        # Existence anchor: a table absent from both backends would pass
+        # every structural comparison as vacuously equal empty structures.
+        assert sq_cols, f"Table {table} missing in SQLite"
+
         # Remove backend-specific columns before comparison.
         pg_only = _PG_ONLY_COLUMNS.get(table, set())
         pg_shared = {k: v for k, v in pg_cols.items() if k not in pg_only}
@@ -451,6 +477,28 @@ class TestSchemaDrift:
                 f"SQLite={sq_idx[idx_name]}, "
                 f"PostgreSQL={pg_idx[idx_name]}"
             )
+
+    @pytest.mark.parametrize("table", _RELATIONAL_TABLES)
+    def test_same_index_partiality(
+        self, drift_conns: tuple[sqlite3.Connection, psycopg.Connection[Any]], table: str
+    ) -> None:
+        """A partial index on one backend and a full one on the other would
+        pass the name and column checks while covering different row sets
+        (idx_cache_expires_at excludes NULL-expiry rows on both). Predicate
+        *text* is not compared: each backend renders it differently, and
+        the flag catches the drift that matters.
+        """
+        sq, pg = drift_conns
+        sq_partial = _sqlite_index_partiality(sq, table)
+        pg_partial = {
+            k: v
+            for k, v in _pg_index_partiality(pg, table).items()
+            if k not in self._PG_ONLY_INDEXES
+        }
+
+        assert sq_partial == pg_partial, (
+            f"Index partiality mismatch in {table}: SQLite={sq_partial}, PostgreSQL={pg_partial}"
+        )
 
     @pytest.mark.parametrize("table", _RELATIONAL_TABLES)
     def test_shared_indexes_use_btree(
