@@ -126,7 +126,7 @@ The rest are set as Fly secrets rather than `[env]`: the database DSN, the vendo
 fly secrets set \
   DATABASE_URL="sqlite:////data/lore.db" \
   GEMINI_API_KEY="…" \
-  OIDC_URL="oidc://client_id:client_secret@accounts.google.com/.well-known/openid-configuration?hd=example.com" \
+  OIDC_URL="oidc://client_id:client_secret@accounts.google.com/.well-known/openid-configuration?hd=example.com&access_type=offline&prompt=consent" \
   OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic%20…"
 
 fly volumes create lore_data --region fra --size 1
@@ -136,7 +136,7 @@ fly deploy
 A few Lore-specific notes:
 
 - **`FASTMCP_HOST = "0.0.0.0"` is the image default**, kept explicit here as declared topology. Images `0.2.0` and older inherit FastMCP's loopback default instead: drop the line on one of those and Fly's proxy can't reach the machine, so every request times out.
-- **`BASE_URL` and `OIDC_URL` are a validated pair**: Lore refuses to start with one but not the other. `BASE_URL` is the public origin the IdP redirects back to; `OIDC_URL` points at the IdP's discovery document with the client credentials in the userinfo. The `?hd=example.com` query rides through to the authorize endpoint, restricting sign-in to a single Google Workspace domain. Drop both to run behind a proxy that authenticates upstream: oracle identity then falls back to `_local`.
+- **`BASE_URL` and `OIDC_URL` are a validated pair**: Lore refuses to start with one but not the other. `BASE_URL` is the public origin the IdP redirects back to; `OIDC_URL` points at the IdP's discovery document with the client credentials in the userinfo. The query string rides through to the authorize endpoint: `hd=example.com` restricts sign-in to a single Google Workspace domain, and `access_type=offline&prompt=consent` makes Google issue a refresh token, without which sessions end when the access token expires no matter where OAuth state persists. Drop both variables to run behind a proxy that authenticates upstream: oracle identity then falls back to `_local`.
 - **`OTEL_EXPORTER_OTLP_HEADERS` is percent-encoded.** The space in `Basic <token>` must be written `%20`; a literal space breaks the header parse.
 - **One machine, because SQLite is single-writer.** To scale horizontally, move to Postgres: point `DATABASE_URL` at a `postgresql://…` DSN (still a secret: it carries credentials) and drop the volume mount. Schema and vector space carry over untouched.
 - **Wire `GET /ready` to Fly's health checks** so a machine that can't reach its database is pulled from rotation rather than serving failures.
