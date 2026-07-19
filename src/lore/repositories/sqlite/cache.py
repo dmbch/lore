@@ -80,3 +80,15 @@ class SqliteCacheRepository:
         except (sqlite3.Error, ValueError) as e:
             raise StorageError(str(e)) from e
         return cursor.rowcount > 0
+
+    async def delete_expired(self, *, now: int) -> int:
+        # No lock counterpart to the PostgreSQL advisory guard: the pool's
+        # asyncio.Lock already serializes every writer on this connection.
+        try:
+            cursor = await self._conn.execute(
+                "DELETE FROM _cache WHERE expires_at IS NOT NULL AND expires_at < ?",
+                (now,),
+            )
+        except (sqlite3.Error, ValueError) as e:
+            raise StorageError(str(e)) from e
+        return cursor.rowcount
