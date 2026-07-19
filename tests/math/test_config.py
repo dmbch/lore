@@ -46,7 +46,9 @@ def test_half_life_grammar(value: str | float, expected: float) -> None:
 
 @pytest.mark.parametrize("bad", ["90x", "hello"])
 def test_half_life_malformed_string_raises(bad: str) -> None:
-    with pytest.raises(ValidationError, match="invalid half_life"):
+    # The shared Duration type names the exact offending field via
+    # ValidationInfo, sharper than the old generic "invalid half_life".
+    with pytest.raises(ValidationError, match="invalid attestation_half_life"):
         _epistemics(bad)
 
 
