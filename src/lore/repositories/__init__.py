@@ -1,7 +1,12 @@
 """Repository layer: Protocols, record types, and the pool factory."""
 
-from lore.repositories.cache_store import LoreCacheStore, PoolCell, sweep_expired_cache
-from lore.repositories.config import PostgresConfig, RetrievalConfig, SqliteConfig
+from lore.repositories.cache_store import (
+    LoreCacheStore,
+    PoolCell,
+    sweep_cache_loop,
+    sweep_expired_cache,
+)
+from lore.repositories.config import CacheConfig, PostgresConfig, RetrievalConfig, SqliteConfig
 from lore.repositories.factory import check_health, connect, make_probe, run_migrations
 from lore.repositories.protocols import (
     AttestationsRepository,
@@ -22,6 +27,7 @@ from lore.repositories.records import (
 __all__ = [
     "AttestationRecord",
     "AttestationsRepository",
+    "CacheConfig",
     "CacheEntry",
     "CacheRepository",
     "HypothesisRecord",
@@ -40,5 +46,6 @@ __all__ = [
     "connect",
     "make_probe",
     "run_migrations",
+    "sweep_cache_loop",
     "sweep_expired_cache",
 ]

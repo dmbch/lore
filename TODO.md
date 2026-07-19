@@ -4,6 +4,26 @@ Technical debt and findings discovered during work. Each entry: what, why it mat
 
 ---
 
+## Shared pydantic vocabulary: strict model base and positivity types
+
+**Found:** 2026-07-19, `/review` discussion.
+
+**What.** `lore/_pydantic.py` now holds the shared `Duration` annotated type. The same
+module should absorb the rest of the config-model dialect: a strict frozen base model
+(`ConfigDict(frozen=True, strict=True, extra="forbid")` is hand-copied 29 times across
+src) and positivity field types (17 hand-rolled `must be > 0` / `>= 0` validators).
+
+**Why it matters.** One dialect spelled dozens of times; drift between copies is
+invisible until a model forgets `extra="forbid"` and a config typo passes silently.
+
+**Options / open questions.** Error messages are pinned by tests, so the migration
+changes test expectations. Decide whether records (non-config frozen models) join the
+base or keep their own `model_config`.
+
+**Status:** deferred; the vocabulary module exists, the sweep is its own reviewed chunk.
+
+---
+
 ## Prompt-engineering audit: research current best practice, apply to internal prompts
 
 **Found:** 2026-06-21, programmer request.
@@ -383,5 +403,9 @@ Postgres only (there is no native SQLite KV store), pulls `asyncpg`, and opens i
   there, so the custom SQLite backing earns its keep only if colocating OAuth state in the
   app's own SQLite file is worth it.
 
-**Status:** deferred; not urgent until a persistent OIDC deployment is exercised. No code
-yet. Test the mounted-volume path before building a store.
+**Status:** shipped by `build/oauth-session-persistence` (2026-07-19). The DB-backed
+option landed: `CacheRepository` over the `_cache` table on both backends, exposed to
+fastmcp through `LoreCacheStore` (`AsyncKeyValue`), the OAuth lane Fernet-wrapped by the
+adapter, expiry sweep at `[cache] sweep_interval`; MCP session state rides the same
+table. See architecture.md (Authentication; The sweep). The offline-access
+`extra_authorize_params` precondition remains deployment configuration, not code.

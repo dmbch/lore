@@ -12,8 +12,25 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from lore._pydantic import Duration
+
 _PG_FULLTEXT_CONFIG_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SQLITE_FULLTEXT_CONFIG_RE = re.compile(r"^[a-z][a-z0-9_ ]*$")
+
+
+class CacheConfig(BaseModel):
+    """Operational ``_cache`` maintenance knobs.
+
+    ``sweep_interval`` is the period of the lifespan-owned expiry sweep.
+    fastmcp stamps ``_cache`` TTLs from five minutes (OAuth auth codes)
+    to a year (refresh tokens), with 24-hour session state in between, so
+    no tick rate is ever tight; the hourly default bounds dead rows to an
+    hour of churn. Duration string (``"1h"``, ``"30m"``) or bare seconds.
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    sweep_interval: Duration = 3600.0
 
 
 class RetrievalConfig(BaseModel):

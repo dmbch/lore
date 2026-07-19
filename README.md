@@ -313,6 +313,12 @@ Only the section matching your `DATABASE_URL` backend applies.
 
 Changing `fulltext_config` on an existing database requires rebuilding the FTS index; the bootstrap health check refuses to start on mismatch.
 
+**`[cache]`**: expiry sweep for the operational `_cache` table (OAuth state, MCP session state); applies to both backends
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sweep_interval` | duration | `"1h"` | Period of the lifespan-owned sweep that deletes expired rows |
+
 </details>
 
 <details>
