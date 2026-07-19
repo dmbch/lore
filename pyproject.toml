@@ -28,6 +28,12 @@ dependencies = [
     "aiosqlite>=0.22.1",
     "pydantic>=2.13.4,<3",
     "fastmcp[apps]>=3.4.4",
+    # Direct dependency (fastmcp already ships it transitively): LoreCacheStore
+    # subclasses its BaseStore, and the encryption extra provides the Fernet
+    # wrapper for OAuth state at rest. Capped below 0.5: the store imports
+    # ManagedEntry from a private module (the library's own BaseStore contract
+    # forces it), so a minor bump carries no stability promise.
+    "py-key-value-aio[wrappers-encryption]>=0.4.5,<0.5",
 ]
 
 [dependency-groups]
