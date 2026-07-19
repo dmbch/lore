@@ -1,38 +1,8 @@
 """Epistemic hyperparameters: frozen config owned by the math layer."""
 
-import re
-
 from pydantic import BaseModel, ConfigDict, field_validator
 
-_DURATION_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([yMdhms]?)$")
-_UNITS: dict[str, int] = {
-    "y": 31536000,
-    "M": 2592000,
-    "d": 86400,
-    "h": 3600,
-    "m": 60,
-    "s": 1,
-    "": 1,
-}
-
-
-def _parse_half_life(value: str | float) -> float:
-    """Parse a duration string (`"1y"`, `"90d"`, `"24h"`, ...) or bare seconds."""
-    if isinstance(value, int | float):
-        seconds = float(value)
-    else:
-        match = _DURATION_RE.match(value.strip())
-        if not match:
-            msg = (
-                f"invalid half_life: {value!r}"
-                " (expected e.g. '1y', '3M', '90d', '24h', '60m', '3600s')"
-            )
-            raise ValueError(msg)
-        seconds = float(match.group(1)) * _UNITS[match.group(2)]
-    if seconds <= 0:
-        msg = f"half_life must be positive, got {value!r}"
-        raise ValueError(msg)
-    return seconds
+from lore._pydantic import Duration
 
 
 class EpistemicsConfig(BaseModel):
@@ -51,15 +21,10 @@ class EpistemicsConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
-    attestation_half_life: float
-    trust_half_life: float
+    attestation_half_life: Duration
+    trust_half_life: Duration
     maturity_k: float
     transfer_threshold: float = 1e-3
-
-    @field_validator("attestation_half_life", "trust_half_life", mode="before")
-    @classmethod
-    def _validate_half_life(cls, v: str | float) -> float:
-        return _parse_half_life(v)
 
     @field_validator("maturity_k")
     @classmethod
