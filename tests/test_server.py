@@ -91,6 +91,46 @@ async def test_system_clears_pool_cell_on_caller_exception(tmp_path: Path) -> No
     assert pool_cell.pool is None
 
 
+async def test_system_sweeps_expired_cache_rows_on_start(tmp_path: Path) -> None:
+    """The lifespan's sweep task deletes expired _cache rows right after
+    connect: sediment from before a restart does not survive the boot.
+    """
+    import asyncio
+
+    from lore.providers import resolve_dimensions
+    from lore.repositories import PoolCell, connect, run_migrations
+    from lore.server import system
+
+    settings = _settings_for(tmp_path / "test.db")
+    dim = resolve_dimensions(settings)
+    run_migrations(settings=settings, embedding_dim=dim)
+    seed_pool = await connect(settings)
+    async with seed_pool.session() as repos:
+        await repos.cache.put_entry(
+            collection="mcp-oauth-transactions",
+            key="stale",
+            value="{}",
+            created_at=0,
+            expires_at=1,
+        )
+    await seed_pool.close()
+
+    pool_cell = PoolCell()
+    async with system(settings, pool_cell=pool_cell):
+        pool = pool_cell.pool
+        assert pool is not None
+        for _ in range(200):
+            async with pool.session() as repos:
+                if (
+                    await repos.cache.get_entry(collection="mcp-oauth-transactions", key="stale")
+                    is None
+                ):
+                    break
+            await asyncio.sleep(0.01)
+        else:
+            pytest.fail("expired row was not swept on lifespan start")
+
+
 async def test_system_closes_pool_when_caller_raises(tmp_path: Path) -> None:
     """Behavioural port of the old setup test: real SQLite pool, caller
     raises inside the scope, the pool is released and the cell cleared.

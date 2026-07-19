@@ -8,6 +8,8 @@ owning migrations, health check, pool lifetime, and orchestrator wiring.
 Outside the layer model.
 """
 
+import asyncio
+import contextlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from functools import partial
@@ -23,12 +25,27 @@ from lore.providers import build_providers, resolve_dimensions
 from lore.repositories import (
     LoreCacheStore,
     PoolCell,
+    RepositoryPool,
     check_health,
     connect,
     make_probe,
     run_migrations,
+    sweep_expired_cache,
 )
 from lore.telemetry import configure_telemetry
+
+# Hourly: fastmcp stamps _cache TTLs from five minutes (OAuth auth codes)
+# to a year (refresh tokens), with 24-hour session state in between, so no
+# tick rate is ever tight and hourly keeps dead rows bounded to an hour of
+# churn. Not a config knob until a deployment needs one.
+_CACHE_SWEEP_INTERVAL_SECONDS = 3600.0
+
+
+async def _sweep_loop(pool: RepositoryPool, *, interval: float) -> None:
+    """Sweep immediately (restart-heavy deployments boot often), then hourly."""
+    while True:
+        await sweep_expired_cache(pool)
+        await asyncio.sleep(interval)
 
 
 async def _check_ready(cell: PoolCell) -> None:
@@ -53,15 +70,17 @@ async def system(
     """Full system lifecycle as one scope: bootstrap, pool, wiring, teardown.
 
     Runs migrations + health check, opens the pool, fills ``pool_cell``
-    (when given), and yields a wired ``Orchestrator``. The ``finally`` arm
-    clears the cell and closes the pool on any exit, including caller
-    exceptions, so ``/ready`` never vouches for a dead pool, cache storage
-    never reaches one, and connections never leak.
+    (when given), starts the expired-cache sweep task, and yields a wired
+    ``Orchestrator``. The ``finally`` arm cancels the sweep, clears the
+    cell, and closes the pool on any exit, including caller exceptions, so
+    ``/ready`` never vouches for a dead pool, cache storage never reaches
+    one, and connections never leak.
     """
     dim = resolve_dimensions(settings)
     run_migrations(settings=settings, embedding_dim=dim)
     check_health(settings=settings, embedding_dim=dim)
     pool = await connect(settings)
+    sweep = asyncio.create_task(_sweep_loop(pool, interval=_CACHE_SWEEP_INTERVAL_SECONDS))
     try:
         if pool_cell is not None:
             pool_cell.pool = pool
@@ -72,6 +91,9 @@ async def system(
             settings=settings,
         )
     finally:
+        sweep.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sweep
         if pool_cell is not None:
             pool_cell.pool = None
         await pool.close()
