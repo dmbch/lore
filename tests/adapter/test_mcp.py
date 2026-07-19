@@ -17,6 +17,7 @@ from fastmcp.tools import Tool
 from mcp.types import TextResourceContents
 from pydantic import SecretStr
 
+from lore.adapter import OidcConfig
 from lore.adapter._contract import (  # pyright: ignore[reportPrivateUsage]
     CONSULT_TOOL,
     load_server_contract,
@@ -39,6 +40,26 @@ async def _noop_system(orchestrator: Orchestrator | None = None) -> AsyncGenerat
     calls it per lifespan cycle, minting a fresh CM each time.
     """
     yield orchestrator if orchestrator is not None else MagicMock(spec=Orchestrator)
+
+
+def _with_oidc(
+    settings: LoreSettings,
+    *,
+    base_url: str | None = "https://lore.example.com",
+    extra_authorize_params: dict[str, str] | None = None,
+) -> LoreSettings:
+    """Settings with the standard test OIDC credentials; ``base_url=None`` drops the pairing."""
+    return settings.model_copy(
+        update={
+            "oidc": OidcConfig(
+                discovery_url="https://auth.example.com/.well-known/openid-configuration",
+                client_id="test-client",
+                client_secret=SecretStr("test-secret"),
+                extra_authorize_params=extra_authorize_params or {},
+            ),
+            "base_url": base_url,
+        }
+    )
 
 
 @pytest.fixture()
@@ -462,19 +483,9 @@ def test_build_auth_returns_none_without_oidc(settings: LoreSettings) -> None:
 
 
 def test_build_auth_returns_none_without_base_url(settings: LoreSettings) -> None:
-    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    oidc_settings = settings.model_copy(
-        update={
-            "oidc": OidcConfig(
-                discovery_url="https://auth.example.com/.well-known/openid-configuration",
-                client_id="test-client",
-                client_secret=SecretStr("test-secret"),
-            ),
-        }
-    )
-    assert _build_auth(oidc_settings) is None
+    assert _build_auth(_with_oidc(settings, base_url=None)) is None
 
 
 def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -> None:
@@ -484,19 +495,9 @@ def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -
     structurally. Per-kwarg tests below cover the trust-grading additions
     (`required_scopes`, `verify_id_token`, `extra_authorize_params`).
     """
-    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    oidc_settings = settings.model_copy(
-        update={
-            "oidc": OidcConfig(
-                discovery_url="https://auth.example.com/.well-known/openid-configuration",
-                client_id="test-client",
-                client_secret=SecretStr("test-secret"),
-            ),
-            "base_url": "https://lore.example.com",
-        }
-    )
+    oidc_settings = _with_oidc(settings)
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
         result = _build_auth(oidc_settings)
     kwargs = mock_proxy.call_args.kwargs
@@ -509,21 +510,10 @@ def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -
 
 def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None:
     """openid is hardcoded at the OIDCProxy boundary: the minimum OIDC guarantees an id_token."""
-    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    oidc_settings = settings.model_copy(
-        update={
-            "oidc": OidcConfig(
-                discovery_url="https://auth.example.com/.well-known/openid-configuration",
-                client_id="test-client",
-                client_secret=SecretStr("test-secret"),
-            ),
-            "base_url": "https://lore.example.com",
-        }
-    )
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
-        _build_auth(oidc_settings)
+        _build_auth(_with_oidc(settings))
     assert mock_proxy.call_args.kwargs["required_scopes"] == ["openid"]
 
 
@@ -531,19 +521,10 @@ def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None
 def test_build_auth_forwards_verify_id_token_from_auth_section(
     settings: LoreSettings, *, verify: bool
 ) -> None:
-    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    oidc_settings = settings.model_copy(
-        update={
-            "oidc": OidcConfig(
-                discovery_url="https://auth.example.com/.well-known/openid-configuration",
-                client_id="test-client",
-                client_secret=SecretStr("test-secret"),
-            ),
-            "base_url": "https://lore.example.com",
-            "auth": settings.auth.model_copy(update={"verify_id_token": verify}),
-        }
+    oidc_settings = _with_oidc(settings).model_copy(
+        update={"auth": settings.auth.model_copy(update={"verify_id_token": verify})}
     )
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
         _build_auth(oidc_settings)
@@ -554,23 +535,84 @@ def test_build_auth_forwards_extra_authorize_params_from_settings(
     settings: LoreSettings,
 ) -> None:
     """Non-empty extra_authorize_params flows through verbatim (e.g. Google's hd=)."""
-    from lore.adapter import OidcConfig
     from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    oidc_settings = settings.model_copy(
-        update={
-            "oidc": OidcConfig(
-                discovery_url="https://auth.example.com/.well-known/openid-configuration",
-                client_id="test-client",
-                client_secret=SecretStr("test-secret"),
-                extra_authorize_params={"hd": "example.com"},
-            ),
-            "base_url": "https://lore.example.com",
-        }
-    )
+    oidc_settings = _with_oidc(settings, extra_authorize_params={"hd": "example.com"})
     with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
         _build_auth(oidc_settings)
     assert mock_proxy.call_args.kwargs["extra_authorize_params"] == {"hd": "example.com"}
+
+
+def test_build_auth_wraps_the_storage_into_client_storage(
+    settings: LoreSettings,
+) -> None:
+    """With OIDC on, the injected store reaches OIDCProxy Fernet-wrapped:
+    the adapter owns the encryption because it owns the key material.
+    Crypto behavior lives in ``test_oauth_storage.py``.
+
+    A real in-memory store, not a mock: the wrapper's beartype guard
+    checks the AsyncKeyValue protocol at construction.
+    """
+    from key_value.aio.stores.memory import MemoryStore
+    from key_value.aio.wrappers.encryption.fernet import FernetEncryptionWrapper
+
+    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+
+    store = MemoryStore()
+    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+        _build_auth(_with_oidc(settings), storage=store)
+    forwarded = mock_proxy.call_args.kwargs["client_storage"]
+    assert isinstance(forwarded, FernetEncryptionWrapper)
+    assert forwarded.key_value is store
+
+
+def test_build_auth_without_oidc_spends_no_encryption(settings: LoreSettings) -> None:
+    """No OIDC, no wrap: PBKDF2 key derivation is never spent on a server
+    without auth. The OIDC guard in _build_auth is the one decision point;
+    the composition root passes storage unconditionally.
+    """
+    from key_value.aio.stores.memory import MemoryStore
+
+    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+
+    with patch("lore.adapter.mcp.FernetEncryptionWrapper") as mock_wrapper:
+        assert _build_auth(settings, storage=MemoryStore()) is None
+    mock_wrapper.assert_not_called()
+
+
+def test_build_auth_defaults_client_storage_to_none(settings: LoreSettings) -> None:
+    """None reaches OIDCProxy, whose own code path builds the file-store default."""
+    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+
+    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+        _build_auth(_with_oidc(settings))
+    assert mock_proxy.call_args.kwargs["client_storage"] is None
+
+
+def test_create_server_forwards_storage_to_build_auth(settings: LoreSettings) -> None:
+    storage = MagicMock()
+    with patch("lore.adapter.mcp._build_auth", return_value=None) as mock_build:
+        create_server(settings=settings, system=_noop_system, storage=storage)
+    assert mock_build.call_args.kwargs["storage"] is storage
+
+
+def test_create_server_forwards_storage_to_fastmcp_session_state(
+    settings: LoreSettings,
+) -> None:
+    """The same injected store reaches FastMCP bare as its session-state
+    backend; collections keep it isolated from the encrypted OAuth lane.
+    """
+    storage = MagicMock()
+    server = create_server(settings=settings, system=_noop_system, storage=storage)
+    assert server._state_storage is storage  # pyright: ignore[reportPrivateUsage]
+
+
+def test_create_server_defaults_session_state_to_fastmcp_memory(settings: LoreSettings) -> None:
+    """Without an injected store, fastmcp's in-memory default stays in charge."""
+    from key_value.aio.stores.memory import MemoryStore
+
+    server = create_server(settings=settings, system=_noop_system)
+    assert isinstance(server._state_storage, MemoryStore)  # pyright: ignore[reportPrivateUsage]
 
 
 async def test_token_with_non_string_sub_claim_raises_tool_error(
