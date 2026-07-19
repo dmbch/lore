@@ -8,9 +8,8 @@ owning migrations, health check, pool lifetime, and orchestrator wiring.
 Outside the layer model.
 """
 
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from functools import partial
 
 from fastmcp import FastMCP
@@ -21,52 +20,51 @@ from lore.domain import StorageError
 from lore.math import build_math
 from lore.orchestrator import Orchestrator
 from lore.providers import build_providers, resolve_dimensions
-from lore.repositories import check_health, connect, make_probe, run_migrations
+from lore.repositories import (
+    LoreCacheStore,
+    PoolCell,
+    check_health,
+    connect,
+    make_probe,
+    run_migrations,
+)
 from lore.telemetry import configure_telemetry
 
 
-@dataclass
-class ProbeCell:
-    """Mutable holder tying the readiness probe to the pool lifetime.
+async def _check_ready(cell: PoolCell) -> None:
+    """/ready probe over the shared pool cell.
 
-    Deliberately mutable (the project default is frozen): the factory must
-    hand ``create_server`` a stable ``health_probe`` callable before the
-    pool exists. Each lifespan cycle fills ``probe`` after connect and
-    clears it on exit, so ``check()`` raises ``StorageError`` (the /ready
-    503 shape) whenever no cycle is live, and delegates to the live probe
-    in between.
+    Raises ``StorageError`` (the /ready 503 shape) whenever no lifespan
+    cycle is live, and probes the live pool in between.
     """
-
-    probe: Callable[[], Awaitable[None]] | None = None
-
-    async def check(self) -> None:
-        # Capture once so the lifespan clearing ``self.probe`` cannot race the
-        # call, even if an await ever lands between the check and the call.
-        probe = self.probe
-        if probe is None:
-            msg = "system not ready: repository pool is not connected"
-            raise StorageError(msg)
-        await probe()
+    # Capture once so the lifespan clearing ``cell.pool`` cannot race the
+    # call, even if an await ever lands between the check and the probe.
+    pool = cell.pool
+    if pool is None:
+        msg = "system not ready: repository pool is not connected"
+        raise StorageError(msg)
+    await make_probe(pool)()
 
 
 @asynccontextmanager
 async def system(
-    settings: LoreSettings, *, cell: ProbeCell | None = None
+    settings: LoreSettings, *, pool_cell: PoolCell | None = None
 ) -> AsyncGenerator[Orchestrator]:
     """Full system lifecycle as one scope: bootstrap, pool, wiring, teardown.
 
-    Runs migrations + health check, opens the pool, fills ``cell`` (when
-    given), and yields a wired ``Orchestrator``. The ``finally`` arm clears
-    the cell and closes the pool on any exit, including caller exceptions,
-    so ``/ready`` never vouches for a dead pool and connections never leak.
+    Runs migrations + health check, opens the pool, fills ``pool_cell``
+    (when given), and yields a wired ``Orchestrator``. The ``finally`` arm
+    clears the cell and closes the pool on any exit, including caller
+    exceptions, so ``/ready`` never vouches for a dead pool, cache storage
+    never reaches one, and connections never leak.
     """
     dim = resolve_dimensions(settings)
     run_migrations(settings=settings, embedding_dim=dim)
     check_health(settings=settings, embedding_dim=dim)
     pool = await connect(settings)
     try:
-        if cell is not None:
-            cell.probe = make_probe(pool)
+        if pool_cell is not None:
+            pool_cell.pool = pool
         yield Orchestrator(
             pool=pool,
             providers=build_providers(settings),
@@ -74,8 +72,8 @@ async def system(
             settings=settings,
         )
     finally:
-        if cell is not None:
-            cell.probe = None
+        if pool_cell is not None:
+            pool_cell.pool = None
         await pool.close()
 
 
@@ -86,18 +84,24 @@ def server() -> FastMCP[Orchestrator]:
     ``system``'s lifespan, entered later by the runtime. ``fastmcp run``
     accepts sync or async factories. Telemetry precedes settings load so
     the ``bootstrap.env`` log from ``load_settings`` routes through the
-    structlog bridge. The probe and the orchestrator share one pool via
-    ``system``; ``cell.check`` gives ``/ready`` a truthful answer across
-    the whole process lifetime.
+    structlog bridge. One ``PoolCell`` ties every repository-backed
+    capability (the readiness probe, the operational state storage) to
+    the pool lifetime ``system`` owns; both are composed here and
+    injected, so the adapter never imports the repository layer.
     """
     configure_telemetry()
     settings = load_settings()
-    cell = ProbeCell()
+    pool_cell = PoolCell()
     return create_server(
         settings=settings,
         # A factory, not a CM instance: each lifespan cycle opens a fresh
         # system scope (FastMCP re-enters the lifespan per client session
         # on the in-memory transport).
-        system=partial(system, settings, cell=cell),
-        health_probe=cell.check,
+        system=partial(system, settings, pool_cell=pool_cell),
+        health_probe=partial(_check_ready, pool_cell),
+        # One bare store; the adapter assigns it to fastmcp's storage
+        # slots (session state verbatim, the OAuth lane Fernet-wrapped),
+        # so the OIDC secret never transits the composition root or the
+        # repository layer. Collections keep the lanes isolated.
+        storage=LoreCacheStore(pool_cell=pool_cell),
     )
