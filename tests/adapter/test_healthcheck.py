@@ -98,7 +98,7 @@ def test_ready_fails_closed_when_no_probe_configured(settings: LoreSettings) -> 
     """Without a probe, ``/ready`` answers 503: fail closed.
 
     A composition root that forgot to wire the probe must not vouch for
-    readiness. The production factory always injects ``cell.check``;
+    readiness. The production factory always injects ``_check_ready``;
     stdio mode never serves the route.
     """
     client = _client(_server(settings))

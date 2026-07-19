@@ -36,39 +36,71 @@ async def test_system_yields_wired_orchestrator(tmp_path: Path) -> None:
         assert isinstance(orchestrator, Orchestrator)
 
 
-async def test_system_fills_probe_cell_inside_scope(tmp_path: Path) -> None:
-    """``cell.check()`` passes while the pool is live and raises after exit,
+async def test_ready_check_passes_inside_scope_and_raises_after(tmp_path: Path) -> None:
+    """``_check_ready`` passes while the pool is live and raises after exit,
     so ``/ready`` answers 200 only inside the lifespan scope.
     """
-    from lore.server import ProbeCell, system
+    from lore.repositories import PoolCell
+    from lore.server import _check_ready, system  # pyright: ignore[reportPrivateUsage]
 
     settings = _settings_for(tmp_path / "test.db")
-    cell = ProbeCell()
-    async with system(settings, cell=cell):
-        await cell.check()
+    pool_cell = PoolCell()
+    async with system(settings, pool_cell=pool_cell):
+        await _check_ready(pool_cell)
 
     with pytest.raises(StorageError):
-        await cell.check()
+        await _check_ready(pool_cell)
 
 
-async def test_probe_cell_check_before_start_raises_storage_error() -> None:
+async def test_ready_check_before_start_raises_storage_error() -> None:
     """A fresh cell answers not-ready: the /ready-503 shape before startup."""
-    from lore.server import ProbeCell
+    from lore.repositories import PoolCell
+    from lore.server import _check_ready  # pyright: ignore[reportPrivateUsage]
 
-    cell = ProbeCell()
     with pytest.raises(StorageError):
-        await cell.check()
+        await _check_ready(PoolCell())
+
+
+async def test_system_fills_pool_cell_inside_scope(tmp_path: Path) -> None:
+    """``pool_cell.pool`` is live inside the lifespan and cleared after exit,
+    so OAuth token storage never reaches a dead pool.
+    """
+    from lore.repositories import PoolCell
+    from lore.server import system
+
+    settings = _settings_for(tmp_path / "test.db")
+    pool_cell = PoolCell()
+    async with system(settings, pool_cell=pool_cell):
+        assert pool_cell.pool is not None
+
+    assert pool_cell.pool is None
+
+
+async def test_system_clears_pool_cell_on_caller_exception(tmp_path: Path) -> None:
+    """The cell is cleared on the exception exit, mirroring the probe cell."""
+    from lore.repositories import PoolCell
+    from lore.server import system
+
+    settings = _settings_for(tmp_path / "test.db")
+    pool_cell = PoolCell()
+    with pytest.raises(RuntimeError, match="caller boom"):
+        async with system(settings, pool_cell=pool_cell):
+            assert pool_cell.pool is not None
+            raise RuntimeError("caller boom")
+
+    assert pool_cell.pool is None
 
 
 async def test_system_closes_pool_when_caller_raises(tmp_path: Path) -> None:
     """Behavioural port of the old setup test: real SQLite pool, caller
     raises inside the scope, the pool is released and the cell cleared.
     """
+    from lore.repositories import PoolCell
     from lore.repositories import connect as real_connect
-    from lore.server import ProbeCell, system
+    from lore.server import _check_ready, system  # pyright: ignore[reportPrivateUsage]
 
     settings = _settings_for(tmp_path / "test.db")
-    cell = ProbeCell()
+    pool_cell = PoolCell()
 
     pool_ref: list[RepositoryPool] = []
 
@@ -81,7 +113,7 @@ async def test_system_closes_pool_when_caller_raises(tmp_path: Path) -> None:
         patch("lore.server.connect", new=capturing_connect),
         pytest.raises(RuntimeError, match="caller boom"),
     ):
-        async with system(settings, cell=cell):
+        async with system(settings, pool_cell=pool_cell):
             raise RuntimeError("caller boom")
 
     # The underlying aiosqlite connection is closed; a fresh session()
@@ -92,7 +124,7 @@ async def test_system_closes_pool_when_caller_raises(tmp_path: Path) -> None:
 
     # The cell is cleared on the exception exit: /ready answers 503 again.
     with pytest.raises(StorageError):
-        await cell.check()
+        await _check_ready(pool_cell)
 
 
 async def test_server_factory_builds_fastmcp_instance(
@@ -144,7 +176,7 @@ def test_server_factory_wires_ready_probe_to_pool_lifetime(
 ) -> None:
     """``/ready`` answers 503 before the lifespan, 200 inside, 503 after.
 
-    Pins the factory's ``health_probe=cell.check`` wiring: an unwired
+    Pins the factory's ``health_probe=_check_ready`` wiring: an unwired
     ``None`` probe would answer 200 unconditionally, so the pre-lifespan
     503 is the observable difference.
     """
@@ -159,6 +191,55 @@ def test_server_factory_wires_ready_probe_to_pool_lifetime(
         with client:
             assert client.get("/ready").status_code == 200
         assert client.get("/ready").status_code == 503
+
+
+def test_server_factory_wires_oauth_storage_into_auth(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With OIDC configured, the factory hands OIDCProxy the Lore-backed,
+    Fernet-wrapped client storage instead of fastmcp's local file default.
+
+    ``OIDCProxy`` is patched because its constructor fetches the discovery
+    document over the network; the assertion targets what the factory
+    passed it. OIDC arrives via env (``OIDC_URL``/``BASE_URL``), the only
+    channel ``load_settings`` reads it from.
+    """
+    from key_value.aio.wrappers.encryption.fernet import FernetEncryptionWrapper
+
+    from lore.server import server
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "lore.toml").write_text(_COMPLETE_TOML.read_text())
+    env = {
+        "DATABASE_URL": "sqlite:///:memory:",
+        "OIDC_URL": "oidc://test-client:test-secret@auth.example.com/authorize",
+        "BASE_URL": "https://lore.example.com",
+    }
+    with (
+        patch.dict(os.environ, env, clear=True),
+        patch("lore.adapter.mcp.OIDCProxy") as mock_proxy,
+    ):
+        server()
+    assert isinstance(mock_proxy.call_args.kwargs["client_storage"], FernetEncryptionWrapper)
+
+
+def test_server_factory_wires_session_state_into_repository_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MCP session state lands in the repository-backed store, not fastmcp's
+    in-memory default: session state survives restarts in every topology,
+    so no OIDC env is configured here.
+    """
+    from lore.repositories import LoreCacheStore
+    from lore.server import server
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "lore.toml").write_text(_COMPLETE_TOML.read_text())
+    env = {"DATABASE_URL": "sqlite:///:memory:"}
+    with patch.dict(os.environ, env, clear=True):
+        instance = server()
+    state_storage = instance._state_storage  # pyright: ignore[reportPrivateUsage]
+    assert isinstance(state_storage, LoreCacheStore)
 
 
 def test_server_factory_emits_bootstrap_env_log_through_structlog(
