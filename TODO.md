@@ -58,26 +58,6 @@ release gate, parallelized, is part of this fix.
 
 ---
 
-## Shared pydantic vocabulary: strict model base and positivity types
-
-**Found:** 2026-07-19, `/review` discussion.
-
-**What.** `lore/_pydantic.py` now holds the shared `Duration` annotated type. The same
-module should absorb the rest of the config-model dialect: a strict frozen base model
-(`ConfigDict(frozen=True, strict=True, extra="forbid")` is hand-copied 29 times across
-src) and positivity field types (17 hand-rolled `must be > 0` / `>= 0` validators).
-
-**Why it matters.** One dialect spelled dozens of times; drift between copies is
-invisible until a model forgets `extra="forbid"` and a config typo passes silently.
-
-**Options / open questions.** Error messages are pinned by tests, so the migration
-changes test expectations. Decide whether records (non-config frozen models) join the
-base or keep their own `model_config`.
-
-**Status:** deferred; the vocabulary module exists, the sweep is its own reviewed chunk.
-
----
-
 ## Evaluation harness: retrieval recall and prompt regression
 
 **Found:** 2026-07-19, TODO sweep; carried from the prompt-audit (2026-06-21) and
