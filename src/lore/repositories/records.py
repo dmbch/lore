@@ -8,26 +8,25 @@ Hot-path reads use ``model_construct()`` to skip validation since the
 database already enforces the same constraints.
 """
 
-import math
 import uuid
 from collections.abc import Iterable
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
+from pydantic import NonNegativeInt, ValidationInfo, field_validator
+
+from lore._pydantic import DataModel, NonEmptyStr, SignedUnitInterval, UnitInterval
 
 # Row dicts come from database cursors (aiosqlite Row or psycopg dict_row).
 # The actual value types are driver-determined: Any is unavoidable here.
 type _Row = dict[str, Any]
 
 
-class HypothesisRecord(BaseModel):
+class HypothesisRecord(DataModel):
     """A stored hypothesis. No embedding, no epistemic state."""
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
     id: str
-    content: str
-    created_at: int
+    content: NonEmptyStr
+    created_at: NonNegativeInt
 
     @field_validator("id")
     @classmethod
@@ -39,22 +38,6 @@ class HypothesisRecord(BaseModel):
             raise ValueError(msg) from None
         return v
 
-    @field_validator("content")
-    @classmethod
-    def _validate_content(cls, v: str) -> str:
-        if not v:
-            msg = "content must be non-empty"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("created_at")
-    @classmethod
-    def _validate_created_at(cls, v: int) -> int:
-        if v < 0:
-            msg = f"created_at must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
 
 class HypothesisResult(HypothesisRecord):
     """A hypothesis with retrieval scores from two-lane search.
@@ -62,10 +45,10 @@ class HypothesisResult(HypothesisRecord):
     ``score`` is the composite RRF score in ``[0, 1]`` (Cormack et al. 2009);
     per-lane RRF intermediates are computed in SQL but not surfaced here:
     no caller consumes them. ``proximity`` is the raw cosine similarity in
-    ``[-1, 1]`` (1 - cosine_distance), defaulting to 0.0 for rows that did
-    not surface in the proximity lane. 0.0 is the "no signal" default for
-    authority-only rows; negative values are reserved for genuine vector
-    dissimilarity.
+    ``[-1, 1]`` up to engine float noise (1 - cosine_distance; the enrich
+    stage clamps), defaulting to 0.0 for rows that did not surface in the
+    proximity lane. 0.0 is the "no signal" default for authority-only rows;
+    negative values are reserved for genuine vector dissimilarity.
 
     Bounds are enforced by the SQL RRF formula (``1/(k+rank)``, k=60, so each
     lane contributes in ``(0, 1/61]``; the weighted sum stays in ``[0, 1]``)
@@ -78,21 +61,23 @@ class HypothesisResult(HypothesisRecord):
     proximity: float = 0.0
 
 
-class AttestationRecord(BaseModel):
+class AttestationRecord(DataModel):
     """A stored ledger entry. Schema mirrors the ledger table: see IDEA.md §The Ledger."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
 
     id: str
     hypothesis_id: str
-    oracle_id: str
-    correlation_id: str
-    timestamp: int
-    t_oracle: float
-    c_oracle_raw: float
-    c_oracle_discounted: float
-    c_herd: float
-    n_oracle_prior: int
+    oracle_id: NonEmptyStr
+    correlation_id: NonEmptyStr
+    timestamp: NonNegativeInt
+    t_oracle: UnitInterval
+    # Storage bounds: [-1, 1], the mathematical domain for a confidence scalar.
+    # Trust discounting (P_effective < 1 for K >= 1) is the pipeline policy that
+    # prevents dogmatic opinions from reaching ECBF. The storage layer only rejects
+    # values outside the mathematical domain.
+    c_oracle_raw: SignedUnitInterval
+    c_oracle_discounted: SignedUnitInterval
+    c_herd: SignedUnitInterval
+    n_oracle_prior: NonNegativeInt
 
     @field_validator("id", "hypothesis_id")
     @classmethod
@@ -105,54 +90,8 @@ class AttestationRecord(BaseModel):
             raise ValueError(msg) from None
         return v
 
-    @field_validator("oracle_id", "correlation_id")
-    @classmethod
-    def _validate_non_empty_fields(cls, v: str, info: ValidationInfo) -> str:
-        if not v:
-            field_name = info.field_name
-            msg = f"{field_name} must be non-empty"
-            raise ValueError(msg)
-        return v
 
-    @field_validator("timestamp")
-    @classmethod
-    def _validate_timestamp(cls, v: int) -> int:
-        if v < 0:
-            msg = f"timestamp must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("t_oracle")
-    @classmethod
-    def _validate_t_oracle(cls, v: float) -> float:
-        if not math.isfinite(v) or v < 0.0 or v > 1.0:
-            msg = f"t_oracle must be in [0, 1], got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("c_oracle_raw", "c_oracle_discounted", "c_herd")
-    @classmethod
-    def _validate_confidence_fields(cls, v: float, info: ValidationInfo) -> float:
-        # Storage bounds: [-1, 1], the mathematical domain for a confidence scalar.
-        # Trust discounting (P_effective < 1 for K >= 1) is the pipeline policy that
-        # prevents dogmatic opinions from reaching ECBF. The storage layer only rejects
-        # values outside the mathematical domain.
-        if not math.isfinite(v) or v < -1.0 or v > 1.0:
-            field_name = info.field_name
-            msg = f"{field_name} must be in [-1, 1], got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("n_oracle_prior")
-    @classmethod
-    def _validate_n_oracle_prior(cls, v: int) -> int:
-        if v < 0:
-            msg = f"n_oracle_prior must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-
-class RequestRecord(BaseModel):
+class RequestRecord(DataModel):
     """A stored request. One row per consult call.
 
     Structured columns mirror the ``ConsultLoreRequest`` payload plus the
@@ -164,50 +103,21 @@ class RequestRecord(BaseModel):
     domain boundary.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
-    id: str  # = correlation_id; FK target for attestations
-    oracle_id: str
-    timestamp: int
+    id: NonEmptyStr  # = correlation_id; FK target for attestations
+    oracle_id: NonEmptyStr
+    timestamp: NonNegativeInt
     question: str | None = None
     context: str | None = None
     hypothesis: str | None = None
     reasoning: str | None = None
-    confidence: float | None = None
-
-    @field_validator("id", "oracle_id")
-    @classmethod
-    def _validate_non_empty_fields(cls, v: str, info: ValidationInfo) -> str:
-        if not v:
-            field_name = info.field_name
-            msg = f"{field_name} must be non-empty"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("timestamp")
-    @classmethod
-    def _validate_timestamp(cls, v: int) -> int:
-        if v < 0:
-            msg = f"timestamp must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("confidence")
-    @classmethod
-    def _validate_confidence(cls, v: float | None) -> float | None:
-        # Storage bounds: [-1, 1], the mathematical domain for a confidence
-        # scalar. The math service enforces the tighter epistemic policy
-        # downstream. ``None`` is the genuine "no confidence submitted" signal
-        # and passes through unchanged.
-        if v is None:
-            return v
-        if not math.isfinite(v) or v < -1.0 or v > 1.0:
-            msg = f"confidence must be in [-1, 1], got {v}"
-            raise ValueError(msg)
-        return v
+    # Storage bounds: [-1, 1], the mathematical domain for a confidence
+    # scalar. The math service enforces the tighter epistemic policy
+    # downstream. ``None`` is the genuine "no confidence submitted" signal
+    # and passes through unchanged.
+    confidence: SignedUnitInterval | None = None
 
 
-class CacheEntry(BaseModel):
+class CacheEntry(DataModel):
     """A stored key-value row: operational cache state, not epistemic evidence.
 
     Serves OAuth client registrations, upstream tokens, and MCP session
@@ -217,38 +127,11 @@ class CacheEntry(BaseModel):
     ``expires_at`` is ``None`` for entries without TTL.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
-    collection: str
-    key: str
+    collection: NonEmptyStr
+    key: NonEmptyStr
     value: str
-    created_at: int
-    expires_at: int | None = None
-
-    @field_validator("collection", "key")
-    @classmethod
-    def _validate_non_empty_fields(cls, v: str, info: ValidationInfo) -> str:
-        if not v:
-            field_name = info.field_name
-            msg = f"{field_name} must be non-empty"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("created_at")
-    @classmethod
-    def _validate_created_at(cls, v: int) -> int:
-        if v < 0:
-            msg = f"created_at must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("expires_at")
-    @classmethod
-    def _validate_expires_at(cls, v: int | None) -> int | None:
-        if v is not None and v < 0:
-            msg = f"expires_at must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
+    created_at: NonNegativeInt
+    expires_at: NonNegativeInt | None = None
 
 
 # ---------------------------------------------------------------------------

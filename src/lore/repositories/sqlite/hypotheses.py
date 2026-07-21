@@ -154,10 +154,10 @@ class SqliteHypothesisRepository:
 
         # k=60: Cormack et al. 2009 standard RRF constant.
         rrf_prox = "COALESCE(1.0 / (60 + l1.rank), 0.0)"
-        # ``proximity`` is the raw cosine similarity in [-1, 1]
-        # (1 - cosine_distance from sqlite-vec). Authority-only rows missed
-        # the proximity lane and COALESCE to 0.0; negative values would mean
-        # genuine vector dissimilarity.
+        # ``proximity`` is the raw cosine similarity in [-1, 1] up to engine
+        # float noise (1 - cosine_distance from sqlite-vec; the enrich stage
+        # clamps). Authority-only rows missed the proximity lane and COALESCE
+        # to 0.0; negative values would mean genuine vector dissimilarity.
         proximity = "COALESCE(1.0 - l1.distance, 0.0)"
 
         sql = (
