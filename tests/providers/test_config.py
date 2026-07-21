@@ -94,3 +94,17 @@ def test_embedding_model_config_round_trips_extra_kwargs_through_model_dump() ->
     dumped = cfg.model_dump()
     assert dumped["model"] == "x"
     assert dumped["custom"] == "y"
+
+
+def test_model_config_keeps_frozen_with_allow_override() -> None:
+    """extra='allow' is a one-key config override: frozen/strict still apply.
+
+    Guards the config-merge trap this chunk must not fall into: overriding
+    a single ConfigDict key on a ConfigModel subclass must not silently
+    drop the inherited frozen/strict behavior.
+    """
+    mc = ModelConfig(model="test/m")
+    with pytest.raises(ValidationError, match="frozen"):
+        mc.model = "other/m"  # pyright: ignore[reportAttributeAccessIssue]
+    with pytest.raises(ValidationError):
+        ModelConfig(model="test/m", max_tokens="not-an-int")  # pyright: ignore[reportArgumentType]

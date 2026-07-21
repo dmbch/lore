@@ -5,41 +5,33 @@ itself; every other key round-trips via ``model_dump`` and flows to LiteLLM
 unchanged (see ``docs/architecture.md`` §LLM Providers).
 """
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import ConfigDict, PositiveInt
+
+from lore._pydantic import ConfigModel
 
 
-class TaskTypeConfig(BaseModel):
+class TaskTypeConfig(ConfigModel):
     """Vendor-specific embedding task types. Unset keys are omitted from the LiteLLM call."""
-
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     document: str | None = None
     question: str | None = None
     verification: str | None = None
 
 
-class EmbeddingModelConfig(BaseModel):
+class EmbeddingModelConfig(ConfigModel):
     """Embedding model config. `extra='allow'` so unrecognised keys round-trip to LiteLLM."""
 
-    model_config = ConfigDict(frozen=True, strict=True, extra="allow")
+    model_config = ConfigDict(extra="allow")
 
     model: str
-    dimensions: int | None = None
+    dimensions: PositiveInt | None = None
     task_type: TaskTypeConfig | None = None
 
-    @field_validator("dimensions")
-    @classmethod
-    def _validate_dimensions(cls, v: int | None) -> int | None:
-        if v is not None and v <= 0:
-            msg = f"dimensions must be > 0, got {v}"
-            raise ValueError(msg)
-        return v
 
-
-class ModelConfig(BaseModel):
+class ModelConfig(ConfigModel):
     """Completion model config. `extra='allow'` so unrecognised keys round-trip to LiteLLM."""
 
-    model_config = ConfigDict(frozen=True, strict=True, extra="allow")
+    model_config = ConfigDict(extra="allow")
 
     model: str
     temperature: float | None = None
