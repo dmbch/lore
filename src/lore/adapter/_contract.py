@@ -19,19 +19,14 @@ consumer holds the typed root and reaches its parts by attribute, e.g.
 from collections.abc import Mapping
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-
+from lore._pydantic import ConfigModel
 from lore.prompts import load_contract
 
 # The client-facing name shared by the consult tool and the consult prompt.
 CONSULT_TOOL = "consult"
 
 
-class _Strict(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-class _ConsultFields(_Strict):
+class _ConsultFields(ConfigModel):
     """The consult tool's five parameter descriptions."""
 
     question: str
@@ -41,27 +36,27 @@ class _ConsultFields(_Strict):
     confidence: str
 
 
-class _ConsultTool(_Strict):
+class _ConsultTool(ConfigModel):
     """The consult tool's client-facing docs: its description and field docs."""
 
     description: str
     fields: _ConsultFields
 
 
-class _ObserveTool(_Strict):
+class _ObserveTool(ConfigModel):
     """The observe UI tool's client-facing docs: a description, no params."""
 
     description: str
 
 
-class _Tools(_Strict):
+class _Tools(ConfigModel):
     """The server's tool set: consult (the write path) and observe (the UI)."""
 
     consult: _ConsultTool
     observe: _ObserveTool
 
 
-class ServerContract(_Strict):
+class ServerContract(ConfigModel):
     """The server's client-facing docs: ambient instructions and its tools."""
 
     instructions: str
