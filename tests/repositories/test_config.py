@@ -69,7 +69,7 @@ def test_retrieval_config_limit_zero_raises() -> None:
 
 
 def test_retrieval_config_max_keywords_zero_raises() -> None:
-    with pytest.raises(ValidationError, match="must be > 0"):
+    with pytest.raises(ValidationError, match="max_keywords"):
         RetrievalConfig(proximity=0.5, authority=0.5, limit=10, fan_out=2, max_keywords=0)
 
 
@@ -141,6 +141,11 @@ def test_postgres_config_timeout_zero_raises() -> None:
 def test_postgres_config_timeout_negative_raises() -> None:
     with pytest.raises(ValidationError, match="timeout"):
         PostgresConfig(min_size=1, max_size=20, timeout=-1.0, max_waiting=50)
+
+
+def test_postgres_config_timeout_inf_raises() -> None:
+    with pytest.raises(ValidationError, match="timeout"):
+        PostgresConfig(min_size=1, max_size=20, timeout=math.inf, max_waiting=50)
 
 
 def test_postgres_config_max_waiting_negative_raises() -> None:
