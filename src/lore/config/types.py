@@ -2,8 +2,9 @@
 
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import model_validator
 
+from lore._pydantic import ConfigModel
 from lore.adapter.config import AuthConfig, LimitsConfig, OidcConfig, ServerConfig
 from lore.math.config import EpistemicsConfig
 from lore.prompts.config import PromptsConfig
@@ -11,10 +12,8 @@ from lore.providers.config import EmbeddingModelConfig, ModelConfig
 from lore.repositories.config import CacheConfig, PostgresConfig, RetrievalConfig, SqliteConfig
 
 
-class LoreSettings(BaseModel):
+class LoreSettings(ConfigModel):
     """The single config object passed to bootstrap."""
-
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     # serverInfo.version. Never empty: FastMCP falls back to fastmcp.__version__
     # on a falsy value, leaking the framework version to clients. The loader fills

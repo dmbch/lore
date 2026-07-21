@@ -7,13 +7,11 @@ model is constructed.
 
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
+from lore._pydantic import ConfigModel
 
 
-class PromptsConfig(BaseModel):
+class PromptsConfig(ConfigModel):
     """Resolved prompt paths. Bundled defaults (`bundled:name`) are resolved by the loader."""
-
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     narrative: Path | None = None
     glossary: Path | None = None
