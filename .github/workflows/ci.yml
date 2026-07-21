@@ -7,3 +7,10 @@ permissions:
 jobs:
   tests:
     uses: ./.github/workflows/tests.yml
+  # Fails the PR if it introduces a dependency with a known vulnerability,
+  # via the dependency graph diff (which reads uv.lock).
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/dependency-review-action@v5
