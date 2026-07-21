@@ -1,11 +1,9 @@
 """Epistemic hyperparameters: frozen config owned by the math layer."""
 
-from pydantic import BaseModel, ConfigDict, field_validator
-
-from lore._pydantic import Duration
+from lore._pydantic import ConfigModel, Duration, NonNegativeFiniteFloat, PositiveFiniteFloat
 
 
-class EpistemicsConfig(BaseModel):
+class EpistemicsConfig(ConfigModel):
     """The four epistemic hyperparameters (IDEA.md, The Hyperparameters).
 
     `maturity_k` is the half-saturation constant K. It also governs the
@@ -19,25 +17,7 @@ class EpistemicsConfig(BaseModel):
     "informationally meaningful" independently of float precision.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
     attestation_half_life: Duration
     trust_half_life: Duration
-    maturity_k: float
-    transfer_threshold: float = 1e-3
-
-    @field_validator("maturity_k")
-    @classmethod
-    def _validate_maturity_k(cls, v: float) -> float:
-        if v < 0:
-            msg = f"maturity_k must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("transfer_threshold")
-    @classmethod
-    def _validate_transfer_threshold(cls, v: float) -> float:
-        if v <= 0:
-            msg = f"transfer_threshold must be > 0, got {v}"
-            raise ValueError(msg)
-        return v
+    maturity_k: NonNegativeFiniteFloat
+    transfer_threshold: PositiveFiniteFloat = 1e-3

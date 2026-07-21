@@ -1,5 +1,7 @@
 """Tests for EpistemicsConfig: the four epistemic hyperparameters."""
 
+import math
+
 import pytest
 from pydantic import ValidationError
 
@@ -83,6 +85,14 @@ def test_maturity_k_zero_is_valid_transparent_mode() -> None:
     assert ec.maturity_k == 0
 
 
+def test_maturity_k_rejects_inf() -> None:
+    # inf drives M to 0 for every hypothesis: all writes land vacuous, silently.
+    with pytest.raises(ValidationError, match="maturity_k"):
+        EpistemicsConfig(
+            attestation_half_life=_90_DAYS, trust_half_life=_90_DAYS, maturity_k=math.inf
+        )
+
+
 # ---------------------------------------------------------------------------
 # transfer_threshold
 # ---------------------------------------------------------------------------
@@ -101,6 +111,17 @@ def test_rejects_nonpositive_transfer_threshold(bad: float) -> None:
 
 def test_transfer_threshold_defaults_to_one_thousandth() -> None:
     assert _epistemics(_90_DAYS).transfer_threshold == 1e-3
+
+
+def test_transfer_threshold_rejects_inf() -> None:
+    # An infinite floor means no transfer row is ever epistemically significant.
+    with pytest.raises(ValidationError, match="transfer_threshold"):
+        EpistemicsConfig(
+            attestation_half_life=_90_DAYS,
+            trust_half_life=_90_DAYS,
+            maturity_k=1.0,
+            transfer_threshold=math.inf,
+        )
 
 
 def test_accepts_explicit_transfer_threshold() -> None:
