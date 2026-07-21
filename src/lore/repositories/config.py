@@ -10,15 +10,15 @@ must be trusted by construction.
 import re
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import NonNegativeInt, PositiveInt, field_validator, model_validator
 
-from lore._pydantic import Duration
+from lore._pydantic import ConfigModel, Duration, PositiveFiniteFloat, UnitInterval
 
 _PG_FULLTEXT_CONFIG_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _SQLITE_FULLTEXT_CONFIG_RE = re.compile(r"^[a-z][a-z0-9_ ]*$")
 
 
-class CacheConfig(BaseModel):
+class CacheConfig(ConfigModel):
     """Operational ``_cache`` maintenance knobs.
 
     ``sweep_interval`` is the period of the lifespan-owned expiry sweep.
@@ -28,35 +28,15 @@ class CacheConfig(BaseModel):
     hour of churn. Duration string (``"1h"``, ``"30m"``) or bare seconds.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
     sweep_interval: Duration = 3600.0
 
 
-class RetrievalConfig(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
-    proximity: float
-    authority: float
-    limit: int
-    fan_out: int
-    max_keywords: int
-
-    @field_validator("proximity", "authority")
-    @classmethod
-    def _validate_weight(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            msg = f"must be in [0, 1], got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("limit", "fan_out", "max_keywords")
-    @classmethod
-    def _validate_positive(cls, v: int) -> int:
-        if v <= 0:
-            msg = f"must be > 0, got {v}"
-            raise ValueError(msg)
-        return v
+class RetrievalConfig(ConfigModel):
+    proximity: UnitInterval
+    authority: UnitInterval
+    limit: PositiveInt
+    fan_out: PositiveInt
+    max_keywords: PositiveInt
 
     @model_validator(mode="after")
     def _validate_weight_sum(self) -> Self:
@@ -78,15 +58,13 @@ class RetrievalConfig(BaseModel):
         return (self.proximity, self.authority)
 
 
-class PostgresConfig(BaseModel):
+class PostgresConfig(ConfigModel):
     """Postgres pool tunables. `fulltext_config` is any installed `regconfig`."""
 
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
-    min_size: int
-    max_size: int
-    timeout: float
-    max_waiting: int
+    min_size: PositiveInt
+    max_size: PositiveInt
+    timeout: PositiveFiniteFloat
+    max_waiting: NonNegativeInt
     fulltext_config: str = "english"
 
     @field_validator("fulltext_config")
@@ -102,30 +80,6 @@ class PostgresConfig(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("min_size", "max_size")
-    @classmethod
-    def _validate_positive_size(cls, v: int) -> int:
-        if v <= 0:
-            msg = f"must be > 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("timeout")
-    @classmethod
-    def _validate_timeout(cls, v: float) -> float:
-        if v <= 0:
-            msg = f"timeout must be > 0, got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("max_waiting")
-    @classmethod
-    def _validate_max_waiting(cls, v: int) -> int:
-        if v < 0:
-            msg = f"max_waiting must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
-
     @model_validator(mode="after")
     def _validate_size_ordering(self) -> Self:
         if self.max_size < self.min_size:
@@ -134,12 +88,10 @@ class PostgresConfig(BaseModel):
         return self
 
 
-class SqliteConfig(BaseModel):
+class SqliteConfig(ConfigModel):
     """SQLite tunables. `fulltext_config` is an FTS5 `tokenize=` spec; use
     `unicode61` for non-English deployments.
     """
-
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
     fulltext_config: str = "porter unicode61"
 
