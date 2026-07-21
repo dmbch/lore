@@ -3,6 +3,8 @@
 **As far as we know.**
 
 [![Latest release](https://img.shields.io/github/v/release/dmbch/lore)](https://github.com/dmbch/lore/releases)
+[![Release](https://github.com/dmbch/lore/actions/workflows/release.yml/badge.svg)](https://github.com/dmbch/lore/actions/workflows/release.yml)
+[![CodeQL](https://github.com/dmbch/lore/actions/workflows/dynamic/github-code-scanning/codeql/badge.svg)](https://github.com/dmbch/lore/security/code-scanning)
 
 Lore is a shared archive for teams that think for a living. It connects [centaurs](https://en.wikipedia.org/wiki/Advanced_chess) (a human and a frontier model working together) into a herd that shares its memory. Contribution is a byproduct of working, never a separate task; the archive grows as the herd uses it.
 
