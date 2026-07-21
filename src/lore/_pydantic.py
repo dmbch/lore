@@ -10,7 +10,14 @@ guard: pydantic model bases and field types only, never a junk drawer.
 import re
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, ValidationInfo
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationInfo,
+)
 
 
 class DataModel(BaseModel):
@@ -61,3 +68,16 @@ def _parse_duration(value: str | float, info: ValidationInfo) -> float:
 # "24h", "60m", "3600s") or bare numbers. The BeforeValidator runs ahead of
 # strict-mode coercion, so string inputs are legal even under strict=True.
 Duration = Annotated[float, BeforeValidator(_parse_duration)]
+
+# ge/le bounds reject NaN and +/-inf for free: comparisons against NaN are
+# always False and inf/-inf fail the opposite bound, so no isfinite check
+# is needed on top.
+UnitInterval = Annotated[float, Field(ge=0.0, le=1.0)]
+SignedUnitInterval = Annotated[float, Field(ge=-1.0, le=1.0)]
+
+# A one-sided bound alone lets +inf through (inf >= 0 is True); allow_inf_nan
+# closes it for fields where an infinite value would be silent nonsense.
+PositiveFiniteFloat = Annotated[float, Field(gt=0.0, allow_inf_nan=False)]
+NonNegativeFiniteFloat = Annotated[float, Field(ge=0.0, allow_inf_nan=False)]
+
+NonEmptyStr = Annotated[str, StringConstraints(min_length=1)]
