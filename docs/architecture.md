@@ -21,7 +21,7 @@ Lore is an async-first system. The MCP adapter, orchestrator, repositories, and 
 **Default stance:**
 - **Async for I/O.** All repository and provider Protocol methods are `async`. The orchestrator is async. The math service is sync: its operations are pure.
 - **Thread-safe for shared state.** Module-level mutable state (singletons, registries, configuration guards) must use `threading.Lock`.
-- **Immutable by default.** Pydantic `BaseModel(frozen=True, strict=True)` for validated data at boundaries (records, config, request/response). `NamedTuple` for immutable named structure (math primitives, Protocol bundles, thin facades). No dataclasses, save the deliberately mutable lifecycle cell (`PoolCell`): mutability is its mechanism, documented in place. Mutable state is opt-in, documented, and guarded.
+- **Immutable by default.** Validated data at boundaries (records, config, request/response) takes the shared pydantic bases in `lore._pydantic`: `DataModel` (`frozen=True, strict=True`) for domain types and records, `ConfigModel` (same, plus `extra="forbid"`) for config sections and the MCP contract. `NamedTuple` for immutable named structure (math primitives, Protocol bundles, thin facades). No dataclasses, save the deliberately mutable lifecycle cell (`PoolCell`): mutability is its mechanism, documented in place. Mutable state is opt-in, documented, and guarded.
 
 ---
 
@@ -185,7 +185,7 @@ Model strings come from config (`LoreSettings`), injected at construction.
 
 ### Domain Module
 
-Shared vocabulary for the entire system. The `lore.domain` package defines domain types (frozen Pydantic `BaseModel`s like `TrustSignal`) and domain exceptions (`StorageError`, `InferenceError`, `DuplicateRecord`, `IntegrityViolation`). No logic, no I/O, just pure data definitions. Every layer imports from `lore.domain`; `lore.domain` imports from nothing. It is the leaf dependency in the import graph.
+Shared vocabulary for the entire system. The `lore.domain` package defines domain types (`DataModel` subclasses like `TrustSignal`) and domain exceptions (`StorageError`, `InferenceError`, `DuplicateRecord`, `IntegrityViolation`). No logic, no I/O, just pure data definitions. Every layer imports from `lore.domain`; `lore.domain` imports nothing but `lore._pydantic`, layer zero beneath every layer (the shared model bases and field types). Among the layers, `lore.domain` is the leaf dependency in the import graph.
 
 Repositories and providers catch implementation-specific errors and raise domain exceptions. The adapter catches domain exceptions and maps them to MCP error responses. No layer ever imports implementation-specific errors from another layer.
 
