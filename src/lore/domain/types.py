@@ -1,21 +1,15 @@
 """Cross-layer types for the consult execution loop, in pipeline order.
 
-Leaf dependency in the import graph: every layer may import from here; this
-module imports from nothing in the project.
+Leaf dependency among the layers: every layer may import from here; this
+module imports nothing but ``lore._pydantic``, layer zero beneath every layer.
 """
 
-import math
 from datetime import date
 from typing import NamedTuple, Self
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
+from pydantic import Field, NonNegativeInt, field_validator, model_validator
+
+from lore._pydantic import DataModel, NonEmptyStr, SignedUnitInterval, UnitInterval
 
 # --- Identity ---
 
@@ -27,33 +21,17 @@ TRANSFER_ORACLE = "_transfer"
 """Synthetic oracle ID for epistemic transfer attestations."""
 
 
-def _check_confidence(*, value: float, field_name: str | None) -> float:
-    if not math.isfinite(value) or value < -1.0 or value > 1.0:
-        msg = f"{field_name} must be in [-1, 1], got {value}"
-        raise ValueError(msg)
-    return value
-
-
-def _check_non_negative(*, value: int, field_name: str | None) -> int:
-    if value < 0:
-        msg = f"{field_name} must be >= 0, got {value}"
-        raise ValueError(msg)
-    return value
-
-
 # --- MCP boundary ---
 
 
-class ConsultLoreRequest(BaseModel):
+class ConsultLoreRequest(DataModel):
     """MCP input for consult, all fields optional."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
 
     question: str | None = None
     context: str | None = None
     hypothesis: str | None = None
     reasoning: str | None = None
-    confidence: float | None = None
+    confidence: SignedUnitInterval | None = None
 
     @field_validator("question", "context", "hypothesis", "reasoning", mode="before")
     @classmethod
@@ -77,18 +55,9 @@ class ConsultLoreRequest(BaseModel):
             raise ValueError(msg)
         return self
 
-    @field_validator("confidence")
-    @classmethod
-    def _validate_confidence(cls, v: float | None, info: ValidationInfo) -> float | None:
-        if v is not None:
-            _check_confidence(value=v, field_name=info.field_name)
-        return v
 
-
-class ConsultLoreResponse(BaseModel):
+class ConsultLoreResponse(DataModel):
     """MCP output: the Archivist's synthesized answer."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
 
     answer: str
 
@@ -96,10 +65,8 @@ class ConsultLoreResponse(BaseModel):
 # --- Interpret stage ---
 
 
-class InterpreterInput(BaseModel):
+class InterpreterInput(DataModel):
     """Passthrough from MCP request to the Interpreter, plus the consult date."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
 
     question: str | None = None
     hypothesis: str | None = None
@@ -109,10 +76,8 @@ class InterpreterInput(BaseModel):
     today: date
 
 
-class InterpreterOutput(BaseModel):
+class InterpreterOutput(DataModel):
     """Interpreter result: normalized question, decomposed propositions, keywords."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
 
     question: str | None = Field(
         default=None, description="Normalized question text for consistent embedding"
@@ -136,7 +101,7 @@ class InterpreterOutput(BaseModel):
 # --- Retrieve stage ---
 
 
-class SearchResult(BaseModel):
+class SearchResult(DataModel):
     """Retrieval candidate with scores and epistemic snapshot.
 
     ``score`` is the composite RRF score in ``[0, 1]`` from two-lane search.
@@ -146,47 +111,19 @@ class SearchResult(BaseModel):
     ``None`` when the hypothesis has never been attested.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
     id: str
     content: str
-    c_herd: float
-    attestation_count: int
+    c_herd: SignedUnitInterval
+    attestation_count: NonNegativeInt
     last_attested: date | None
-    score: float
-    proximity: float = 0.0
-
-    @field_validator("c_herd")
-    @classmethod
-    def _validate_c_herd(cls, v: float, info: ValidationInfo) -> float:
-        return _check_confidence(value=v, field_name=info.field_name)
-
-    @field_validator("score")
-    @classmethod
-    def _validate_score(cls, v: float) -> float:
-        if not math.isfinite(v) or v < 0.0 or v > 1.0:
-            msg = f"score must be in [0, 1], got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("proximity")
-    @classmethod
-    def _validate_proximity(cls, v: float) -> float:
-        if not math.isfinite(v) or v < -1.0 or v > 1.0:
-            msg = f"proximity must be in [-1, 1], got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("attestation_count")
-    @classmethod
-    def _validate_non_negative_int(cls, v: int, info: ValidationInfo) -> int:
-        return _check_non_negative(value=v, field_name=info.field_name)
+    score: UnitInterval
+    proximity: SignedUnitInterval = 0.0
 
 
 # --- Observe stage ---
 
 
-class FrontierEntry(BaseModel):
+class FrontierEntry(DataModel):
     """One uncertainty-frontier row: a hypothesis with its current epistemic snapshot.
 
     ``c_herd`` is the projected herd consensus scalar in ``[-1, 1]``;
@@ -195,41 +132,19 @@ class FrontierEntry(BaseModel):
     ``None`` when the hypothesis has never been attested.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
     id: str
     content: str
-    c_herd: float
-    uncertainty: float
-    attestation_count: int
+    c_herd: SignedUnitInterval
+    uncertainty: UnitInterval
+    attestation_count: NonNegativeInt
     last_attested: date | None
-
-    @field_validator("c_herd")
-    @classmethod
-    def _validate_c_herd(cls, v: float, info: ValidationInfo) -> float:
-        return _check_confidence(value=v, field_name=info.field_name)
-
-    @field_validator("uncertainty")
-    @classmethod
-    def _validate_uncertainty(cls, v: float, info: ValidationInfo) -> float:
-        if not math.isfinite(v) or v < 0.0 or v > 1.0:
-            msg = f"{info.field_name} must be in [0, 1], got {v}"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("attestation_count")
-    @classmethod
-    def _validate_non_negative_int(cls, v: int, info: ValidationInfo) -> int:
-        return _check_non_negative(value=v, field_name=info.field_name)
 
 
 # --- Reason stage ---
 
 
-class ArchivistInput(BaseModel):
+class ArchivistInput(DataModel):
     """Archivist input, unified for both read and write paths."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
 
     question: str | None = None
     hypothesis: str | None = None
@@ -241,7 +156,7 @@ class ArchivistInput(BaseModel):
     today: date
 
 
-class Resolution(BaseModel):
+class Resolution(DataModel):
     """Proposition-centric resolution: one per inbound proposition.
 
     Exactly one primary is set:
@@ -252,15 +167,13 @@ class Resolution(BaseModel):
     the proposition is mutually exclusive with.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
-    corroborates: str | None = Field(
+    corroborates: NonEmptyStr | None = Field(
         default=None, description="Existing hypothesis ID this proposition paraphrases"
     )
-    contributes: str | None = Field(
+    contributes: NonEmptyStr | None = Field(
         default=None, description="Novel proposition content entering the archive"
     )
-    contradicts: list[str] = Field(
+    contradicts: list[NonEmptyStr] = Field(
         default_factory=list, description="IDs of contradicted hypotheses"
     )
 
@@ -279,36 +192,9 @@ class Resolution(BaseModel):
             raise ValueError(msg)
         return self
 
-    @field_validator("corroborates")
-    @classmethod
-    def _validate_corroborates(cls, v: str | None) -> str | None:
-        if v is not None and not v:
-            msg = "corroborates must be non-empty"
-            raise ValueError(msg)
-        return v
 
-    @field_validator("contributes")
-    @classmethod
-    def _validate_contributes(cls, v: str | None) -> str | None:
-        if v is not None and not v:
-            msg = "contributes must be non-empty"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("contradicts")
-    @classmethod
-    def _validate_contradicts(cls, v: list[str]) -> list[str]:
-        for id_ in v:
-            if not id_:
-                msg = "all IDs in contradicts must be non-empty strings"
-                raise ValueError(msg)
-        return v
-
-
-class ArchivistOutput(BaseModel):
+class ArchivistOutput(DataModel):
     """Archivist output, unified for both read and write paths."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
 
     reasoning: str = Field(
         description="Step-by-step analysis of the consult against the retrieved knowledge"
@@ -371,7 +257,7 @@ class ArchivistOutput(BaseModel):
 # --- Record stage / math wire ---
 
 
-class TrustSignal(BaseModel):
+class TrustSignal(DataModel):
     """One attestation's alignment context for oracle trust computation.
 
     Cross-layer boundary type: the repository produces these from SQL window
@@ -384,23 +270,11 @@ class TrustSignal(BaseModel):
     defence against rows that bypass those constraints.
     """
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
-    c_oracle_raw: float
-    timestamp: int
-    c_herd_prior: float
-    c_herd_now: float
-    n_oracle_prior: int
-
-    @field_validator("c_oracle_raw", "c_herd_prior", "c_herd_now")
-    @classmethod
-    def _validate_confidence(cls, v: float, info: ValidationInfo) -> float:
-        return _check_confidence(value=v, field_name=info.field_name)
-
-    @field_validator("timestamp", "n_oracle_prior")
-    @classmethod
-    def _validate_non_negative_int(cls, v: int, info: ValidationInfo) -> int:
-        return _check_non_negative(value=v, field_name=info.field_name)
+    c_oracle_raw: SignedUnitInterval
+    timestamp: NonNegativeInt
+    c_herd_prior: SignedUnitInterval
+    c_herd_now: SignedUnitInterval
+    n_oracle_prior: NonNegativeInt
 
 
 class EvidenceInput(NamedTuple):
@@ -424,33 +298,10 @@ class AttestationComputed(NamedTuple):
     c_herd: float
 
 
-class WriteContext(BaseModel):
+class WriteContext(DataModel):
     """Per-consult write coordinates threaded verbatim through every attestation."""
 
-    model_config = ConfigDict(frozen=True, strict=True)
-
-    oracle_id: str
-    correlation_id: str
-    confidence: float
-    t_now: int
-
-    @field_validator("oracle_id", "correlation_id")
-    @classmethod
-    def _validate_non_empty(cls, v: str, info: ValidationInfo) -> str:
-        if not v:
-            msg = f"{info.field_name} must be non-empty"
-            raise ValueError(msg)
-        return v
-
-    @field_validator("confidence")
-    @classmethod
-    def _validate_confidence(cls, v: float, info: ValidationInfo) -> float:
-        return _check_confidence(value=v, field_name=info.field_name)
-
-    @field_validator("t_now")
-    @classmethod
-    def _validate_t_now(cls, v: int) -> int:
-        if v < 0:
-            msg = f"t_now must be >= 0, got {v}"
-            raise ValueError(msg)
-        return v
+    oracle_id: NonEmptyStr
+    correlation_id: NonEmptyStr
+    confidence: SignedUnitInterval
+    t_now: NonNegativeInt

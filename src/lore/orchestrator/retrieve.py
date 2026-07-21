@@ -119,7 +119,9 @@ async def enrich(
                     attestation_count=len(raw),
                     last_attested=last_attested,
                     score=candidate.score,
-                    proximity=candidate.proximity,
+                    # Engine cosine (pgvector, sqlite-vec) can overshoot the
+                    # algebraic ±1 by float noise; SearchResult would reject it.
+                    proximity=min(1.0, max(-1.0, candidate.proximity)),
                 )
             )
         return enriched
