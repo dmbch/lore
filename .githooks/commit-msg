@@ -1,4 +1,8 @@
 #!/bin/sh
-# Lint the commit message against [tool.commitizen] — the same check CI runs.
+# Lint the commit message against [tool.commitizen]: the same check CI runs.
 # Enable once per clone: git config core.hooksPath .githooks
+if grep -v '^#' "$1" | grep -q '—'; then
+  echo "commit-msg: em-dash found; use a colon, comma, or parens" >&2
+  exit 1
+fi
 exec uv run cz check --commit-msg-file "$1"
