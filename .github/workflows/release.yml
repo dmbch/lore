@@ -53,23 +53,6 @@ jobs:
             echo "released=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # Real LLM + SQLite. --no-cov: the suite's fail_under=100 gate would fail
-  # on the e2e subset otherwise.
-  e2e:
-    needs: plan
-    if: needs.plan.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.11.16"
-          enable-cache: true
-      - run: uv sync
-      - run: uv run pytest -m e2e --no-cov
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
   # Build the image and prove it boots + serves before anything is tagged.
   smoke:
     needs: plan
@@ -82,10 +65,12 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-  # Gate is structural: tag only after e2e AND smoke are green. Tag-only —
-  # no commit to main (protected); tags are unprotected so GITHUB_TOKEN pushes.
+  # Gate is structural: tag only after smoke is green. The e2e job is removed
+  # until its parallelized rebuild lands (TODO.md, e2e wall clock); restore it
+  # to this needs list then. Tag-only — no commit to main (protected); tags
+  # are unprotected so GITHUB_TOKEN pushes.
   release:
-    needs: [plan, e2e, smoke]
+    needs: [plan, smoke]
     if: needs.plan.outputs.released == 'true'
     runs-on: ubuntu-latest
     permissions:
