@@ -58,7 +58,7 @@ def _parse_duration(value: str | float, info: ValidationInfo) -> float:
             )
             raise ValueError(msg)
         seconds = float(match.group(1)) * _UNITS[match.group(2)]
-    if seconds <= 0:
+    if not seconds > 0:  # `<= 0` would be False for NaN; this form rejects it
         msg = f"{field} must be positive, got {value!r}"
         raise ValueError(msg)
     return seconds

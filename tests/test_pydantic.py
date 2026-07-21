@@ -9,6 +9,7 @@ from pydantic import ConfigDict, ValidationError
 from lore._pydantic import (
     ConfigModel,
     DataModel,
+    Duration,
     NonEmptyStr,
     NonNegativeFiniteFloat,
     PositiveFiniteFloat,
@@ -156,3 +157,16 @@ class TestNonNegativeFiniteFloat:
             _NonNegativeFiniteFloatExample(value=math.nan)
         with pytest.raises(ValidationError):
             _NonNegativeFiniteFloatExample(value=math.inf)
+
+
+class _DurationExample(DataModel):
+    value: Duration
+
+
+class TestDuration:
+    def test_duration_rejects_nan(self) -> None:
+        with pytest.raises(ValidationError, match="must be positive"):
+            _DurationExample(value=math.nan)
+
+    def test_duration_accepts_inf(self) -> None:
+        assert _DurationExample(value=math.inf).value == math.inf
