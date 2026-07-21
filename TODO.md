@@ -4,6 +4,60 @@ Technical debt and findings discovered during work. Each entry: what, why it mat
 
 ---
 
+## E2E wall clock: parallelize, cheapen judging, pre-seed the archive
+
+**Found:** 2026-07-20, deploy-flow triage; the release e2e job exceeds 30 minutes.
+
+**What.** The e2e job (`release.yml`) runs 34 tests strictly sequentially: roughly
+100 live Gemini round-trips, the archivist at `reasoning_effort = "high"` (15-40s
+per call). Pure latency stacking. Three levers:
+
+1. **pytest-xdist.** `-n 8 --dist loadgroup`; an `xdist_group` marker pins the
+   ordered knowledge arc to one worker. Session fixtures become per-worker, each
+   with its own SQLite file: strictly less cross-test retrieval pollution than
+   today's shared archive. Add `--durations=20` so CI reports where time goes.
+   Expected: wall clock collapses toward the longest chain, ~5 minutes.
+2. **Fast model for all judging.** Judging is binary semantic checking, well below
+   the graded task's difficulty, and the fast role already pins `temperature = 0.0`.
+   The `grader` parameter and the decorrelation comment in `tests/e2e/conftest.py`
+   dissolve. Accepted cost: interpreter suites are judged by the model under test's
+   own weights.
+3. **Pre-seeded archive.** A golden SQLite fixture replaces live `_seed()` consults
+   in the aggregation and decay suites: the priciest and flakiest arrange step, since
+   a seed misresolving against another seed poisons its probe. A mise task rebuilds
+   the fixture through the real pipeline (real embeddings, real ledger math), run
+   manually when seeds, prompts, or models change. Swap-in copies the file per
+   worker and re-bases attestation timestamps to the session clock so fixture age
+   never leaks into decay math; the bootstrap embedding-model health check makes a
+   stale fixture fail loud. The knowledge arc keeps live seeding: the arc is the
+   write path under test.
+
+**Why it matters.** The e2e job sits on the release critical path; every merge to
+main pays it in wall clock, tokens, and flake exposure. Levers 2 and 3 also cut
+cost and flakiness independently of speed.
+
+**Options / open questions.**
+
+- Golden fixture storage: committed binary vs CI cache keyed on seed script, prompts,
+  and model ids. Embeddings are not byte-reproducible, so rebuilds churn a committed
+  blob; a cache miss in CI needs a key with live-LLM access. Lean committed, decide
+  at build time.
+- Seed identity: recover hypothesis ids by correlation_id at session start (as
+  `_seed` does today, minus the LLM calls) or have the rebuild task emit a
+  manifest. Lean correlation_id: no second artifact to drift.
+- xdist parallelism assumes a paid-tier Gemini key; free-tier RPM would throttle
+  workers back to sequential. Verify before sizing `-n`.
+- The golden archive and the evaluation-harness fixture corpus (see that entry)
+  likely converge: one corpus, two consumers. Build lever 3 with that in mind.
+- Minor: `plan` could run parallel to `gate` in `release.yml`, starting e2e a few
+  minutes earlier.
+
+**Status:** open; not started. Interim (2026-07-21): the e2e job is removed from
+`release.yml` entirely; it was blocking releases outright. Restoring it to the
+release gate, parallelized, is part of this fix.
+
+---
+
 ## Shared pydantic vocabulary: strict model base and positivity types
 
 **Found:** 2026-07-19, `/review` discussion.
