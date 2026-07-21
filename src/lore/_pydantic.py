@@ -1,18 +1,29 @@
-"""Shared pydantic vocabulary: annotated field types for config models.
+"""Shared pydantic vocabulary: model bases and annotated field types.
 
-Config models live with the layer that owns them, so anything they share
-needs a home every layer may import. This is it: a leaf module importing
-nothing from ``lore`` (a shared type under ``lore.config`` would cycle,
-since that package's barrel imports the section models back out of the
-layers). Scope guard: pydantic field types and model bases only, never a
-junk drawer. The strict frozen model base and positivity types join
-``Duration`` here when that sweep lands (see TODO.md).
+Models live with the layer that owns them, so anything they share needs a
+home every layer may import. This is it: layer zero, a leaf module importing
+nothing from ``lore`` (a shared type under ``lore.config`` would cycle, since that
+package's barrel imports the section models back out of the layers). Scope
+guard: pydantic model bases and field types only, never a junk drawer.
 """
 
 import re
 from typing import Annotated
 
-from pydantic import BeforeValidator, ValidationInfo
+from pydantic import BaseModel, BeforeValidator, ConfigDict, ValidationInfo
+
+
+class DataModel(BaseModel):
+    """Base for domain types and repository records: immutable, strict types, extra ignored."""
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+
+class ConfigModel(BaseModel):
+    """Base for config sections and the MCP contract: immutable, strict types, extra forbidden."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
 
 _DURATION_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([yMdhms]?)$")
 _UNITS: dict[str, int] = {
