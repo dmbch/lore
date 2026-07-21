@@ -1,7 +1,7 @@
 """Domain vocabulary: shared types and exceptions.
 
-Leaf dependency in the import graph. Every layer may import from here;
-this package imports from nothing.
+Leaf dependency among the layers. Every layer may import from here; this
+package imports nothing but ``lore._pydantic``, layer zero beneath every layer.
 """
 
 from lore.domain.errors import (

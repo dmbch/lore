@@ -16,6 +16,7 @@ psycopg version dropping its internal lock cannot regress the system.
 import asyncio
 import importlib.resources
 import itertools
+import math as _math
 import time
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
@@ -34,7 +35,7 @@ from lore.domain import (
 )
 from lore.math import EpistemicsConfig, MathService
 from lore.orchestrator import Orchestrator
-from lore.orchestrator.retrieve import search_candidates
+from lore.orchestrator.retrieve import enrich, search_candidates
 from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
@@ -368,3 +369,35 @@ class TestSearchCandidatesForwardsKeywordList:
         )
 
         assert hypotheses.received == [["content delivery network", "latency"]]
+
+
+class TestEnrichClampsEngineFloatNoise:
+    """Engine cosine similarity can overshoot the algebraic range by an ulp.
+
+    pgvector and sqlite-vec compute ``1 - distance`` in engine floats;
+    near-identical vectors can land at ``1 + ulp``. ``SearchResult`` bounds
+    ``proximity`` as ``SignedUnitInterval``, so an unclamped pass-through
+    turns a healthy consult into a validation error.
+    """
+
+    def _candidate(self, *, proximity: float) -> HypothesisResult:
+        return HypothesisResult(
+            id="00000000-0000-0000-0000-0000000000b1",
+            content="content",
+            created_at=0,
+            score=0.5,
+            proximity=proximity,
+        )
+
+    async def test_enrich_clamps_proximity_overshoot_to_the_rails(self) -> None:
+        for overshoot, rail in [
+            (_math.nextafter(1.0, 2.0), 1.0),
+            (_math.nextafter(-1.0, -2.0), -1.0),
+        ]:
+            enriched = await enrich(
+                candidates=[self._candidate(proximity=overshoot)],
+                attestations=_NoopAttestations(),
+                math=_make_math(),
+                t_now=0,
+            )
+            assert enriched[0].proximity == rail
