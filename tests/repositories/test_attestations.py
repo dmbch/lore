@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from lore.domain import IntegrityViolation, StorageError
+from lore.domain import TRANSFER_ORACLE, EvidenceInput, IntegrityViolation, StorageError
 from lore.repositories import AttestationRecord
 from lore.repositories.protocols import (
     AttestationsRepository,
@@ -13,6 +13,7 @@ from lore.repositories.protocols import (
     RequestRepository,
 )
 from lore.repositories.records import generate_id
+from tests.repositories.conftest import NO_DECAY_TRUST_HL as _NO_DECAY_HL
 from tests.repositories.conftest import seed_hypothesis, seed_request
 
 
@@ -342,6 +343,204 @@ class TestFindByHypotheses:
         assert timestamps == [1000, 2000, 3000]
 
 
+async def _append_evidence_row(
+    repo: AttestationsRepository,
+    *,
+    hypothesis_id: str,
+    oracle_id: str,
+    timestamp: int,
+    c_oracle_discounted: float = 0.25,
+    record_id: str | None = None,
+) -> None:
+    """Append a row with the fields ``fetch_herd_evidence`` projects.
+
+    Requires the parent request row for correlation
+    ``00000000-0000-0000-0000-000000000c01`` (see :func:`seed_request`).
+    """
+    await repo.append(
+        AttestationRecord(
+            id=record_id or generate_id(),
+            hypothesis_id=hypothesis_id,
+            oracle_id=oracle_id,
+            correlation_id="00000000-0000-0000-0000-000000000c01",
+            timestamp=timestamp,
+            t_oracle=0.5,
+            c_oracle_raw=0.5,
+            c_oracle_discounted=c_oracle_discounted,
+            c_herd=0.4,
+            n_oracle_prior=0,
+        )
+    )
+
+
+class TestFetchHerdEvidence:
+    """Others-only fusion evidence per hypothesis, for the trust witness rule."""
+
+    async def test_fetch_herd_evidence_excludes_oracle_rows(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        await _append_evidence_row(
+            attestations_repo,
+            hypothesis_id=h_id,
+            oracle_id="sub:oracle-X",
+            timestamp=100,
+            c_oracle_discounted=0.125,
+        )
+        await _append_evidence_row(
+            attestations_repo,
+            hypothesis_id=h_id,
+            oracle_id="sub:oracle-Y",
+            timestamp=200,
+            c_oracle_discounted=0.25,
+        )
+        result = await attestations_repo.fetch_herd_evidence(
+            [h_id],
+            exclude_oracle="sub:oracle-X",
+            t_now=1000,
+            attestation_half_life=_NO_DECAY_HL,
+        )
+        assert result[h_id] == [EvidenceInput(c_oracle_discounted=0.25, timestamp=200)]
+
+    async def test_fetch_herd_evidence_includes_transfer_rows(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """The synthetic ``_transfer`` oracle is an ordinary includable oracle."""
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        await _append_evidence_row(
+            attestations_repo,
+            hypothesis_id=h_id,
+            oracle_id=TRANSFER_ORACLE,
+            timestamp=100,
+            c_oracle_discounted=-0.5,
+        )
+        result = await attestations_repo.fetch_herd_evidence(
+            [h_id],
+            exclude_oracle="sub:oracle-X",
+            t_now=1000,
+            attestation_half_life=_NO_DECAY_HL,
+        )
+        assert result[h_id] == [EvidenceInput(c_oracle_discounted=-0.5, timestamp=100)]
+
+    async def test_fetch_herd_evidence_applies_decay_window(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """Window is [t_now - 5 * half_life, t_now]; infinite half-life keeps all history."""
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        for ts in (100, 600, 1500):  # stale, in-window, future
+            await _append_evidence_row(
+                attestations_repo,
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-Y",
+                timestamp=ts,
+            )
+        windowed = await attestations_repo.fetch_herd_evidence(
+            [h_id],
+            exclude_oracle="sub:oracle-X",
+            t_now=1000,
+            attestation_half_life=100.0,
+        )
+        assert [row.timestamp for row in windowed[h_id]] == [600]
+        unwindowed = await attestations_repo.fetch_herd_evidence(
+            [h_id],
+            exclude_oracle="sub:oracle-X",
+            t_now=1000,
+            attestation_half_life=float("inf"),
+        )
+        assert [row.timestamp for row in unwindowed[h_id]] == [100, 600]
+
+    async def test_fetch_herd_evidence_empty_for_unwitnessed(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """Solo and unattested hypotheses map to empty lists, keys present."""
+        h_solo = await seed_hypothesis(hypothesis_repo)
+        unattested = "00000000-0000-0000-0000-000000000000"
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        await _append_evidence_row(
+            attestations_repo,
+            hypothesis_id=h_solo,
+            oracle_id="sub:oracle-X",
+            timestamp=100,
+        )
+        result = await attestations_repo.fetch_herd_evidence(
+            [h_solo, unattested],
+            exclude_oracle="sub:oracle-X",
+            t_now=1000,
+            attestation_half_life=_NO_DECAY_HL,
+        )
+        assert result == {h_solo: [], unattested: []}
+
+    async def test_fetch_herd_evidence_empty_input_returns_empty_dict(
+        self, attestations_repo: AttestationsRepository
+    ) -> None:
+        result = await attestations_repo.fetch_herd_evidence(
+            [],
+            exclude_oracle="sub:oracle-X",
+            t_now=1000,
+            attestation_half_life=_NO_DECAY_HL,
+        )
+        assert result == {}
+
+    async def test_fetch_herd_evidence_orders_by_timestamp_then_id(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """Equal timestamps tie-break on id; insertion order does not leak through."""
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        await _append_evidence_row(
+            attestations_repo,
+            hypothesis_id=h_id,
+            oracle_id="sub:oracle-Y",
+            timestamp=200,
+            c_oracle_discounted=0.25,
+            record_id="00000000-0000-0000-0000-00000000000b",
+        )
+        await _append_evidence_row(
+            attestations_repo,
+            hypothesis_id=h_id,
+            oracle_id="sub:oracle-Y",
+            timestamp=200,
+            c_oracle_discounted=0.125,
+            record_id="00000000-0000-0000-0000-00000000000a",
+        )
+        await _append_evidence_row(
+            attestations_repo,
+            hypothesis_id=h_id,
+            oracle_id="sub:oracle-Y",
+            timestamp=100,
+            c_oracle_discounted=0.0625,
+        )
+        result = await attestations_repo.fetch_herd_evidence(
+            [h_id],
+            exclude_oracle="sub:oracle-X",
+            t_now=1000,
+            attestation_half_life=_NO_DECAY_HL,
+        )
+        assert result[h_id] == [
+            EvidenceInput(c_oracle_discounted=0.0625, timestamp=100),
+            EvidenceInput(c_oracle_discounted=0.125, timestamp=200),
+            EvidenceInput(c_oracle_discounted=0.25, timestamp=200),
+        ]
+
+
 class TestStorageError:
     async def test_append_raises(
         self,
@@ -394,6 +593,20 @@ class TestStorageError:
                 oracle_id="sub:oracle-A",
                 t_now=1000,
                 trust_half_life=1e12,
+            )
+
+    async def test_fetch_herd_evidence_raises(
+        self,
+        sabotage_connection: Callable[[], Awaitable[None]],
+        attestations_repo: AttestationsRepository,
+    ) -> None:
+        await sabotage_connection()
+        with pytest.raises(StorageError):
+            await attestations_repo.fetch_herd_evidence(
+                ["00000000-0000-0000-0000-000000000000"],
+                exclude_oracle="sub:oracle-A",
+                t_now=1000,
+                attestation_half_life=1e12,
             )
 
 

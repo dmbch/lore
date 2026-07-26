@@ -30,6 +30,7 @@ from lore.config import LoreSettings
 from lore.domain import (
     ArchivistOutput,
     ConsultLoreRequest,
+    EvidenceInput,
     InterpreterOutput,
     TrustSignal,
 )
@@ -183,6 +184,17 @@ class _NoopAttestations:
     ) -> list[TrustSignal]:
         del oracle_id, t_now, trust_half_life
         return []
+
+    async def fetch_herd_evidence(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        exclude_oracle: str,
+        t_now: int,
+        attestation_half_life: float,
+    ) -> dict[str, list[EvidenceInput]]:
+        del exclude_oracle, t_now, attestation_half_life
+        return {hid: [] for hid in hypothesis_ids}
 
 
 class _NoopRequests:

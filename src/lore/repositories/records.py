@@ -9,12 +9,13 @@ database already enforces the same constraints.
 """
 
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 from pydantic import NonNegativeInt, ValidationInfo, field_validator
 
 from lore._pydantic import DataModel, NonEmptyStr, SignedUnitInterval, UnitInterval
+from lore.domain import EvidenceInput
 
 # Row dicts come from database cursors (aiosqlite Row or psycopg dict_row).
 # The actual value types are driver-determined: Any is unavoidable here.
@@ -171,3 +172,22 @@ def build_attestation_records(*, rows: Iterable[_Row]) -> list[AttestationRecord
         )
         for r in rows
     ]
+
+
+def group_evidence_rows(
+    *, hypothesis_ids: Sequence[str], rows: Iterable[_Row]
+) -> dict[str, list[EvidenceInput]]:
+    """Group fetched evidence rows per requested hypothesis, keys always present.
+
+    ``str()`` on ``hypothesis_id`` mirrors ``build_attestation_records``'
+    UUID-vs-str normalisation so keys match the input IDs on both backends.
+    """
+    result: dict[str, list[EvidenceInput]] = {hid: [] for hid in hypothesis_ids}
+    for row in rows:
+        result[str(row["hypothesis_id"])].append(
+            EvidenceInput(
+                c_oracle_discounted=row["c_oracle_discounted"],
+                timestamp=row["timestamp"],
+            )
+        )
+    return result

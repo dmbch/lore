@@ -25,6 +25,7 @@ from lore.config import LoreSettings
 from lore.domain import (
     ArchivistOutput,
     ConsultLoreRequest,
+    EvidenceInput,
     InterpreterOutput,
     TrustSignal,
 )
@@ -161,6 +162,16 @@ class StubAttestations:
         trust_half_life: float,
     ) -> list[TrustSignal]:
         return self._trust_alignments
+
+    async def fetch_herd_evidence(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        exclude_oracle: str,
+        t_now: int,
+        attestation_half_life: float,
+    ) -> dict[str, list[EvidenceInput]]:
+        return {hid: [] for hid in hypothesis_ids}
 
 
 class StubRequests:

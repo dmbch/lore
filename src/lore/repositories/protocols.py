@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from contextlib import AbstractAsyncContextManager
 from typing import NamedTuple, Protocol
 
-from lore.domain import TrustSignal
+from lore.domain import EvidenceInput, TrustSignal
 from lore.repositories.records import (
     AttestationRecord,
     CacheEntry,
@@ -131,6 +131,30 @@ class AttestationsRepository(Protocol):
 
         Domain logic (alignment formula, decay weighting, averaging) lives
         in the math service. The orchestrator wires fetch to compute.
+        """
+        ...
+
+    async def fetch_herd_evidence(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        exclude_oracle: str,
+        t_now: int,
+        attestation_half_life: float,
+    ) -> dict[str, list[EvidenceInput]]:
+        """Batch fetch others-only fusion evidence per hypothesis.
+
+        Returns, per requested hypothesis ID, the attestations by every
+        oracle except ``exclude_oracle``, projected to ``EvidenceInput``
+        and ordered by ``(timestamp, id)``. The synthetic ``_transfer``
+        oracle is an ordinary includable oracle here. Rows outside the
+        decay window ``[t_now - 5 * attestation_half_life, t_now]`` are
+        excluded; a non-finite half-life collapses the lower bound to 0.
+
+        Every requested ID is present as a key; hypotheses with no
+        qualifying rows map to an empty list, so callers never guard for
+        missing keys. An empty others-list is the unwitnessed condition
+        in the oracle trust scan.
         """
         ...
 
