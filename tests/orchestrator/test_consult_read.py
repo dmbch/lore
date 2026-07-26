@@ -1,6 +1,7 @@
 """Read-path orchestrator tests: question-only consult calls."""
 
 import json
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -146,7 +147,13 @@ class TestReadPathEnrichesWithEpistemicState:
     async def test_read_path_enriches_with_epistemic_state(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         result = make_hypothesis_result(id=hypothesis_id)
-        attestation = make_attestation(hypothesis_id=hypothesis_id, c_oracle_discounted=0.3)
+        # Attested at wall-clock now: consult derives t_now from time.time(),
+        # and the enrich fetch only fuses rows inside [t_now - 5*hl, t_now].
+        attestation = make_attestation(
+            hypothesis_id=hypothesis_id,
+            c_oracle_discounted=0.3,
+            timestamp=int(time.time()),
+        )
 
         fixture = make_orchestrator(
             search_results=[result],

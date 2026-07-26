@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from lore.domain import EvidenceInput, InterpreterOutput, SearchResult
 from lore.math import MathService
-from lore.repositories import AttestationsRepository, HypothesisResult
+from lore.repositories import AttestationsRepository, DecayWindow, HypothesisResult
 from lore.telemetry import start_span
 
 if TYPE_CHECKING:
@@ -87,28 +87,33 @@ async def enrich(
     candidates: list[HypothesisResult],
     attestations: AttestationsRepository,
     math: MathService,
+    settings: LoreSettings,
     t_now: int,
 ) -> list[SearchResult]:
     with start_span("lore.enrich"):
         if not candidates:
             return []
 
+        # Windowed fetch: rows older than 5 half-lives carry under ~3% of
+        # their weight and stay unfetched. The view's aggregates remain
+        # full-history, so count and last_attested stay exact.
         hypothesis_ids = [c.id for c in candidates]
-        attestation_map = await attestations.find_by_hypotheses(hypothesis_ids)
+        window = DecayWindow(t_now=t_now, half_life=settings.epistemics.attestation_half_life)
+        attestation_map = await attestations.find_by_hypotheses(hypothesis_ids, window=window)
 
         enriched: list[SearchResult] = []
         for candidate in candidates:
-            raw = attestation_map.get(candidate.id, [])
+            view = attestation_map[candidate.id]
             evidence = [
                 EvidenceInput(c_oracle_discounted=a.c_oracle_discounted, timestamp=a.timestamp)
-                for a in raw
+                for a in view.rows
             ]
             c_herd = (
                 math.compute_confidence(attestations=evidence, t_now=t_now) if evidence else 0.0
             )
             last_attested = (
-                datetime.fromtimestamp(max(a.timestamp for a in raw), tz=UTC).date()
-                if raw
+                datetime.fromtimestamp(view.last_attested, tz=UTC).date()
+                if view.last_attested is not None
                 else None
             )
             enriched.append(
@@ -116,7 +121,7 @@ async def enrich(
                     id=candidate.id,
                     content=candidate.content,
                     c_herd=c_herd,
-                    attestation_count=len(raw),
+                    attestation_count=view.attestation_count,
                     last_attested=last_attested,
                     score=candidate.score,
                     # Engine cosine (pgvector, sqlite-vec) can overshoot the

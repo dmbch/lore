@@ -133,6 +133,7 @@ class Orchestrator:
                             candidates=candidates,
                             attestations=repos.attestations,
                             math=self._math,
+                            settings=self._settings,
                             t_now=t_now,
                         )
 
@@ -227,7 +228,11 @@ class Orchestrator:
                 t_now = int(time.time())
                 async with self._pool.session() as repos:
                     return await compute_frontier(
-                        repos=repos, math=self._math, limit=limit, t_now=t_now
+                        repos=repos,
+                        math=self._math,
+                        settings=self._settings,
+                        limit=limit,
+                        t_now=t_now,
                     )
         except ValidationError as exc:
             # Same masking contract as consult: FrontierEntry construction is

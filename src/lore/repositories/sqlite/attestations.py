@@ -1,6 +1,5 @@
 """SQLite implementation of AttestationsRepository."""
 
-import math
 import sqlite3
 from collections.abc import Sequence
 
@@ -10,7 +9,10 @@ from pydantic import ValidationError
 from lore.domain import EvidenceInput, StorageError, TrustSignal
 from lore.repositories.records import (
     AttestationRecord,
+    DecayWindow,
+    LedgerView,
     build_attestation_records,
+    build_ledger_views,
     group_evidence_rows,
 )
 from lore.repositories.sqlite._errors import classify_integrity_error
@@ -66,44 +68,57 @@ class SqliteAttestationsRepository:
         return build_attestation_records(rows=rows)
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
-        result: dict[str, list[AttestationRecord]] = {hid: [] for hid in hypothesis_ids}
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
         if not hypothesis_ids:
-            return result
+            return {}
         placeholders = ", ".join("?" for _ in hypothesis_ids)
+        row_filter = ""
+        row_params: tuple[str | int, ...] = tuple(hypothesis_ids)
+        if window is not None:
+            row_filter = " AND timestamp >= ? AND timestamp <= ?"
+            row_params = (*row_params, window.start, window.t_now)
         try:
             cursor = await self._conn.execute(
                 f"""SELECT id, hypothesis_id, oracle_id, correlation_id,
                           timestamp, t_oracle, c_oracle_raw,
                           c_oracle_discounted, c_herd, n_oracle_prior
                 FROM attestations
-                WHERE hypothesis_id IN ({placeholders})
+                WHERE hypothesis_id IN ({placeholders}){row_filter}
                 ORDER BY timestamp, id""",
-                tuple(hypothesis_ids),
+                row_params,
             )
             rows = [dict(row) for row in await cursor.fetchall()]
+            # Aggregates are always full-history: "stale since" must stay
+            # distinguishable from "never attested" even when the windowed
+            # rows above are empty.
+            cursor = await self._conn.execute(
+                f"""SELECT hypothesis_id, COUNT(*) AS n, MAX(timestamp) AS last
+                FROM attestations
+                WHERE hypothesis_id IN ({placeholders})
+                GROUP BY hypothesis_id""",
+                tuple(hypothesis_ids),
+            )
+            stats = {
+                str(r["hypothesis_id"]): (int(r["n"]), int(r["last"]))
+                for r in await cursor.fetchall()
+            }
         except (sqlite3.Error, ValueError) as e:
             raise StorageError(str(e)) from e
-        for record in build_attestation_records(rows=rows):
-            result[record.hypothesis_id].append(record)
-        return result
+        return build_ledger_views(hypothesis_ids=hypothesis_ids, rows=rows, stats=stats)
 
     async def fetch_herd_evidence(
         self,
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
         if not hypothesis_ids:
             return {}
-        # Same math.isfinite guard as fetch_trust_alignments: int(5 * inf)
-        # raises, so a non-finite half-life collapses the lower bound to 0.
-        window_start = (
-            t_now - int(5 * attestation_half_life) if math.isfinite(attestation_half_life) else 0
-        )
         placeholders = ", ".join("?" for _ in hypothesis_ids)
         try:
             cursor = await self._conn.execute(
@@ -114,7 +129,7 @@ class SqliteAttestationsRepository:
                 AND timestamp >= ?
                 AND timestamp <= ?
                 ORDER BY timestamp, id""",
-                (*hypothesis_ids, exclude_oracle, window_start, t_now),
+                (*hypothesis_ids, exclude_oracle, window.start, window.t_now),
             )
             rows = [dict(row) for row in await cursor.fetchall()]
         except (sqlite3.Error, ValueError) as e:
@@ -128,12 +143,7 @@ class SqliteAttestationsRepository:
         t_now: int,
         trust_half_life: float,
     ) -> list[TrustSignal]:
-        # math.isfinite guards the SQL boundary: MathService accepts
-        # t_half_life=inf as the "no decay" mode, but int(5 * inf) raises
-        # OverflowError; int(5 * nan) raises ValueError. Either way the
-        # window's lower bound collapses to zero, so every Unix-epoch row
-        # is in scope.
-        window_start = t_now - int(5 * trust_half_life) if math.isfinite(trust_half_life) else 0
+        start = DecayWindow(t_now=t_now, half_life=trust_half_life).start
         try:
             cursor = await self._conn.execute(
                 """WITH relevant AS (
@@ -178,7 +188,7 @@ class SqliteAttestationsRepository:
                 AND e.timestamp >= ?
                 AND e.timestamp <= ?
                 ORDER BY e.timestamp, e.id""",
-                (oracle_id, window_start, t_now, oracle_id, window_start, t_now),
+                (oracle_id, start, t_now, oracle_id, start, t_now),
             )
             rows = await cursor.fetchall()
         except (sqlite3.Error, ValueError) as e:

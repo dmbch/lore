@@ -1,6 +1,5 @@
 """PostgreSQL implementation of AttestationsRepository."""
 
-import math
 from collections.abc import Sequence
 from typing import Any
 
@@ -12,7 +11,10 @@ from lore.domain import EvidenceInput, StorageError, TrustSignal
 from lore.repositories.postgres._errors import translate
 from lore.repositories.records import (
     AttestationRecord,
+    DecayWindow,
+    LedgerView,
     build_attestation_records,
+    build_ledger_views,
     group_evidence_rows,
 )
 
@@ -66,44 +68,56 @@ class PostgresAttestationsRepository:
         return build_attestation_records(rows=rows)
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
-        result: dict[str, list[AttestationRecord]] = {hid: [] for hid in hypothesis_ids}
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
         if not hypothesis_ids:
-            return result
+            return {}
+        row_filter = ""
+        row_params: tuple[list[str] | int, ...] = (list(hypothesis_ids),)
+        if window is not None:
+            row_filter = " AND timestamp >= %s AND timestamp <= %s"
+            row_params = (*row_params, window.start, window.t_now)
         try:
             cur = self._conn.cursor(row_factory=dict_row)
             await cur.execute(
-                """SELECT id, hypothesis_id, oracle_id, correlation_id,
+                f"""SELECT id, hypothesis_id, oracle_id, correlation_id,
                           timestamp, t_oracle, c_oracle_raw,
                           c_oracle_discounted, c_herd, n_oracle_prior
                 FROM attestations
-                WHERE hypothesis_id = ANY(%s)
+                WHERE hypothesis_id = ANY(%s){row_filter}
                 ORDER BY timestamp, id""",
-                (list(hypothesis_ids),),
+                row_params,
             )
             rows = await cur.fetchall()
+            # Aggregates are always full-history: "stale since" must stay
+            # distinguishable from "never attested" even when the windowed
+            # rows above are empty.
+            await cur.execute(
+                """SELECT hypothesis_id, COUNT(*) AS n, MAX(timestamp) AS last
+                FROM attestations
+                WHERE hypothesis_id = ANY(%s)
+                GROUP BY hypothesis_id""",
+                (list(hypothesis_ids),),
+            )
+            stats = {
+                str(r["hypothesis_id"]): (int(r["n"]), int(r["last"])) for r in await cur.fetchall()
+            }
         except psycopg.Error as e:
             translate(e)
-        for record in build_attestation_records(rows=rows):
-            result[record.hypothesis_id].append(record)
-        return result
+        return build_ledger_views(hypothesis_ids=hypothesis_ids, rows=rows, stats=stats)
 
     async def fetch_herd_evidence(
         self,
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
         if not hypothesis_ids:
             return {}
-        # Same math.isfinite guard as fetch_trust_alignments: int(5 * inf)
-        # raises, so a non-finite half-life collapses the lower bound to 0.
-        window_start = (
-            t_now - int(5 * attestation_half_life) if math.isfinite(attestation_half_life) else 0
-        )
         try:
             cur = self._conn.cursor(row_factory=dict_row)
             await cur.execute(
@@ -114,7 +128,7 @@ class PostgresAttestationsRepository:
                 AND timestamp >= %s
                 AND timestamp <= %s
                 ORDER BY timestamp, id""",
-                (list(hypothesis_ids), exclude_oracle, window_start, t_now),
+                (list(hypothesis_ids), exclude_oracle, window.start, window.t_now),
             )
             rows = await cur.fetchall()
         except psycopg.Error as e:
@@ -130,12 +144,7 @@ class PostgresAttestationsRepository:
         t_now: int,
         trust_half_life: float,
     ) -> list[TrustSignal]:
-        # math.isfinite guards the SQL boundary: MathService accepts
-        # t_half_life=inf as the "no decay" mode, but int(5 * inf) raises
-        # OverflowError; int(5 * nan) raises ValueError. Either way the
-        # window's lower bound collapses to zero, so every Unix-epoch row
-        # is in scope.
-        window_start = t_now - int(5 * trust_half_life) if math.isfinite(trust_half_life) else 0
+        start = DecayWindow(t_now=t_now, half_life=trust_half_life).start
         try:
             cur = self._conn.cursor(row_factory=dict_row)
             await cur.execute(
@@ -181,7 +190,7 @@ class PostgresAttestationsRepository:
                 AND e.timestamp >= %s
                 AND e.timestamp <= %s
                 ORDER BY e.timestamp, e.id""",
-                (oracle_id, window_start, t_now, oracle_id, window_start, t_now),
+                (oracle_id, start, t_now, oracle_id, start, t_now),
             )
             rows = await cur.fetchall()
         except psycopg.Error as e:

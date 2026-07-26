@@ -20,6 +20,7 @@ import math as _math
 import time
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 from typing import cast
 
@@ -41,15 +42,17 @@ from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
     AttestationRecord,
+    DecayWindow,
     HypothesisRecord,
     HypothesisResult,
+    LedgerView,
     PostgresConfig,
     Repositories,
     RepositoryPool,
     RequestRecord,
     RetrievalConfig,
 )
-from tests.orchestrator.conftest import StubCache
+from tests.orchestrator.conftest import StubAttestations, StubCache, make_attestation
 
 # ---------------------------------------------------------------------------
 # Stubs: exercise the orchestrator's concurrency contract, not the backend
@@ -170,10 +173,15 @@ class _NoopAttestations:
         return []
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
-        del hypothesis_ids
-        return {}
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
+        del window
+        return {
+            h: LedgerView(rows=[], attestation_count=0, last_attested=None) for h in hypothesis_ids
+        }
 
     async def fetch_trust_alignments(
         self,
@@ -190,10 +198,9 @@ class _NoopAttestations:
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
-        del exclude_oracle, t_now, attestation_half_life
+        del exclude_oracle, window
         return {hid: [] for hid in hypothesis_ids}
 
 
@@ -410,6 +417,56 @@ class TestEnrichClampsEngineFloatNoise:
                 candidates=[self._candidate(proximity=overshoot)],
                 attestations=_NoopAttestations(),
                 math=_make_math(),
+                settings=_make_settings(),
                 t_now=0,
             )
             assert enriched[0].proximity == rail
+
+
+class TestEnrichDecayWindow:
+    """Reads stop fetching rows whose decayed weight is noise."""
+
+    async def test_enrich_ignores_rows_beyond_decay_window(self) -> None:
+        """Rows older than 5 half-lives leave the fusion; the summary sees them.
+
+        The stale row (10 half-lives old, c 0.9) would still contribute
+        ~9e-4 after decay, so its absence pins the fetch cutoff, not the
+        decay algebra. The fresh row alone gives c_herd = 0.3 exactly.
+        attestation_count and last_attested stay full-history: this
+        hypothesis is stale, not unattested.
+        """
+        t_now = 2_000_000_000
+        half_life = 86_400  # matches _make_settings' attestation_half_life
+        candidate = HypothesisResult(
+            id="00000000-0000-0000-0000-0000000000b1",
+            content="content",
+            created_at=0,
+            score=0.5,
+            proximity=0.5,
+        )
+        stub = StubAttestations(
+            by_hypotheses={
+                candidate.id: [
+                    make_attestation(
+                        hypothesis_id=candidate.id,
+                        c_oracle_discounted=0.9,
+                        timestamp=t_now - 10 * half_life,
+                    ),
+                    make_attestation(
+                        hypothesis_id=candidate.id, c_oracle_discounted=0.3, timestamp=t_now
+                    ),
+                ]
+            }
+        )
+
+        enriched = await enrich(
+            candidates=[candidate],
+            attestations=stub,
+            math=_make_math(),
+            settings=_make_settings(),
+            t_now=t_now,
+        )
+
+        assert abs(enriched[0].c_herd - 0.3) < 1e-9
+        assert enriched[0].attestation_count == 2
+        assert enriched[0].last_attested == date(2033, 5, 18)

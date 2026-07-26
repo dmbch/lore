@@ -8,9 +8,10 @@ Hot-path reads use ``model_construct()`` to skip validation since the
 database already enforces the same constraints.
 """
 
+import math
 import uuid
-from collections.abc import Iterable, Sequence
-from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any, NamedTuple
 
 from pydantic import NonNegativeInt, ValidationInfo, field_validator
 
@@ -38,6 +39,42 @@ class HypothesisRecord(DataModel):
             msg = f"id must be a valid UUID, got {v!r}"
             raise ValueError(msg) from None
         return v
+
+
+class DecayWindow(NamedTuple):
+    """Closed fetch window ``[start, t_now]`` for decay-weighted ledger reads.
+
+    ``t_now`` and ``half_life`` travel together by construction: a lone
+    value is unrepresentable, so fetches need no pairing check.
+    """
+
+    t_now: int
+    half_life: float
+
+    @property
+    def start(self) -> int:
+        """Lower bound of the 5-half-life fetch window.
+
+        ``math.isfinite`` guards the SQL boundary: ``half_life=inf`` is the
+        "no decay" mode, but ``int(5 * inf)`` raises OverflowError and
+        ``int(5 * nan)`` raises ValueError. Either way the bound collapses
+        to zero, so every Unix-epoch row is in scope.
+        """
+        return self.t_now - int(5 * self.half_life) if math.isfinite(self.half_life) else 0
+
+
+class LedgerView(NamedTuple):
+    """One hypothesis's ledger: the requested rows plus an exact summary.
+
+    ``rows`` honors the caller's decay window when one is given.
+    ``attestation_count`` and ``last_attested`` are always full-history,
+    so an all-stale ledger stays distinguishable from a never-attested
+    one even when the windowed rows are empty.
+    """
+
+    rows: list[AttestationRecord]
+    attestation_count: int
+    last_attested: int | None
 
 
 class HypothesisResult(HypothesisRecord):
@@ -172,6 +209,31 @@ def build_attestation_records(*, rows: Iterable[_Row]) -> list[AttestationRecord
         )
         for r in rows
     ]
+
+
+def build_ledger_views(
+    *,
+    hypothesis_ids: Sequence[str],
+    rows: Iterable[_Row],
+    stats: Mapping[str, tuple[int, int]],
+) -> dict[str, LedgerView]:
+    """Assemble per-hypothesis views from fetched rows and full-history stats.
+
+    ``stats`` maps hypothesis id to ``(attestation_count, last_attested)``
+    over the whole ledger; ids absent from it were never attested. Every
+    requested ID is present in the result.
+    """
+    grouped: dict[str, list[AttestationRecord]] = {hid: [] for hid in hypothesis_ids}
+    for record in build_attestation_records(rows=rows):
+        grouped[record.hypothesis_id].append(record)
+    return {
+        hid: LedgerView(
+            rows=grouped[hid],
+            attestation_count=stats[hid][0] if hid in stats else 0,
+            last_attested=stats[hid][1] if hid in stats else None,
+        )
+        for hid in hypothesis_ids
+    }
 
 
 def group_evidence_rows(

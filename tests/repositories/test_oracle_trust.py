@@ -18,7 +18,7 @@ import math
 import pytest
 
 from lore.math.service import MathService
-from lore.repositories import AttestationRecord
+from lore.repositories import AttestationRecord, DecayWindow
 from lore.repositories.protocols import (
     AttestationsRepository,
     HypothesisRepository,
@@ -125,8 +125,7 @@ class TestFetchTrustAlignments:
         evidence = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-A",
-            t_now=200,
-            attestation_half_life=1e12,
+            window=DecayWindow(t_now=200, half_life=1e12),
         )
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=200)
         assert abs(result - 59 / 96) < EPSILON
@@ -172,8 +171,7 @@ class TestFetchTrustAlignments:
         evidence = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-A",
-            t_now=1000,
-            attestation_half_life=1e12,
+            window=DecayWindow(t_now=1000, half_life=1e12),
         )
         assert evidence == {h_id: []}
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=1000)
@@ -256,8 +254,7 @@ class TestFetchTrustAlignments:
         evidence = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-A",
-            t_now=300,
-            attestation_half_life=1e12,
+            window=DecayWindow(t_now=300, half_life=1e12),
         )
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=300)
         align = 0.75 * 0.95 + 0.25 * (717 / 764)
@@ -326,8 +323,7 @@ class TestFetchTrustAlignments:
         evidence = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-A",
-            t_now=200,
-            attestation_half_life=1e12,
+            window=DecayWindow(t_now=200, half_life=1e12),
         )
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=200)
         assert abs(result - 0.66) < EPSILON
@@ -421,8 +417,7 @@ class TestFetchTrustAlignments:
         evidence = await attestations_repo.fetch_herd_evidence(
             sorted([h1_id, h2_id]),
             exclude_oracle="sub:oracle-A",
-            t_now=t_now,
-            attestation_half_life=1e12,
+            window=DecayWindow(t_now=t_now, half_life=1e12),
         )
 
         # Compute expected value (conviction-weighted, adaptive w, signal
@@ -555,8 +550,7 @@ class TestFetchTrustAlignments:
         evidence = await attestations_repo.fetch_herd_evidence(
             [h2_id],
             exclude_oracle="sub:oracle-A",
-            t_now=t_now,
-            attestation_half_life=1e12,
+            window=DecayWindow(t_now=t_now, half_life=1e12),
         )
         svc = MathService(c_half_life=1e12, t_half_life=trust_half_life)
         result = svc.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=t_now)

@@ -1,12 +1,13 @@
 """Tests for AttestationsRepository Protocol behavior."""
 
+import math
 import uuid
 from collections.abc import Awaitable, Callable
 
 import pytest
 
 from lore.domain import TRANSFER_ORACLE, EvidenceInput, IntegrityViolation, StorageError
-from lore.repositories import AttestationRecord
+from lore.repositories import AttestationRecord, DecayWindow
 from lore.repositories.protocols import (
     AttestationsRepository,
     HypothesisRepository,
@@ -277,10 +278,13 @@ class TestFindByHypotheses:
             )
         )
         result = await attestations_repo.find_by_hypotheses([h1, h2])
-        assert len(result[h1]) == 1
-        assert len(result[h2]) == 1
-        assert result[h1][0].hypothesis_id == h1
-        assert result[h2][0].hypothesis_id == h2
+        assert len(result[h1].rows) == 1
+        assert len(result[h2].rows) == 1
+        assert result[h1].rows[0].hypothesis_id == h1
+        assert result[h2].rows[0].hypothesis_id == h2
+        # Unwindowed: aggregates match the returned rows.
+        assert result[h1].attestation_count == 1
+        assert result[h1].last_attested == 1000
 
     async def test_find_by_hypotheses_missing_ids_have_empty_lists(
         self,
@@ -306,8 +310,10 @@ class TestFindByHypotheses:
             )
         )
         result = await attestations_repo.find_by_hypotheses([h1, missing])
-        assert len(result[h1]) == 1
-        assert result[missing] == []
+        assert len(result[h1].rows) == 1
+        assert result[missing].rows == []
+        assert result[missing].attestation_count == 0
+        assert result[missing].last_attested is None
 
     async def test_find_by_hypotheses_empty_input_returns_empty_dict(
         self, attestations_repo: AttestationsRepository
@@ -339,8 +345,112 @@ class TestFindByHypotheses:
                 )
             )
         result = await attestations_repo.find_by_hypotheses([h_id])
-        timestamps = [r.timestamp for r in result[h_id]]
+        timestamps = [r.timestamp for r in result[h_id].rows]
         assert timestamps == [1000, 2000, 3000]
+
+    async def test_find_by_hypotheses_windows_rows_but_keeps_exact_aggregates(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """Stale rows leave the fused view; the summary stays full-history.
+
+        Window = [t_now - 5*half_life, t_now] = [5000, 10000]: the ts=100
+        row is out, the ts=9000 row is in. attestation_count and
+        last_attested still see the whole ledger.
+        """
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        for ts in (100, 9000):
+            await attestations_repo.append(
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=ts,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
+            )
+        result = await attestations_repo.find_by_hypotheses(
+            [h_id], window=DecayWindow(t_now=10_000, half_life=1000.0)
+        )
+        view = result[h_id]
+        assert [r.timestamp for r in view.rows] == [9000]
+        assert view.attestation_count == 2
+        assert view.last_attested == 9000
+
+    async def test_find_by_hypotheses_all_stale_view_still_reports_history(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """A hypothesis whose whole ledger aged out is stale, not unattested.
+
+        Empty windowed rows with attestation_count = 1 and a real
+        last_attested is the "stale since" signal; a never-attested
+        hypothesis reports count 0 and last_attested None.
+        """
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=100,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
+        )
+        never = "00000000-0000-0000-0000-000000000000"
+        result = await attestations_repo.find_by_hypotheses(
+            [h_id, never], window=DecayWindow(t_now=10_000, half_life=1000.0)
+        )
+        assert result[h_id].rows == []
+        assert result[h_id].attestation_count == 1
+        assert result[h_id].last_attested == 100
+        assert result[never].rows == []
+        assert result[never].attestation_count == 0
+        assert result[never].last_attested is None
+
+    async def test_find_by_hypotheses_infinite_window_includes_ancient_rows(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """half_life=inf collapses the window's lower bound to zero."""
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        await attestations_repo.append(
+            AttestationRecord(
+                id=generate_id(),
+                hypothesis_id=h_id,
+                oracle_id="sub:oracle-1",
+                correlation_id="00000000-0000-0000-0000-000000000c01",
+                timestamp=1,
+                t_oracle=0.5,
+                c_oracle_raw=0.5,
+                c_oracle_discounted=0.25,
+                c_herd=0.4,
+                n_oracle_prior=0,
+            )
+        )
+        result = await attestations_repo.find_by_hypotheses(
+            [h_id], window=DecayWindow(t_now=10_000, half_life=math.inf)
+        )
+        assert [r.timestamp for r in result[h_id].rows] == [1]
 
 
 async def _append_evidence_row(
@@ -401,8 +511,7 @@ class TestFetchHerdEvidence:
         result = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-X",
-            t_now=1000,
-            attestation_half_life=_NO_DECAY_HL,
+            window=DecayWindow(t_now=1000, half_life=_NO_DECAY_HL),
         )
         assert result[h_id] == [EvidenceInput(c_oracle_discounted=0.25, timestamp=200)]
 
@@ -425,8 +534,7 @@ class TestFetchHerdEvidence:
         result = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-X",
-            t_now=1000,
-            attestation_half_life=_NO_DECAY_HL,
+            window=DecayWindow(t_now=1000, half_life=_NO_DECAY_HL),
         )
         assert result[h_id] == [EvidenceInput(c_oracle_discounted=-0.5, timestamp=100)]
 
@@ -449,15 +557,13 @@ class TestFetchHerdEvidence:
         windowed = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-X",
-            t_now=1000,
-            attestation_half_life=100.0,
+            window=DecayWindow(t_now=1000, half_life=100.0),
         )
         assert [row.timestamp for row in windowed[h_id]] == [600]
         unwindowed = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-X",
-            t_now=1000,
-            attestation_half_life=float("inf"),
+            window=DecayWindow(t_now=1000, half_life=float("inf")),
         )
         assert [row.timestamp for row in unwindowed[h_id]] == [100, 600]
 
@@ -480,8 +586,7 @@ class TestFetchHerdEvidence:
         result = await attestations_repo.fetch_herd_evidence(
             [h_solo, unattested],
             exclude_oracle="sub:oracle-X",
-            t_now=1000,
-            attestation_half_life=_NO_DECAY_HL,
+            window=DecayWindow(t_now=1000, half_life=_NO_DECAY_HL),
         )
         assert result == {h_solo: [], unattested: []}
 
@@ -491,8 +596,7 @@ class TestFetchHerdEvidence:
         result = await attestations_repo.fetch_herd_evidence(
             [],
             exclude_oracle="sub:oracle-X",
-            t_now=1000,
-            attestation_half_life=_NO_DECAY_HL,
+            window=DecayWindow(t_now=1000, half_life=_NO_DECAY_HL),
         )
         assert result == {}
 
@@ -531,8 +635,7 @@ class TestFetchHerdEvidence:
         result = await attestations_repo.fetch_herd_evidence(
             [h_id],
             exclude_oracle="sub:oracle-X",
-            t_now=1000,
-            attestation_half_life=_NO_DECAY_HL,
+            window=DecayWindow(t_now=1000, half_life=_NO_DECAY_HL),
         )
         assert result[h_id] == [
             EvidenceInput(c_oracle_discounted=0.0625, timestamp=100),
@@ -605,8 +708,7 @@ class TestStorageError:
             await attestations_repo.fetch_herd_evidence(
                 ["00000000-0000-0000-0000-000000000000"],
                 exclude_oracle="sub:oracle-A",
-                t_now=1000,
-                attestation_half_life=1e12,
+                window=DecayWindow(t_now=1000, half_life=1e12),
             )
 
 

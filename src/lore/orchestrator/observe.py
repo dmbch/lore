@@ -10,10 +10,14 @@ the O(archive) fusion cost of a true archive-wide frontier (see TODO.md).
 """
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from lore.domain import EvidenceInput, FrontierEntry
 from lore.math import MathService
-from lore.repositories import Repositories
+from lore.repositories import DecayWindow, Repositories
+
+if TYPE_CHECKING:
+    from lore.config import LoreSettings
 
 FRONTIER_LIMIT = 25
 
@@ -22,6 +26,7 @@ async def frontier(
     *,
     repos: Repositories,
     math: MathService,
+    settings: LoreSettings,
     limit: int,
     t_now: int,
 ) -> list[FrontierEntry]:
@@ -29,24 +34,31 @@ async def frontier(
 
     Fetches the newest `limit` hypotheses, fuses each hypothesis's ledger into a
     herd confidence scalar (decay + ECBF at read time), and sorts by uncertainty
-    descending with id ascending as a deterministic tiebreak.
+    descending with id ascending as a deterministic tiebreak. The ledger fetch
+    is decay-windowed; the view's full-history aggregates keep count and
+    last_attested exact.
     """
     records = await repos.hypotheses.find_recent(limit=limit)
     if not records:
         return []
 
-    attestation_map = await repos.attestations.find_by_hypotheses([r.id for r in records])
+    window = DecayWindow(t_now=t_now, half_life=settings.epistemics.attestation_half_life)
+    attestation_map = await repos.attestations.find_by_hypotheses(
+        [r.id for r in records], window=window
+    )
 
     entries: list[FrontierEntry] = []
     for record in records:
-        raw = attestation_map.get(record.id, [])
+        view = attestation_map[record.id]
         evidence = [
             EvidenceInput(c_oracle_discounted=a.c_oracle_discounted, timestamp=a.timestamp)
-            for a in raw
+            for a in view.rows
         ]
         c_herd = math.compute_confidence(attestations=evidence, t_now=t_now) if evidence else 0.0
         last_attested = (
-            datetime.fromtimestamp(max(a.timestamp for a in raw), tz=UTC).date() if raw else None
+            datetime.fromtimestamp(view.last_attested, tz=UTC).date()
+            if view.last_attested is not None
+            else None
         )
         entries.append(
             FrontierEntry(
@@ -54,7 +66,7 @@ async def frontier(
                 content=record.content,
                 c_herd=c_herd,
                 uncertainty=math.compute_uncertainty(c_herd),
-                attestation_count=len(raw),
+                attestation_count=view.attestation_count,
                 last_attested=last_attested,
             )
         )
