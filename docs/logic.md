@@ -320,7 +320,7 @@ The same `N_O = n_oracle_prior + 1` rule is reused inside the oracle trust deriv
 
 ## Oracle Trust
 
-The oracle's alignment probability t_oracle ∈ [0, 1], computed from the immutable ledger at write time. No peer assessment, no settlement events. A bounded scan of the oracle's recent attestation history. The derivation is built entirely from standard Subjective Logic operators (PD (Eq. 4.61) for alignment, the maturity saturation M for the adaptive blend, and Def. 14.6 (binomial trust discounting) for information weighting), composed into a conviction-weighted average. No novel operators.
+The oracle's alignment probability t_oracle ∈ [0, 1], computed from the immutable ledger at write time. No peer assessment, no settlement events. A bounded scan of the oracle's recent attestation history, gated by a witness rule: only rows whose hypothesis carries evidence from other oracles are scored. The derivation is built entirely from standard Subjective Logic operators (PD (Eq. 4.61) for alignment, the maturity saturation M for the adaptive blend, and Def. 14.6 (binomial trust discounting) for the informative-commitment gate), composed into a conviction-weighted average. No novel operators.
 
 ### The Principle
 
@@ -331,19 +331,26 @@ Two questions, not one:
 
 Trust accrues only when both conditions hold: the oracle had something to say (conviction), and the herd needed to hear it (information). Agreement with a near-dogmatic herd resolves no uncertainty and earns no credit. Saying nothing on a fresh hypothesis earns no credit. Both are informationally empty events.
 
-### Alignment (PD-Based, Unchanged)
+### Alignment (PD-Based, Others-Only Reference)
 
 For each past attestation by oracle X on some hypothesis P_i:
 
 ```
 c_herd_prior_i = c_herd from the preceding attestation on P_i (0.0 if first)
-c_herd_now_i   = c_herd from the latest attestation on P_i (by any oracle, including X)
+c_herd_now_i   = the others-only herd state of P_i, recomputed at scan time:
+                 decay + ECBF over the attestations by every oracle except X
+                 (the synthetic _transfer included) inside the attestation
+                 decay window
 
 align_write_i = 1 − 0.5 · |c_oracle_raw_i − c_herd_prior_i|        (1 − PD, Eq. 4.61)
 align_read_i  = 1 − 0.5 · |c_oracle_raw_i − c_herd_now_i|          (1 − PD, Eq. 4.61)
 ```
 
 Both signals are binomial specializations of PD: since `P = 0.5 + 0.5c`, we have `|P_a − P_b| = 0.5 · |c_a − c_b|`. Alignment is `1 − PD`, in (0, 1] for any inputs in (−1, 1).
+
+**The read-time reference is self-free.** An earlier revision read `c_herd_now` from the hypothesis's latest stored row, which included X's own attestations: agreeing with your own echo counted as alignment, and iterated solo histories converged on t_oracle ≈ 0.92 (see Security Analysis, Self-Referential Read-Time Credit). The reference is now recomputed from the ledger with X's rows excluded. This is exact, not an approximation: hypothesis state is always derived at read time, so the others-only re-fusion runs the ordinary read path over a filtered row set. `c_herd_now` survives as the name of this recomputed state; no column stores it.
+
+**The witness rule.** A row enters the trust scan only if at least one other oracle (the synthetic `_transfer` counts) has attested on its hypothesis inside the attestation decay window. Unwitnessed rows contribute to neither numerator nor denominator: without a witness there is no reference to align against, and a solo history is informationally identical to no history. The rule gates trust and nothing else: the hypothesis is stored, retrieved, and fused like any other, and because trust is recomputed from the ledger on every scan, the row starts counting the moment the herd answers. The rule generalizes the transfer attestation's rationale, blocking self-referential trust credit, from contradicting novels to all novels.
 
 ### Adaptive Blend (Replaces Fixed `w`)
 
@@ -373,7 +380,7 @@ Fresh hypothesis: read-time dominates → the prophet is judged by the eventual 
 
 **K = 0 degeneracy.** When K = 0: M_write = 1.0 for all N_O ≥ 1, so `align_i = align_write_i`, pure write-time. This is consistent with the discount operator's K = 0 behavior ("maturity transparent"): both the discount and the trust blend become transparent together. An explicit deployer opt-in.
 
-### Information Weighting (Anti-Bandwagoning)
+### The Informative-Commitment Gate (Anti-Farming)
 
 Alignment without information is empty. If the herd already holds `c_herd_prior = 0.95`, an oracle submitting `c_oracle_raw = 0.95` produces `align = 1.0`: perfect agreement, but the oracle has resolved no uncertainty. The herd already knew. The measurement is unreliable as evidence about the oracle's judgment: they may be a clear thinker, or they may be rubber-stamping. We should not accrue trust from signals whose informational value is near zero.
 
@@ -392,46 +399,42 @@ For uncertainty-maximized opinions (all stored `c_herd` values, see System-Wide 
 | Near-dogmatic (settled) | 0.95 | 0.05 (negligible) |
 | Dogmatic | 1.00 | 0.00 (no credit) |
 
-Rather than using `info` as a row weight (which cancels symmetrically in a weighted average and fails to bound bandwagoning), we apply the binomial form of Jøsang's trust discounting operator (Def. 14.6) to each row's alignment score, with `info_i` as the discount factor and base rate `a = 0.5`:
+Info alone does not close the farming surface. The scattershot vector: an oracle spraying near-vacuous conviction across fresh, witnessed hypotheses collects `info = 1` on every row, and the fresh-row write leg is near-perfect against a vacuous prior (`align_write = 1 − 0.5 · conviction ≈ 1`) and holds half the blend wherever the herd lands (`align ≥ 0.75 − 0.5 · conviction`, averaging ≈ 0.9). Under info-only calibration those rows scored high effective alignment while asserting almost nothing (pre-fix realized farm ≈ 0.80; see Security Analysis, Low-Conviction Scattershot). The commitment half of the informative-commitment principle must live in the calibration too. The composite signal:
 
 ```
-effective_align_i = info_i · align_i + (1 − info_i) · 0.5
+signal_i          = conviction_i · info_i
+effective_align_i = signal_i · align_i + (1 − signal_i) · 0.5
 ```
 
-This is the projected-probability expression derived in the Trust Discounting section above. Substituting `P_eff = info_i` and `P_source = align_i`:
+Rather than using either factor as a row weight (a weight cancels symmetrically in a weighted average and fails to bound farming), we apply the binomial form of Jøsang's trust discounting operator (Def. 14.6) to each row's alignment score, with `signal_i` as the discount factor and base rate `a = 0.5`. This is the projected-probability expression derived in the Trust Discounting section above, `P' = P_eff · P_source + 0.5 · (1 − P_eff)`, with `P_eff = signal_i` and `P_source = align_i`. The product form is itself canonical: two Def. 14.6 discounts toward the same base rate compose into one, `p₂ · (p₁ · a + (1 − p₁) · 0.5) + (1 − p₂) · 0.5 = p₁p₂ · a + (1 − p₁p₂) · 0.5`, so discounting alignment by info and the result by conviction is algebraically the single discount by `conviction · info`.
 
-```
-P' = P_eff · P_source + 0.5 · (1 − P_eff) = info · align + 0.5 · (1 − info)
-```
-
-**The algebraic form is canonical Def. 14.6.** The semantic choice (using herd uncertainty at write time as a discount on an alignment measurement, rather than as trust in an information source) is a novel application of the operator, in the same spirit as the composition `P_effective = M · t_oracle` used in the main trust pipeline (which composes non-opinion scalars into a Def. 14.7-style product). Neither introduces a new operator; both reuse standard SL operators with reinterpreted inputs.
+**The algebraic form is canonical Def. 14.6.** The semantic choice (using herd uncertainty at write time and the speaker's own commitment as a discount on an alignment measurement, rather than as trust in an information source) is a novel application of the operator, in the same spirit as the composition `P_effective = M · t_oracle` used in the main trust pipeline (which composes non-opinion scalars into a Def. 14.7-style product). Neither introduces a new operator; both reuse standard SL operators with reinterpreted inputs.
 
 **Properties:**
 
-| info | align | effective_align | Scenario |
-|---|---|---|---|
-| 1.00 | 1.00 | 1.000 | Perfect alignment on fully-uncertain herd: full credit |
-| 1.00 | 0.00 | 0.000 | Perfect misalignment on fully-uncertain herd: full penalty |
-| 0.50 | 1.00 | 0.750 | Bandwagon on half-formed herd: partial credit |
-| 0.50 | 0.00 | 0.250 | Contrarian on half-formed herd: partial penalty |
-| 0.00 | 1.00 | 0.500 | Bandwagon on dogmatic herd: neutral (no credit, no penalty) |
-| 0.00 | 0.00 | 0.500 | Contrarian on dogmatic herd: neutral (cannot tell crank from prophet) |
+| conviction | info | signal | align | effective_align | Scenario |
+|---|---|---|---|---|---|
+| 1.00 | 1.00 | 1.00 | 1.00 | 1.000 | Committed rightness on a fully-uncertain herd: full credit |
+| 1.00 | 1.00 | 1.00 | 0.00 | 0.000 | Committed wrongness on a fully-uncertain herd: full penalty |
+| 1.00 | 0.00 | 0.00 | 1.00 | 0.500 | Bandwagon on dogmatic herd: neutral at any conviction |
+| 0.20 | 1.00 | 0.20 | 1.00 | 0.600 | Hedged rightness on a fresh herd: capped at 0.5 + conviction/2 |
+| 0.50 | 0.50 | 0.25 | 1.00 | 0.625 | Moderate conviction, half-formed herd: partial credit |
+| 0.50 | 0.50 | 0.25 | 0.00 | 0.375 | Moderate conviction, half-formed herd, wrong: partial penalty |
 
-The asymmetry is deliberate: *informative* wrongness (info=1, align=0) still gets punished to 0; *uninformative* wrongness gets neutralized to 0.5. An oracle disagreeing with a dogmatic herd is epistemically indistinguishable from a prophet the herd cannot move to meet; we default to neutral until fresh evidence arrives.
+The asymmetries are deliberate. *Informative, committed* wrongness (signal = 1, align = 0) is punished to 0; *uninformative* wrongness is neutralized to 0.5 (an oracle disagreeing with a dogmatic herd is epistemically indistinguishable from a prophet the herd cannot move to meet; we default to neutral until fresh evidence arrives); *hedged* anything is pinned near 0.5 (an oracle who asserts almost nothing can be credited with almost nothing, in either direction).
 
-### Conviction Weighting (Preserved)
+### Conviction Weighting (Weight and Calibration)
 
 ```
 conviction_i = |c_oracle_raw_i|
 ```
 
-For uncertainty-maximized oracle inputs, `conviction = 1 − u_oracle`. Conviction weights each row's contribution to the aggregate: "did the oracle commit to an opinion strongly enough for this row to count?"
+For uncertainty-maximized oracle inputs, `conviction = 1 − u_oracle`. Conviction plays two roles:
 
-**The informative-commitment principle.** Conviction and information do orthogonal jobs:
-- **Conviction** is a row weight: how much this attestation matters in the aggregate trust score.
-- **Info** is a signal calibration: how reliable the alignment measurement is as evidence about the oracle's judgment.
+- **Row weight.** Each row enters the aggregate weighted by `conviction_i · weight_i`: a vacuous attestation carries no weight at all, and the all-vacuous history falls through to the base-rate fallback.
+- **Calibration factor.** Conviction is half of the composite `signal_i = conviction_i · info_i` that discounts the row's alignment toward 0.5.
 
-Trust credit requires both to be non-trivial. An oracle must have expressed conviction (conviction > 0) for the row to count at all, and the herd must have been uncertain (info > 0) for the alignment signal to escape the pull toward 0.5. These are different axes (one gates row weight, the other gates signal strength), so there is no double-count. Structurally the motivation parallels Jøsang's conjunctive certainty CC (Eq. 4.62), a product of two certainties: both parties must have something to say for agreement or conflict to be meaningful. Lore's pair complements one factor: speaker certainty (conviction) × audience uncertainty (info). The speaker had something to say, and the audience could benefit from hearing it.
+**Why both, and why that is not a double-count.** A weight normalizes out over a uniform history: `Σ(x · c · w) / Σ(c · w) = x` whenever every row carries the same effective alignment x, so the weight alone cannot bound what a uniform low-conviction campaign earns; that is precisely the scattershot vector. A calibration moves each x itself and cannot cancel. The two roles are complementary, not redundant: drop the weight and vacuous rows dilute the average; drop the calibration and hedged rows score at full signal strength. Structurally the motivation parallels Jøsang's conjunctive certainty CC (Eq. 4.62), a product of two certainties: both parties must have something to say for agreement or conflict to be meaningful. Lore's pair complements one factor: speaker certainty (conviction) × audience uncertainty (info). The speaker had something to say, and the audience could benefit from hearing it.
 
 ### Trust Derivation
 
@@ -454,22 +457,27 @@ t_oracle = Σ(effective_align_i · conviction_i · weight_i)
 
 **Cold start:** no history → `t_oracle = 0.5` (base rate trust: the connection to a = 0.5 is deliberate).
 
-**Empty-denominator fallback:** when `Σ(conviction_i · weight_i) = 0`, fall back to `t_oracle = 0.5`. Since every `weight_i > 0`, the denominator is zero exactly when every `conviction_i = 0`: an all-vacuous history. The oracle has never expressed a committed opinion. This is informationally identical to cold start, and the fallback treats them identically.
+**Empty-denominator fallback:** when the countable rows contribute `Σ(conviction_i · weight_i) = 0`, fall back to `t_oracle = 0.5`. Since every `weight_i > 0`, this happens exactly when every countable row has `conviction_i = 0` (an all-vacuous history) or when the witness rule leaves no countable rows at all (an all-solo history). Both are informationally identical to cold start, and the fallback treats them identically.
 
-**The all-bandwagon case needs no fallback.** It is handled non-asymptotically by the numerator. *Theorem:* if every `info_i = 0` and at least one `conviction_i > 0`, then
+**The witness theorem.** *Theorem:* if no oracle other than X has attested a row's hypothesis inside the attestation decay window, the row contributes to neither numerator nor denominator; if that holds for every row, the empty-denominator fallback fires and `t_oracle = 0.5` exactly. Solo spam of novel hypotheses earns base rate however large the campaign: there is no reference to have aligned with, so there is no alignment to score.
+
+**The bandwagon theorem.** Handled non-asymptotically by the numerator, at any conviction. *Theorem:* if every `info_i = 0` and at least one `conviction_i > 0`, then
 
 ```
+signal_i          = conviction_i · 0 = 0
 effective_align_i = 0 · align_i + 1 · 0.5 = 0.5    for every row
 t_oracle = Σ(0.5 · c_i · w_i) / Σ(c_i · w_i) = 0.5
 ```
 
 exactly. A purely dogmatic bandwagon history produces trust equal to base rate, by direct algebra, not by limit, not by fallback, not by floating-point luck. Bandwagon farming cannot build trust above base rate.
 
+**The conviction theorem (calibration mirror).** As `conviction_i → 0`, `signal_i → 0` and `effective_align_i → 0.5` regardless of alignment; at `conviction_i = 0` the row's weight is also zero and it leaves the aggregate entirely. A hedged history is pinned to base rate twice over: the calibration flattens each row's signal, and the weight removes the row at the vacuous limit. Together with the bandwagon theorem this is the informative-commitment principle as algebra: either factor of `signal = conviction · info` at zero collapses the row's evidence to base rate.
+
 **Defensive clamp:** the algebra guarantees `t_oracle ∈ [0, 1]` for any non-empty denominator. A `max(0.0, min(1.0, ...))` clamp is retained as an IEEE 754 safety net against floating-point drift, not a semantic correction.
 
 **Deterministic accumulation.** The numerator and denominator sums use `math.fsum`, which is Shewchuk-exact and order-independent. The ledger stores `t_oracle`, so deterministic accumulation matters more than raw precision: bit-stable trust across row reorderings means the value persisted on the attestation row does not depend on the iteration order of the trust scan.
 
-**No prior row, no signal.** When the trust scan returns a row that is the oracle's first attestation on its hypothesis, `c_herd_prior` defaults to `0.0`. This is algebraically equivalent to a stored `c_herd_prior = 0.0`: both produce `info = 1 - |c_herd_prior| = 1`, so the alignment signal passes through undamped, exactly what the Prophet archetype requires. Detecting fresh hypotheses elsewhere in the pipeline relies on `n_oracle_prior` (the distinct-oracle count) rather than `c_herd_prior` because the latter cannot distinguish an empty herd from a balanced one.
+**No prior row, no signal.** When the trust scan returns a row that is the oracle's first attestation on its hypothesis, `c_herd_prior` defaults to `0.0`. This is algebraically equivalent to a stored `c_herd_prior = 0.0`: both produce `info = 1 - |c_herd_prior| = 1`, so the calibration is left entirely to conviction (`signal = conviction`), exactly what the Prophet archetype requires: their defining trait is committing hard while the herd knows nothing. Detecting fresh hypotheses elsewhere in the pipeline relies on `n_oracle_prior` (the distinct-oracle count) rather than `c_herd_prior` because the latter cannot distinguish an empty herd from a balanced one.
 
 **Bounds.** Decay is the soft bound (old attestations contribute negligible weight). The hard bound is `5 × trust_half_life`: at five half-lives, residual weight is ≈3%. Beyond that is noise.
 
@@ -477,7 +485,7 @@ exactly. A purely dogmatic bandwagon history produces trust equal to base rate, 
 
 ### Worked Examples
 
-Four archetypes, each computed against the same seeded ledger. To keep the arithmetic transparent: K = 1, trust decay disabled (weight = 1 for every row), and `c_herd_now` taken as the ledger's current state after all seeded attestations.
+Four archetypes, each computed against the same seeded ledger. To keep the arithmetic transparent: K = 1, trust decay disabled (weight = 1 for every row), and `c_herd_now` taken as the others-only recomputed state after all seeded attestations (the scored oracle's own rows excluded, per the Alignment section). Every example row is witnessed; the witness theorem covers the unwitnessed case exactly.
 
 All values rounded to three decimals.
 
@@ -492,21 +500,22 @@ Oracle P speaks first on a fresh hypothesis H with `c = 0.8`. Three later oracle
 | 3 | B | 0.8 | 0.35 | 0.50 |
 | 4 | C | 0.75 | 0.50 | 0.60 |
 
-(Herd values are illustrative post-ECBF-and-decay scalars; exact ECBF output is not needed for the trust computation; only the ledger-recorded `c_herd` values are.)
+(Herd values are illustrative post-ECBF-and-decay scalars; the 0.60 read against P's row is the others-only re-fusion of A, B, and C's evidence, which is what the herd converged to without P's own voice in the reference.)
 
-At the moment we compute P's trust, P has exactly one historical attestation (row 1). n_oracle_prior for row 1 = 0 (P was first), so N_O = 1 and M_write = 1/(1+1) = 0.500.
+At the moment we compute P's trust, P has exactly one historical attestation (row 1), witnessed by A, B, and C. n_oracle_prior for row 1 = 0 (P was first), so N_O = 1 and M_write = 1/(1+1) = 0.500.
 
 - `align_write      = 1 − 0.5 · |0.8 − 0.00| = 1 − 0.400 = 0.600`
 - `align_read       = 1 − 0.5 · |0.8 − 0.60| = 1 − 0.100 = 0.900`
 - `align            = 0.500 · 0.600 + 0.500 · 0.900 = 0.300 + 0.450 = 0.750`
 - `conviction       = |0.8| = 0.800`
 - `info             = 1 − |0.00| = 1.000`
-- `effective_align  = 1.000 · 0.750 + 0.000 · 0.5 = 0.750`
-- numerator: `0.750 · 0.800 · 1 = 0.600`
+- `signal           = 0.800 · 1.000 = 0.800`
+- `effective_align  = 0.800 · 0.750 + 0.200 · 0.5 = 0.600 + 0.100 = 0.700`
+- numerator: `0.700 · 0.800 · 1 = 0.560`
 - denominator: `0.800 · 1 = 0.800`
-- `t_oracle = 0.600 / 0.800 = 0.750`
+- `t_oracle = 0.560 / 0.800 = 0.700`
 
-Because the herd was fully uncertain when P spoke (`info = 1`), no pull toward 0.5 applies: `effective_align = align`. The prophet is judged on their actual alignment, which adaptive w has already shifted toward read-time (the herd's eventual position). Had we used the old fixed-w formula with w = 0.5, the same row would have produced `align = 0.5 · 0.600 + 0.5 · 0.900 = 0.750`, numerically identical here. Adaptive w matters most when the prophet has *multiple* attestations on fresh hypotheses: every one gets M_write ≈ 0.5 and defers to read-time, protecting the prophet from write-time penalties on vacuous priors. A fixed w = 0.8 would have produced `align = 0.8·0.600 + 0.2·0.900 = 0.480 + 0.180 = 0.660`: the prophet would be penalized 12 points for being "far from nothing."
+Because the herd was fully uncertain when P spoke (`info = 1`), the calibration is carried by conviction alone: `signal = 0.8`, so P keeps 80% of their alignment signal and base rate fills the rest. Had nobody followed, the witness rule would have dropped the row and P would sit at 0.5: prophecy is scored only once the herd shows up to be right about. Adaptive w matters most when the prophet has *multiple* attestations on fresh hypotheses: every one gets M_write ≈ 0.5 and defers to read-time, protecting the prophet from write-time penalties on vacuous priors. (A fixed w = 0.5 would be numerically identical here; a fixed w = 0.8 would have produced `align = 0.8·0.600 + 0.2·0.900 = 0.660` and `t_oracle = 0.8·0.660 + 0.1 = 0.628`: about 7 points of penalty for being "far from nothing.")
 
 #### Example 2: The Bandwagoner
 
@@ -520,12 +529,13 @@ N_O = 5, M_write = 5/6 ≈ 0.833: write-time dominates. Alignment is near-perfec
 
 - `align_write      = 1 − 0.5 · |0.90 − 0.92| = 0.990`
 - `align_read       = 1 − 0.5 · |0.90 − 0.94| = 0.980`
-- `align            = 0.833 · 0.990 + 0.167 · 0.980 = 0.988`
+- `align            = 0.833 · 0.990 + 0.167 · 0.980 = 0.9883`
 - `info             = 1 − 0.92 = 0.080`
-- `effective_align  = 0.080 · 0.988 + 0.920 · 0.5 = 0.0791 + 0.4600 = 0.5391`
 - `conviction       = 0.900`
+- `signal           = 0.900 · 0.080 = 0.072`
+- `effective_align  = 0.072 · 0.9883 + 0.928 · 0.5 = 0.0712 + 0.4640 = 0.5352`
 
-The alignment is 0.988, almost perfect. But `info = 0.08` collapses it: `effective_align ≈ 0.539`, barely above base rate. Because every row of a bandwagon history looks like this, the conviction-weighted average over such rows stays pinned just above 0.5. The asymptotic case is covered by the theorem in Conviction Weighting (Preserved): when the herd is fully dogmatic on every row (`info_i = 0`), each `effective_align_i = 0.5` exactly, so `t_oracle = 0.5` by direct algebra, no fallback, no limit. Bandwagon farming cannot build trust above base rate.
+The alignment is 0.9883, almost perfect. But `info = 0.08` collapses the signal to 0.072 before that alignment can matter: `effective_align ≈ 0.535`, barely above base rate, and full conviction cannot buy it back (conviction multiplies a near-zero info). Because every row of a bandwagon history looks like this, the conviction-weighted average over such rows stays pinned just above 0.5. The asymptotic case is covered by the bandwagon theorem in Boundary Cases: when the herd is fully dogmatic on every row (`info_i = 0`), each `effective_align_i = 0.5` exactly, so `t_oracle = 0.5` by direct algebra, no fallback, no limit. Bandwagon farming cannot build trust above base rate.
 
 #### Example 3: The Contrarian
 
@@ -541,9 +551,10 @@ Row 1: N_O = 1, M_write = 0.500.
 - `align_read       = 1 − 0.5 · |−0.8 − 0.30| = 1 − 0.550 = 0.450`
 - `align            = 0.500 · 0.600 + 0.500 · 0.450 = 0.525`
 - `info             = 1 − 0.00 = 1.000`
-- `effective_align  = 1.000 · 0.525 + 0.000 · 0.5 = 0.525`
 - `conviction       = 0.800`
-- num: `0.525 · 0.800 = 0.420`
+- `signal           = 0.800 · 1.000 = 0.800`
+- `effective_align  = 0.800 · 0.525 + 0.200 · 0.5 = 0.420 + 0.100 = 0.520`
+- num: `0.520 · 0.800 = 0.416`
 - den: `0.800`
 
 Row 2: N_O = 3, M_write = 3/4 = 0.750.
@@ -551,17 +562,18 @@ Row 2: N_O = 3, M_write = 3/4 = 0.750.
 - `align_read       = 1 − 0.5 · |−0.7 − 0.55| = 1 − 0.625 = 0.375`
 - `align            = 0.750 · 0.400 + 0.250 · 0.375 = 0.300 + 0.09375 = 0.39375`
 - `info             = 1 − 0.50 = 0.500`
-- `effective_align  = 0.500 · 0.39375 + 0.500 · 0.5 = 0.1969 + 0.2500 = 0.4469`
 - `conviction       = 0.700`
-- num: `0.4469 · 0.700 = 0.3128`
+- `signal           = 0.700 · 0.500 = 0.350`
+- `effective_align  = 0.350 · 0.39375 + 0.650 · 0.5 = 0.1378 + 0.3250 = 0.4628`
+- num: `0.4628 · 0.700 = 0.3240`
 - den: `0.700`
 
 Totals:
-- numerator ≈ `0.420 + 0.3128 = 0.7328`
+- numerator ≈ `0.416 + 0.3240 = 0.7400`
 - denominator ≈ `0.800 + 0.700 = 1.500`
-- `t_oracle ≈ 0.7328 / 1.500 ≈ 0.489`
+- `t_oracle ≈ 0.7400 / 1.500 ≈ 0.493`
 
-Contrarian earns trust close to base rate, slightly below 0.5. Row 1 is on a fresh hypothesis (`info = 1`) so the pull toward 0.5 does nothing and the genuine disagreement signal passes through. Row 2 is on a moderately-formed hypothesis (`info = 0.5`), so its disagreement is softened: `effective_align = 0.447` rather than `0.394`. The contrarian's honest disagreements on informative hypotheses still pull trust down; disagreements on less-informative hypotheses are discounted.
+Contrarian earns trust close to base rate, slightly below 0.5. Row 1 is on a fresh hypothesis (`info = 1`), so the calibration is pure conviction: the genuine disagreement passes at 80% strength, and because the blended alignment (0.525) already sits near base rate, the pull toward 0.5 barely moves it. Row 2 is softened twice, by a half-formed herd and by moderate conviction (`signal = 0.35`): `effective_align = 0.463` rather than `0.394`. The contrarian's honest, committed disagreements on informative hypotheses still pull trust down; hedged or less-informative disagreements are discounted toward neutral.
 
 #### Example 4: The Honest Conformist
 
@@ -577,9 +589,10 @@ Row 1: N_O = 5, M_write = 5/6 ≈ 0.833.
 - `align_read       = 1 − 0.5 · |0.60 − 0.55| = 1 − 0.025 = 0.975`
 - `align            = 0.833 · 0.900 + 0.167 · 0.975 = 0.7500 + 0.1625 = 0.9125`
 - `info             = 1 − 0.40 = 0.600`
-- `effective_align  = 0.600 · 0.9125 + 0.400 · 0.5 = 0.5475 + 0.2000 = 0.7475`
 - `conviction       = 0.600`
-- num: `0.7475 · 0.600 = 0.4485`
+- `signal           = 0.600 · 0.600 = 0.360`
+- `effective_align  = 0.360 · 0.9125 + 0.640 · 0.5 = 0.3285 + 0.3200 = 0.6485`
+- num: `0.6485 · 0.600 = 0.3891`
 - den: `0.600`
 
 Row 2: N_O = 10, M_write = 10/11 ≈ 0.909.
@@ -587,17 +600,18 @@ Row 2: N_O = 10, M_write = 10/11 ≈ 0.909.
 - `align_read       = 1 − 0.5 · |0.50 − 0.45| = 1 − 0.025 = 0.975`
 - `align            = 0.909 · 0.900 + 0.091 · 0.975 = 0.8182 + 0.0886 = 0.9068`
 - `info             = 1 − 0.30 = 0.700`
-- `effective_align  = 0.700 · 0.9068 + 0.300 · 0.5 = 0.6348 + 0.1500 = 0.7848`
 - `conviction       = 0.500`
-- num: `0.7848 · 0.500 = 0.3924`
+- `signal           = 0.500 · 0.700 = 0.350`
+- `effective_align  = 0.350 · 0.9068 + 0.650 · 0.5 = 0.3174 + 0.3250 = 0.6424`
+- num: `0.6424 · 0.500 = 0.3212`
 - den: `0.500`
 
 Totals:
-- numerator ≈ `0.4485 + 0.3924 = 0.8409`
+- numerator ≈ `0.3891 + 0.3212 = 0.7103`
 - denominator ≈ `0.600 + 0.500 = 1.100`
-- `t_oracle ≈ 0.8409 / 1.100 ≈ 0.7644`
+- `t_oracle ≈ 0.7103 / 1.100 ≈ 0.646`
 
-The honest conformist earns solid trust around 0.77, well above base rate but meaningfully below 1.0. The cap is structural: each row's `effective_align` is bounded above by `0.5 + info/2` (since `align ∈ [0, 1]`), so reaching 1.0 requires *both* perfect alignment *and* near-fully-uncertain herds. An oracle who only attests on maturely-formed hypotheses is capped around the typical `info` of their targets. Climbing higher requires riskier contributions on less-formed hypotheses, where agreement actually resolves uncertainty: exactly the informational commitment the formula is designed to reward.
+The honest conformist earns solid trust around 0.65, above base rate but now below the prophet's 0.700: conviction calibration rewards the prophet's defining trait, committing hard where the herd knows nothing, over careful agreement where it knows plenty. The cap is structural: each row's `effective_align` is bounded above by `0.5 + signal/2 = 0.5 + conviction · info/2` (since `align ∈ [0, 1]`), so reaching 1.0 requires perfect alignment, full conviction, *and* a near-fully-uncertain herd at once. An oracle who only attests on maturely-formed hypotheses is capped around the typical `conviction · info` of their targets. Climbing higher requires committed contributions on less-formed hypotheses, where agreement actually resolves uncertainty: exactly the informative commitment the formula is designed to reward.
 
 ---
 
@@ -837,13 +851,13 @@ The original trust formula treated every alignment event identically: an oracle 
 
 A first attempt used `info_i = 1 − |c_herd_prior_i|` as a *row weight* inside a conviction-weighted average: `t_oracle = Σ(align · conv · info · w) / Σ(conv · info · w)`. This was mathematically unsound. Because info appeared symmetrically in numerator and denominator, a pure bandwagoner (every `align_i = 1`) still earned `t_oracle = 1` regardless of info values; the weight cancelled. The defense only fired in the strict limit where every `info_i` was exactly zero (triggering a zero-denominator fallback), which never occurs for merely-settled herds in practice.
 
-The principled move is to apply the binomial form of Jøsang's trust discounting operator (Def. 14.6) at the alignment-measurement level rather than the row-weight level. The derivation (and the proof that a pure bandwagoner on a fully dogmatic herd converges to `t_oracle = 0.5` by direct algebra) lives in the Information Weighting subsection under Oracle Trust. The key property is that applying Def. 14.6 to each row's alignment score makes info a *calibration* of the signal, not a weight on the row, so info cannot cancel out of the aggregate.
+The principled move is to apply the binomial form of Jøsang's trust discounting operator (Def. 14.6) at the alignment-measurement level rather than the row-weight level. The derivation (and the proof that a pure bandwagoner on a fully dogmatic herd converges to `t_oracle = 0.5` by direct algebra) lives in The Informative-Commitment Gate under Oracle Trust. The key property is that applying Def. 14.6 to each row's alignment score makes info a *calibration* of the signal, not a weight on the row, so info cannot cancel out of the aggregate. A later revision composed conviction into the same discount (`signal = conviction · info`) after the scattershot vector showed that calibrating by info alone leaves low-conviction farming open; the same cancellation argument applies, and two Def. 14.6 discounts toward one base rate compose into the single product.
 
 ### Rejected Approaches
 
 Three alternatives considered and rejected during the trust revision design:
 
-- **Beta-Evidence Mapping (BRS-inspired).** Convert each attestation to a beta-distributed evidence pair, leave-one-out of the hypothesis state at read time, and score the oracle by the improvement in herd uncertainty. Rejected: leave-one-out on ECBF is impossible because uncertainty maximization is lossy; you cannot reconstruct `ECBF(history minus row i)` from `ECBF(history)` and row i. The bootstrap credit (the first attestation gets full credit for "introducing information") turns out to reward confidence bombing exactly the way the current system punishes it. And the claimed O(K) complexity argument relied on the LOO shortcut that doesn't exist.
+- **Beta-Evidence Mapping (BRS-inspired).** Convert each attestation to a beta-distributed evidence pair, leave-one-out of the hypothesis state at read time, and score the oracle by the improvement in herd uncertainty. Rejected: leave-one-out is impossible *from the stored maximized aggregate*; uncertainty maximization is lossy, and a single scalar's one degree of freedom cannot determine the two the pre-maximization state carried, so `ECBF(history minus row i)` is not reconstructible from `ECBF(history)` and row i. Recomputation from the immutable ledger is available, and is exactly how the witness reference computes its others-only state; what it cannot rescue is this proposal's scoring rule. The bootstrap credit (the first attestation gets full credit for "introducing information") turns out to reward confidence bombing exactly the way the current system punishes it. And the claimed O(K) complexity argument relied on the aggregate-only LOO shortcut that doesn't exist.
 - **Effective Distance (novel asymmetric operator).** Replace PD with an asymmetric distance function that rewards an oracle for moving the herd in the right direction. Rejected on two grounds: (1) no precedent in Jøsang or any reference implementation; adopting it would make effective-distance the only operator in `lore.math` without a citation, violating the prior-art protocol; (2) YAGNI: adaptive w already handles the prophet case on immature hypotheses, which is the concrete failure mode effective-distance was meant to address. If a case emerges where adaptive w is insufficient, adding a new distance function is a one-function local change with no storage impact, so the decision is cheaply reversible.
 - **"Strict regime" (drop the PD 0.5 factor).** Use `align = 1 − |c_a − c_b|` instead of `1 − 0.5·|c_a − c_b|`, re-centering alignment on [−1, 1] rather than [0, 1]. Rejected as cosmetic: after the trivial linear rescaling the two formulations produce algebraically identical trust scores. No behavioral change, so the simpler canonical Jøsang form (PD = projected probability distance, Eq. 4.61) wins.
 
