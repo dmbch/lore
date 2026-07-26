@@ -139,6 +139,8 @@ d̈ = (1 − P) − 0.5 · ü         (residual disbelief)
 
 Uncertainty maximization is applied **once**, after all evidence is accumulated, not between pairwise ACBF steps.
 
+ECBF itself is therefore not associative: maximizing between pairwise steps discards canceled evidence. Counterexample: A = (0.5, 0.3, 0.2), B = (0.3, 0.5, 0.2), C = A. Pairwise ECBF(ECBF(A, B), C) = (0.2, 0, 0.8) with P = 0.6; N-ary maximize-once yields (1/13, 0, 12/13) with P = 7/13. Associativity belongs to the inner ACBF alone (Def. 12.5, the aleatory operator).
+
 ### Why ECBF, Not CCF
 
 Lore's propositions are epistemic: "Did PR #405 cause the memory leak?" is a one-time fact, not a repeatable experiment. This distinction drove the choice of ECBF over CCF (Def. 12.9).
@@ -160,7 +162,7 @@ CCF is idempotent: `fuse([a, a]) = a`. This means 50 oracles each submitting mod
 | Property | CCF (rejected) | ECBF (chosen) |
 |---|---|---|
 | Idempotency | Yes: `fuse([a,a]) = a` | No: duplicate evidence compounds |
-| Associativity | Semi-associative (N-ary required) | Fully associative (pairwise valid) |
+| Associativity | Semi-associative (N-ary required) | Not associative as an operator; N-ary via associative inner ACBF, maximized once |
 | Vacuous neutrality | `fuse([a, V]) = a` | `fuse([a, V]) = fuse([a])` |
 | Output shape | Any valid (b, d, u) | Always `min(b, d) = 0` |
 | Contradiction | Conflict → partial uncertainty | Conflict → vacuous |
@@ -184,7 +186,7 @@ where Δt = t_now − t_attestation (integer seconds)
 
 **Per-attestation, not post-fusion.** Each attestation decays individually by its own age before fusion. This follows Jøsang's canonical design (BRS 2002, Eq. 12) where individual evidence contributions are weighted by age before aggregation. Lore uses continuous elapsed time (`e^(−λΔt)`) where BRS uses discrete periods (`λ^(n−i)`). The principle is the same: fresh evidence naturally dominates stale evidence because old decayed attestations carry high uncertainty, contributing proportionally less to cumulative fusion.
 
-**Invariant preservation:** `b₀ · e^(−λΔt) + d₀ · e^(−λΔt) + 1 − (1 − u₀) · e^(−λΔt) = (b₀ + d₀ + 1 − u₀) · e^(−λΔt) − e^(−λΔt) + 1`. Since `b₀ + d₀ = 1 − u₀`, this simplifies to `(1 − u₀) · e^(−λΔt) + 1 − (1 − u₀) · e^(−λΔt) = 1`. ✓
+**Invariant preservation:** `b₀ · e^(−λΔt) + d₀ · e^(−λΔt) + 1 − (1 − u₀) · e^(−λΔt) = (b₀ + d₀ + u₀) · e^(−λΔt) − e^(−λΔt) + 1`. Since `b₀ + d₀ + u₀ = 1`, this simplifies to `e^(−λΔt) − e^(−λΔt) + 1 = 1`. ✓
 
 **Boundary cases:**
 - Δt = 0: opinion unchanged (e⁰ = 1).
@@ -611,7 +613,7 @@ For a single contradicted hypothesis h₁, the transfer is the negated decayed `
 c_transfer = −decay(c_herd(h₁, t_latest), λ, t_now − t_latest)
 ```
 
-Where `t_latest` is the timestamp of h₁'s most recent attestation row, and `c_herd(h₁, t_latest)` is the stored `c_herd` value on that row: the cumulative herd consensus at write time under the ACBF storage convention.
+Where `t_latest` is the timestamp of h₁'s most recent attestation row, and `c_herd(h₁, t_latest)` is the stored `c_herd` value on that row: the cumulative herd consensus at write time under the cumulative storage convention. In scalar form, `decay(c) = c · e^(−λΔt)`: decay scales b and d by the same factor, so it commutes with the scalar mapping.
 
 For multiple contradicted hypotheses, the transfer fuses across them via ECBF before negation:
 
@@ -622,7 +624,7 @@ c_transfer = −ECBF(
 )
 ```
 
-Each contradicted hypothesis contributes one evidence piece: its latest stored `c_herd` at `t_latest_i`. The pieces are decayed individually to `t_now` and fused; the fused result is negated to produce the transfer's confidence.
+Each contradicted hypothesis contributes one evidence piece: its latest stored `c_herd` at `t_latest_i`. The pieces are decayed individually to `t_now`, lifted to their uncertainty-maximized opinions (the lossless bijection; see System-Wide Scalar Representation), fused via ECBF, and mapped back; the fused result is negated to produce the transfer's confidence.
 
 The transfer attestation is written to the ledger with:
 
@@ -643,7 +645,7 @@ The transfer is written *before* the oracle's own attestation on h₂ within the
 
 ### Latest row, not full re-fusion
 
-The transfer reads `c_herd` from each contradicted hypothesis's most recent attestation row. Under the ACBF storage convention, every row's `c_herd` is the cumulative herd consensus at write time: a sufficient statistic for the herd's prior at that timestamp. Decaying it forward to `t_now` reflects the herd's current conviction without re-fusing every historical row.
+The transfer reads `c_herd` from each contradicted hypothesis's most recent attestation row. Under the cumulative storage convention, every row's `c_herd` is the cumulative herd consensus at write time: a sufficient statistic for the herd's prior at `t_latest`. Decaying that scalar forward to `t_now` is an approximation: decay does not commute with fusion (two c = 0.6 rows one half-life apart, read a further half-life later: decayed-forward 0.329 vs canonical re-fusion 0.377; see Per-Attestation Decay over Post-Fusion Decay). The transfer accepts the gap with eyes open: its role is blocking self-referential trust credit on the novel's otherwise vacuous slate, not reproducing the canonical herd state.
 
 ### Partition completeness as proxy
 
