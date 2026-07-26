@@ -25,6 +25,7 @@ import pytest
 from lore.domain import (
     ArchivistOutput,
     ConsultLoreRequest,
+    EvidenceInput,
     InterpreterOutput,
     Resolution,
     StorageError,
@@ -90,6 +91,21 @@ class _FailingOnSecondCallAttestationsRepo:
     ) -> list[TrustSignal]:
         return await self._inner.fetch_trust_alignments(
             oracle_id=oracle_id, t_now=t_now, trust_half_life=trust_half_life
+        )
+
+    async def fetch_herd_evidence(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        exclude_oracle: str,
+        t_now: int,
+        attestation_half_life: float,
+    ) -> dict[str, list[EvidenceInput]]:
+        return await self._inner.fetch_herd_evidence(
+            hypothesis_ids,
+            exclude_oracle=exclude_oracle,
+            t_now=t_now,
+            attestation_half_life=attestation_half_life,
         )
 
 

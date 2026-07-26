@@ -22,6 +22,7 @@ from lore.config import LoreSettings
 from lore.domain import (
     TRANSFER_ORACLE,
     ArchivistOutput,
+    EvidenceInput,
     Resolution,
     TrustSignal,
     WriteContext,
@@ -93,6 +94,16 @@ class _StubAttestations:
     async def fetch_trust_alignments(
         self, *, oracle_id: str, t_now: int, trust_half_life: float
     ) -> list[TrustSignal]:
+        raise NotImplementedError
+
+    async def fetch_herd_evidence(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        exclude_oracle: str,
+        t_now: int,
+        attestation_half_life: float,
+    ) -> dict[str, list[EvidenceInput]]:
         raise NotImplementedError
 
 

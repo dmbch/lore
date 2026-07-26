@@ -8,11 +8,12 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import ValidationError
 
-from lore.domain import StorageError, TrustSignal
+from lore.domain import EvidenceInput, StorageError, TrustSignal
 from lore.repositories.postgres._errors import translate
 from lore.repositories.records import (
     AttestationRecord,
     build_attestation_records,
+    group_evidence_rows,
 )
 
 
@@ -87,6 +88,40 @@ class PostgresAttestationsRepository:
         for record in build_attestation_records(rows=rows):
             result[record.hypothesis_id].append(record)
         return result
+
+    async def fetch_herd_evidence(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        exclude_oracle: str,
+        t_now: int,
+        attestation_half_life: float,
+    ) -> dict[str, list[EvidenceInput]]:
+        if not hypothesis_ids:
+            return {}
+        # Same math.isfinite guard as fetch_trust_alignments: int(5 * inf)
+        # raises, so a non-finite half-life collapses the lower bound to 0.
+        window_start = (
+            t_now - int(5 * attestation_half_life) if math.isfinite(attestation_half_life) else 0
+        )
+        try:
+            cur = self._conn.cursor(row_factory=dict_row)
+            await cur.execute(
+                """SELECT hypothesis_id, c_oracle_discounted, timestamp
+                FROM attestations
+                WHERE hypothesis_id = ANY(%s)
+                AND oracle_id != %s
+                AND timestamp >= %s
+                AND timestamp <= %s
+                ORDER BY timestamp, id""",
+                (list(hypothesis_ids), exclude_oracle, window_start, t_now),
+            )
+            rows = await cur.fetchall()
+        except psycopg.Error as e:
+            translate(e)
+        # ``group_evidence_rows`` str()s the UUID-typed column so keys match
+        # the input IDs.
+        return group_evidence_rows(hypothesis_ids=hypothesis_ids, rows=rows)
 
     async def fetch_trust_alignments(
         self,
