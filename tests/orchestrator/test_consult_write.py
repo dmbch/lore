@@ -397,6 +397,7 @@ class TestWritePathNonColdStartTrust:
     async def test_write_path_trust_from_alignment_history(self) -> None:
         # Oracle who agreed perfectly with the herd on a prior attestation
         alignment = TrustSignal(
+            hypothesis_id="hyp-1",
             c_oracle_raw=0.6,
             timestamp=2000000000,
             c_herd_prior=0.6,

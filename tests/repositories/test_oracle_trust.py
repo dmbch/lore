@@ -115,6 +115,7 @@ class TestFetchTrustAlignments:
             trust_half_life=_NO_DECAY_HL,
         )
         assert len(rows) == 1
+        assert rows[0].hypothesis_id == h_id
         assert abs(rows[0].c_oracle_raw - 0.5) < EPSILON
         assert abs(rows[0].c_herd_prior - 0.5) < EPSILON
         assert abs(rows[0].c_herd_now - 0.5) < EPSILON

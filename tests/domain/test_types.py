@@ -22,6 +22,7 @@ from lore.domain.types import (
 
 def _valid_snapshot(**overrides: object) -> TrustSignal:
     defaults: dict[str, object] = {
+        "hypothesis_id": "hyp-1",
         "c_oracle_raw": 0.5,
         "timestamp": 1000,
         "c_herd_prior": 0.3,
@@ -71,6 +72,14 @@ class TestTrustSignalValidation:
     def test_accepts_zero_timestamp(self) -> None:
         s = _valid_snapshot(timestamp=0)
         assert s.timestamp == 0
+
+    def test_trust_signal_carries_hypothesis_id(self) -> None:
+        s = _valid_snapshot(hypothesis_id="hyp-1")
+        assert s.hypothesis_id == "hyp-1"
+
+    def test_rejects_empty_hypothesis_id(self) -> None:
+        with pytest.raises(ValueError, match="hypothesis_id"):
+            _valid_snapshot(hypothesis_id="")
 
 
 class TestTrustSignalImmutability:
