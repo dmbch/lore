@@ -126,10 +126,12 @@ def fuse(opinions: Sequence[Opinion]) -> Opinion:
     if n == 1:
         return maximize_uncertainty(opinions[0])
 
-    # Mixed-dogmatic partition (Jøsang Eq. 12.15 reading per Aggregatio):
+    # Mixed-dogmatic partition, per Aggregatio's ``cumulativeCollectionFuse``:
     # when ≥1 opinion is in the underflow regime and ≥1 is not, the N-ary
     # equal-weight mean runs over the dogmatic subset only; the non-
-    # dogmatic minority is ignored. Reference:
+    # dogmatic minority is ignored. Aggregatio cites Jøsang, Wang & Zhang
+    # (FUSION 2017, DOI 10.23919/ICIF.2017.8009820), Eqs. 16-17; in the
+    # book's terms the exclusion is Case I's dogmatic limit. Reference:
     # ``references/src/Aggregatio/.../SubjectiveOpinion.java`` cumulative
     # fusion partitioning logic. Recursing on the dogmatic subset routes
     # cleanly through the all-dogmatic short-circuit below.
