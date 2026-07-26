@@ -178,8 +178,8 @@ class PostgresAttestationsRepository:
                     FROM attestations a
                     WHERE a.hypothesis_id IN (SELECT hypothesis_id FROM relevant)
                 )
-                SELECT e.c_oracle_raw, e.timestamp, e.c_herd_prior, e.c_herd_now,
-                       e.n_oracle_prior
+                SELECT e.hypothesis_id, e.c_oracle_raw, e.timestamp, e.c_herd_prior,
+                       e.c_herd_now, e.n_oracle_prior
                 FROM enriched e
                 WHERE e.oracle_id = %s
                 AND e.timestamp >= %s
@@ -194,6 +194,7 @@ class PostgresAttestationsRepository:
         try:
             return [
                 TrustSignal(
+                    hypothesis_id=str(r["hypothesis_id"]),
                     c_oracle_raw=r["c_oracle_raw"],
                     timestamp=r["timestamp"],
                     c_herd_prior=r["c_herd_prior"],

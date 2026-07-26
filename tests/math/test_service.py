@@ -365,7 +365,7 @@ def test_oracle_alignment_snapshot_requires_n_oracle_prior() -> None:
     """n_oracle_prior is required for adaptive w computation."""
     with pytest.raises(ValidationError):
         TrustSignal(  # pyright: ignore[reportCallIssue]
-            c_oracle_raw=0.5, timestamp=100, c_herd_prior=0.0, c_herd_now=0.5
+            hypothesis_id="h1", c_oracle_raw=0.5, timestamp=100, c_herd_prior=0.0, c_herd_now=0.5
         )
 
 
@@ -373,6 +373,7 @@ def test_oracle_alignment_snapshot_rejects_negative_n_oracle_prior() -> None:
     """Distinct oracle count cannot be negative."""
     with pytest.raises(ValidationError):
         TrustSignal(
+            hypothesis_id="h1",
             c_oracle_raw=0.5,
             timestamp=100,
             c_herd_prior=0.0,
@@ -420,6 +421,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
@@ -446,6 +448,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
@@ -469,6 +472,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
@@ -489,6 +493,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.9,
                 timestamp=1000,
                 c_herd_prior=0.9,
@@ -512,6 +517,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.7,
                 timestamp=1000,
                 c_herd_prior=0.0,
@@ -545,6 +551,7 @@ class TestComputeOracleTrust:
         )
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.2,
                 timestamp=1000,
                 c_herd_prior=0.0,
@@ -566,6 +573,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=1.0,
                 timestamp=1000,
                 c_herd_prior=1.0,
@@ -593,6 +601,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=1.0,
                 timestamp=1000,
                 c_herd_prior=0.4,
@@ -616,6 +625,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
@@ -641,6 +651,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=-0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
@@ -648,6 +659,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=0,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=-0.7,
                 timestamp=0,
                 c_herd_prior=0.50,
@@ -675,6 +687,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.60,
                 timestamp=0,
                 c_herd_prior=0.40,
@@ -682,6 +695,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=4,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=0.50,
                 timestamp=0,
                 c_herd_prior=0.30,
@@ -702,6 +716,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=0.0)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
@@ -721,6 +736,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=1.0,
                 timestamp=800,
                 c_herd_prior=1.0,
@@ -728,6 +744,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=3,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=-1.0,
                 timestamp=1000,
                 c_herd_prior=-1.0,
@@ -743,6 +760,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.0,
                 timestamp=900,
                 c_herd_prior=0.0,
@@ -750,6 +768,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=0,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=0.0,
                 timestamp=1000,
                 c_herd_prior=0.0,
@@ -771,6 +790,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, maturity_k=0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
@@ -791,6 +811,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.0,
                 timestamp=900,
                 c_herd_prior=0.4,
@@ -798,6 +819,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=0,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=0.7,
                 timestamp=1000,
                 c_herd_prior=0.0,
@@ -821,6 +843,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
@@ -828,6 +851,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=0,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
@@ -845,6 +869,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=trust_half_life)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.8,
                 timestamp=100,
                 c_herd_prior=0.0,
@@ -852,6 +877,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=0,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=0.5,
                 timestamp=9000,
                 c_herd_prior=0.5,
@@ -894,6 +920,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.4,
                 timestamp=1000,
                 c_herd_prior=0.1,
@@ -916,6 +943,7 @@ class TestComputeOracleTrust:
 
         def row(c_oracle_raw: float, c_herd_prior: float, c_herd_now: float) -> TrustSignal:
             return TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=c_oracle_raw,
                 timestamp=1000,
                 c_herd_prior=c_herd_prior,
@@ -952,6 +980,7 @@ class TestComputeOracleTrust:
         svc = MathService(c_half_life=100.0, t_half_life=float("inf"))
         rows = [
             TrustSignal(
+                hypothesis_id="h1",
                 c_oracle_raw=0.8,
                 timestamp=100,
                 c_herd_prior=0.0,
@@ -959,6 +988,7 @@ class TestComputeOracleTrust:
                 n_oracle_prior=0,
             ),
             TrustSignal(
+                hypothesis_id="h2",
                 c_oracle_raw=0.8,
                 timestamp=999_999,
                 c_herd_prior=0.0,

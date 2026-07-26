@@ -270,6 +270,7 @@ class TrustSignal(DataModel):
     defence against rows that bypass those constraints.
     """
 
+    hypothesis_id: NonEmptyStr
     c_oracle_raw: SignedUnitInterval
     timestamp: NonNegativeInt
     c_herd_prior: SignedUnitInterval
