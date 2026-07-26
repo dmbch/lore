@@ -5,7 +5,8 @@ Saturation function over oracle diversity. See docs/logic.md §Hypothesis Maturi
 
 
 def compute_maturity(*, n_oracle_prior: int, k: float) -> float:
-    """M in (0, 1]. K=0 is transparent; K=1 adds one phantom skeptic."""
+    """M in [0, 1]. K=0 is transparent; K=1 adds one phantom skeptic; K=inf
+    pins M to 0 (the pure read-time limit)."""
     if n_oracle_prior < 0:
         msg = f"n_oracle_prior must be non-negative, got {n_oracle_prior}"
         raise ValueError(msg)

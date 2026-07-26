@@ -132,12 +132,16 @@ class MathService:
           n_oracle_prior) controls how much the write-time signal counts.
           Fresh hypotheses (M_write ≈ 0.5) give read-time the final say;
           mature hypotheses (M_write → 1) anchor on write-time alignment.
-        - **Info weighting (Def. 14.6).** The row's raw alignment is
-          discounted toward the base rate (0.5) in proportion to the herd's
-          prior certainty. Agreement with a settled herd resolves no
-          uncertainty and earns little trust credit.
-        - **Conviction.** |c_oracle_raw|: vacuous attestations contribute
-          nothing. Saying nothing is not evidence of alignment.
+        - **Informative-commitment gate (Def. 14.6).** The composite
+          ``signal = conviction * info`` discounts the row's alignment
+          toward the base rate (0.5): one discount, two conditions.
+          Agreement with a settled herd resolves no uncertainty; a
+          hedged opinion asserts almost nothing. Neither earns trust
+          credit far from base rate.
+        - **Conviction row weight.** |c_oracle_raw| also weights the row:
+          vacuous attestations contribute nothing. A weight normalizes
+          out over uniform histories, a calibration cannot, so the two
+          conviction roles are deliberate, not double-counting.
         - **Temporal decay.** Exponential over timestamp age.
 
         Returns t_oracle in [0, 1]. Empty rows or histories with no
@@ -146,8 +150,10 @@ class MathService:
 
         Per-row alignment is ``1 - compute_projected_distance(...)`` over
         the uncertainty-maximized opinions for the two scalars (Eq. 4.61
-        specialised at base rate 0.5). Info weighting applies the discount
-        operator (Def. 14.6) to the scalar alignment signal.
+        specialised at base rate 0.5). The informative-commitment gate
+        applies the discount operator (Def. 14.6) to the scalar alignment
+        signal; two discounts toward the same base rate compose into the
+        single product ``conviction * info``.
         """
         if not rows:
             return BASE_RATE
@@ -164,9 +170,10 @@ class MathService:
             align = m_write * align_write + (1.0 - m_write) * align_read
 
             info = 1.0 - abs(row.c_herd_prior)
-            effective_align = info * align + (1.0 - info) * BASE_RATE
-
             conviction = abs(row.c_oracle_raw)
+            signal = conviction * info
+            effective_align = signal * align + (1.0 - signal) * BASE_RATE
+
             dt = max(0, t_now - row.timestamp)
             weight = math.exp(-self._trust_lambda * dt)
 
