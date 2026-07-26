@@ -901,19 +901,19 @@ Trust discounting, ECBF, and decay compose into a system with bounded vulnerabil
 
 ### Practical Trust Ceiling
 
-The trust ceiling is not a number; it is a property of the oracle's targets. Each row's effective alignment is bounded above by `effective_align_i ≤ 0.5 + info_i / 2` (substitute `align_i = 1` into Def. 14.6). The conviction-weighted average inherits the bound:
+The trust ceiling is not a number; it is a property of the oracle's targets. Each row's effective alignment is bounded above by `effective_align_i ≤ 0.5 + signal_i / 2 = 0.5 + conviction_i · info_i / 2` (substitute `align_i = 1` into Def. 14.6). The conviction-weighted average inherits the bound:
 
 ```
-t_oracle ≤ 0.5 + 0.5 · ⟨info⟩_cw
+t_oracle ≤ 0.5 + 0.5 · ⟨signal⟩_cw
 ```
 
-where `⟨info⟩_cw = Σ(info_i · conviction_i · weight_i) / Σ(conviction_i · weight_i)` is the conviction-weighted mean of the per-row info values. The ceiling is path-dependent; it tracks the herd uncertainty the oracle has volunteered to try to resolve:
+where `⟨signal⟩_cw = Σ(signal_i · conviction_i · weight_i) / Σ(conviction_i · weight_i)` is the conviction-weighted mean of the per-row signals `signal_i = conviction_i · info_i`. The ceiling is path-dependent; it tracks both the herd uncertainty the oracle volunteered to resolve and how much of their own credence they spent doing it:
 
-- **Prophets** on fresh herds: `⟨info⟩ → 1`, ceiling → 1.0 (approached but not reached in practice; `align_read` is rarely perfect).
-- **Honest conformists** on mature fluid herds: `⟨info⟩ ≈ 0.5–0.7`, ceiling ≈ 0.75–0.85.
-- **Bandwagoners** on settled herds: `⟨info⟩ → 0`, ceiling → 0.5.
+- **Prophets** on fresh herds: `info = 1` makes the signal pure conviction, but the fresh-row blend caps alignment at `1 − 0.25 · conviction` (K = 1, write leg against a vacuous prior), so a perfectly vindicated fresh row tops out at `0.5 + 0.5c − 0.25c²`: monotone in conviction, at most **0.75** at `c = 1`. Nothing on fresh rows approaches 1.0; the ceiling rewards maximal conviction, not hedging.
+- **Honest conformists** on mature fluid herds: `⟨conviction · info⟩ ≈ 0.35`, ceiling ≈ 0.65–0.70.
+- **Bandwagoners** on settled herds: `info → 0`, ceiling → 0.5 at any conviction.
 
-The trust metric is, at its core, a measure of how much uncertainty the oracle has agreed to try to resolve. Climbing the ceiling requires not just being right, but being right about things the herd was uncertain about.
+Reaching 1.0 requires `signal = 1` and `align = 1` on the same row: full conviction, a fully uncertain herd, and perfect agreement with where the witnesses land, and the maturity blend forbids the last two from coexisting at K ≥ 1. The trust metric is, at its core, a measure of how much uncertainty the oracle has committed to resolving. Climbing the ceiling requires not just being right, but being confidently right about things the herd was uncertain about.
 
 ### Trust Dynamics Clusters
 
@@ -946,13 +946,33 @@ A malicious oracle submits c = ±1.0 (or near it) on a fresh hypothesis, attempt
 
 An oracle builds a high trust score by consistently agreeing with the herd, then exploits that trust to push a false opinion. Reputation cashing is Lore's name for the attack; the underlying observation is BRS's, which describes reputation as an asset that "can be cashed in through a fraudulent transaction."
 
-**Mitigation:** Two defenses compose. First, info weighting makes trust-building through conformity much harder: agreeing with a near-dogmatic herd has `info ≈ 0`, so the attestation earns almost no trust credit regardless of how well it aligns. The attacker has to build reputation through *informative* agreement (attestations on hypotheses the herd was uncertain about), which is the honest path. Second, if the attacker does build genuine trust this way, the exploit itself is still bounded: the high-trust false attestation enters at elevated P_effective, but it is still a single opinion. Subsequent honest attestations compound against it via ECBF. The attacker's trust score drops immediately on the next trust computation (the false opinion diverges from the herd that corrected it; align_read drops). Trust decay ensures the damage window is finite. One bullet, one shot, diminishing damage.
+**Mitigation:** Two defenses compose. First, the informative-commitment gate makes trust-building through conformity much harder: agreeing with a near-dogmatic herd has `info ≈ 0`, so the attestation earns almost no trust credit regardless of how well it aligns. The attacker has to build reputation through *informative* agreement (attestations on hypotheses the herd was uncertain about), which is the honest path. Second, if the attacker does build genuine trust this way, the exploit itself is still bounded: the high-trust false attestation enters at elevated P_effective, but it is still a single opinion. Subsequent honest attestations compound against it via ECBF. The attacker's trust score drops immediately on the next trust computation (the false opinion diverges from the herd that corrected it; align_read drops). Trust decay ensures the damage window is finite. One bullet, one shot, diminishing damage.
 
 ### Bandwagoning
 
 A weaker cousin of reputation cashing: an oracle attests only on already-settled hypotheses, rubber-stamping whatever the herd already believes, with no intent to exploit, just to farm a high t_oracle score for future ECBF leverage.
 
-**Mitigation:** Info weighting structurally bounds this attack by direct algebra, not by fallback. Every bandwagon row has `info_i = 1 − |c_herd_prior_i| ≈ 0`, so its `effective_align_i = info_i · align_i + (1 − info_i) · 0.5` is pulled sharply toward 0.5. In the fully dogmatic limit (`info_i = 0` on every row), the formula collapses to `effective_align_i = 0 · align_i + 1 · 0.5 = 0.5` exactly (*independent of `align_i`*), so the bandwagoner's near-perfect alignment scores contribute nothing. The conviction-weighted average of 0.5s is 0.5: `t_oracle = Σ(0.5 · conv · w) / Σ(conv · w) = 0.5`. No limit, no fallback, no floating-point luck. Bandwagon farming cannot build trust above base rate. The attacker must attest on hypotheses with real uncertainty, which is the honest contribution the system is trying to reward.
+**Mitigation:** The informative-commitment gate structurally bounds this attack by direct algebra, not by fallback. Every bandwagon row has `info_i = 1 − |c_herd_prior_i| ≈ 0`, so its signal `conviction_i · info_i ≈ 0` and `effective_align_i = signal_i · align_i + (1 − signal_i) · 0.5` is pulled sharply toward 0.5; conviction cannot buy the signal back because it multiplies a near-zero factor. In the fully dogmatic limit (`info_i = 0` on every row), the formula collapses to `effective_align_i = 0.5` exactly (*independent of `align_i` and `conviction_i`*), so the bandwagoner's near-perfect alignment scores contribute nothing. The conviction-weighted average of 0.5s is 0.5: `t_oracle = Σ(0.5 · conv · w) / Σ(conv · w) = 0.5`. No limit, no fallback, no floating-point luck. Bandwagon farming cannot build trust above base rate. The attacker must attest on hypotheses with real uncertainty, which is the honest contribution the system is trying to reward.
+
+### Self-Referential Read-Time Credit
+
+An oracle floods the archive with solo novel hypotheses. Pre-fix, the trust scan's read-time reference was the hypothesis's latest stored `c_herd`, which on a solo hypothesis is the oracle's own row: `align_read ≈ 1` (the reference is the oracle's own discounted echo, `0.5 · t · c`), `info = 1` (fresh prior), and each write raised the trust that discounted the next. The feedback iterated to a fixed point `t* = (1 − 0.5c)/(1 − 0.125c)` at K = 1: ≈ 0.92 at c = 0.2, rising toward 1.0 as conviction shrinks (0.981 already at c = 0.05). Solo spam of low-conviction novels farmed near-maximal trust from an empty room.
+
+**Mitigation:** Two mechanisms, one design. The read-time reference is recomputed at scan time from others-only evidence, so the oracle's own rows can never sit inside it; and the witness rule drops unwitnessed rows from the scan entirely, so an all-solo history earns exactly base rate (the witness theorem). The attack is not damped; it is worth nothing. Two escalations survive. Collusion, two identities attesting each other's novels to manufacture witnesses, is a sybil attack and lands on the authentication boundary below. The second stays inside a single identity and gets the next subsection.
+
+### Transfer-Laundered Witness
+
+The witness rule admits the synthetic `_transfer` oracle, and a transfer row's provenance can be the scored oracle alone. The play: attest a solo novel h₁ (unwitnessed, worth nothing by itself), then submit a novel h₂ contradicting h₁. The consolidated transfer onto h₂ negates h₁'s herd state, which is nothing but the oracle's own discounted echo, yet it lands under the `_transfer` identity: the oracle's h₂ row enters the scan aligned against a reference the oracle authored alone, two hops removed.
+
+**Bound (hand-derived, not simulated; the archetype table stays simulation-only).** The laundered reference is `r = 0.5 · t · |c₁|`, capped by the oracle's own discount, and both blend legs of the h₂ row see it: `c_herd_prior` is the transfer, and the others-only recomputation fuses the transfer alone. With `info = 1 − r`, a laundered row at conviction c scores `effective_align = 1/2 + c · (1 − r)(1 + r − c) / 2`. The oracle's best conviction is `c* = (1 + r)/2`, giving `1/2 + (1 − r)(1 + r)²/8`, maximal at `r = 1/3`; the iterated fixed point is `t* = 1/2 + 4/27 ≈ 0.65`, which a single full-conviction solo row on h₁ approximately realizes (`r = 0.5 · t* ≈ 0.32`).
+
+**Status: accepted residual, documented not closed.** The ceiling coincides with the top of the honest conformist band (~0.65) and stays well under the prophet's ~0.70; each countable row costs two junk hypotheses; and the ledger keeps the whole trail: chains of self-contradicting novels whose only witness is `_transfer` are a detectable signature. Repetition also fights retrieval, since near-duplicate pairs start resolving as paraphrases of earlier junk rather than fresh novels. The clean fix, requiring a non-`_transfer` witness before a row enters the scan, would also delay honest dissent scoring on contradicting novels until a real oracle engages the novel; that trade is left open. The witness theorem itself is unaffected: `_transfer` is formally another oracle. What this attack launders is provenance, which the algebra does not track.
+
+### Low-Conviction Scattershot
+
+An oracle sprays near-vacuous confidence (`c ≈ 0.1–0.2`) across many fresh, witnessed hypotheses. Pre-fix, calibration by info alone let these rows through at full signal: `info = 1` on fresh priors, and the fresh-row write leg is near-perfect against a vacuous prior while holding half the blend regardless of where the herd lands (`align ≥ 0.75 − 0.5 · conviction`, averaging ≈ 0.9), farming t ≈ 0.80 while asserting nearly nothing.
+
+**Mitigation:** Conviction inside the calibration. Each row's distance from base rate is bounded by `|effective_align_i − 0.5| = signal_i · |align_i − 0.5| ≤ conviction_i · |align_i − 0.5|`: at c = 0.2 even a perfectly aligned row moves at most 0.1 from base rate, and a whole campaign of such rows averages within that band. Trust far from 0.5, in either direction, is purchasable only with conviction the oracle actually spent.
 
 ### Sybil Attack
 
@@ -971,4 +991,14 @@ An attacker times attestations to exploit decay, submitting false opinions when 
 When K = 0: maturity is transparent (M = 1.0 for all N_O ≥ 1). With perfect alignment t_oracle = 1.0, P_effective = 1.0: every opinion retains its full strength. Dogmatic inputs (c = ±1.0) pass through trust discounting undiscounted and can produce dogmatic ECBF outputs.
 
 **This is an explicit deployer opt-in.** K = 0 means "I am disabling the maturity safeguard on purpose." It removes the algebraic guarantee that prevents dogmatic opinions. Deployers who set K = 0 must accept that the system's undogmatic property depends entirely on oracles voluntarily submitting |c| < 1. K ≥ 1 (default) is the recommended deployment mode; the maturity saturation function is the binding undogmatic constraint alongside trust discounting.
+
+### Known Residuals
+
+Bounded weaknesses the current algebra accepts, documented rather than hidden:
+
+- **Fresh-row softness.** A committed-and-wrong attestation on a fresh hypothesis can still land slightly above base rate: at `c = 0.5` fully contradicted by the eventual herd (`c_herd_now = −0.5`), the write leg against the vacuous prior grants `align_write = 0.75`, blending to `align = 0.625` and `effective_align = 0.5625`. The write leg grants `1 − 0.5 · conviction` regardless of outcome, and half of it survives the K = 1 blend; that unearned alignment is the price of not punishing prophets for being "far from nothing". K > 1 shrinks it by shifting fresh rows further toward read-time.
+- **The caution tax.** An honest oracle who hedges is capped at `0.5 + conviction / 2` even under perfect vindication. Accepted deliberately: any calibration that exempts honest hedging also reopens the scattershot vector, since the algebra cannot distinguish humility from farming.
+- **Transfer-laundered witness.** A single oracle can witness their own novel through the transfer machinery by contradicting their own solo claim; the laundered fixed point tops out at `t* = 1/2 + 4/27 ≈ 0.65` (see the attack subsection). Accepted for now: bounded, expensive in junk hypotheses, and detectable in the ledger.
+- **Sparse-herd freeze.** Until oracles answer each other's hypotheses, every row is unwitnessed and every trust score idles at 0.5. A single-oracle or siloed deployment gets base-rate trust indefinitely; attestations still land (at quarter strength), so the archive functions while the trust signal waits for cross-engagement.
+- **Retroactivity.** t_oracle is recomputed from the ledger on every scan; nothing stores a live trust score. Changing the trust algebra therefore shifts every oracle's effective score at their next write. The per-row `t_oracle` values persisted on old attestations are historical record of what the discount was at write time, not current state, and are never rewritten.
 
