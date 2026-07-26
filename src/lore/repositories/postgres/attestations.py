@@ -170,16 +170,12 @@ class PostgresAttestationsRepository:
                                    ORDER BY a.timestamp, a.id
                                ),
                                0.0
-                           ) AS c_herd_prior,
-                           FIRST_VALUE(a.c_herd) OVER (
-                               PARTITION BY a.hypothesis_id
-                               ORDER BY a.timestamp DESC, a.id DESC
-                           ) AS c_herd_now
+                           ) AS c_herd_prior
                     FROM attestations a
                     WHERE a.hypothesis_id IN (SELECT hypothesis_id FROM relevant)
                 )
                 SELECT e.hypothesis_id, e.c_oracle_raw, e.timestamp, e.c_herd_prior,
-                       e.c_herd_now, e.n_oracle_prior
+                       e.n_oracle_prior
                 FROM enriched e
                 WHERE e.oracle_id = %s
                 AND e.timestamp >= %s
@@ -198,7 +194,6 @@ class PostgresAttestationsRepository:
                     c_oracle_raw=r["c_oracle_raw"],
                     timestamp=r["timestamp"],
                     c_herd_prior=r["c_herd_prior"],
-                    c_herd_now=r["c_herd_now"],
                     n_oracle_prior=r["n_oracle_prior"],
                 )
                 for r in rows

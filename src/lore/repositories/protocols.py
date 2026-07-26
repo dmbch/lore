@@ -124,10 +124,10 @@ class AttestationsRepository(Protocol):
         """Fetch raw alignment data for oracle trust computation.
 
         Returns one row per attestation by ``oracle_id`` within the time
-        window (5 * trust_half_life). Each row carries the oracle's raw
-        confidence, timestamp, c_herd_prior (LAG), and c_herd_now
-        (FIRST_VALUE DESC): derived from the immutable ledger via window
-        functions.
+        window (5 * trust_half_life). Each row carries its hypothesis id,
+        the oracle's raw confidence, timestamp, c_herd_prior (LAG), and
+        the stored n_oracle_prior. The read-time reference is not part of
+        this fetch: callers recompute it from ``fetch_herd_evidence``.
 
         Domain logic (alignment formula, decay weighting, averaging) lives
         in the math service. The orchestrator wires fetch to compute.
