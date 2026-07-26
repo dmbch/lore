@@ -45,6 +45,13 @@ def _make_existing(c_oracle_discounted: float, timestamp: int) -> EvidenceInput:
     return EvidenceInput(c_oracle_discounted=c_oracle_discounted, timestamp=timestamp)
 
 
+def _evidence(*, t_now: int, **refs: float) -> dict[str, list[EvidenceInput]]:
+    """Herd evidence whose recomputed reference at ``t_now`` equals each given
+    scalar: one other-oracle row at ``t_now`` fuses to itself (lossless
+    scalar-opinion bijection, zero decay). Keys are hypothesis ids."""
+    return {hid: [EvidenceInput(c_oracle_discounted=c, timestamp=t_now)] for hid, c in refs.items()}
+
+
 # --- prepare_attestation: hand-calculated ---
 class TestPrepareAttestationHandCalculated:
     def test_first_attestation_cold_start(self) -> None:
@@ -377,7 +384,7 @@ def test_oracle_alignment_snapshot_rejects_negative_n_oracle_prior() -> None:
             c_oracle_raw=0.5,
             timestamp=100,
             c_herd_prior=0.0,
-            c_herd_now=0.5,
+            c_herd_now=0.0,
             n_oracle_prior=-1,
         )
 
@@ -387,9 +394,12 @@ class TestComputeOracleTrust:
     """Tests for oracle trust computation via MathService.
 
     Formula (see docs/logic.md, Oracle Trust section):
+      witness rule     : rows whose hypothesis has no others-only evidence
+                         leave the scan (neither numerator nor denominator)
+      ref_i            = compute_confidence(herd_evidence[hypothesis_id], t_now)
       M_write_i        = N_O / (N_O + K), N_O = n_oracle_prior + 1
       align_write_i    = 1 - 0.5 * |c_oracle_raw - c_herd_prior|
-      align_read_i     = 1 - 0.5 * |c_oracle_raw - c_herd_now|
+      align_read_i     = 1 - 0.5 * |c_oracle_raw - ref|
       align_i          = M_write · align_write + (1 - M_write) · align_read
       info_i           = 1 - |c_herd_prior|
       conviction_i     = |c_oracle_raw|
@@ -398,12 +408,16 @@ class TestComputeOracleTrust:
       weight_i         = exp(-λ_trust · Δt)
       t_oracle         = Σ(effective_align · conviction · weight)
                        / Σ(conviction · weight)
+
+    The stored ``c_herd_now`` field is never read; tests construct rows
+    with a dead 0.0 (or a deliberate lie where the test proves unread-ness)
+    and express the reference through ``herd_evidence``.
     """
 
     def test_empty_rows_returns_base_rate(self) -> None:
         """Cold start: no history → base rate trust (0.5)."""
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
-        result = svc.compute_oracle_trust(rows=[], t_now=1000)
+        result = svc.compute_oracle_trust(rows=[], herd_evidence={}, t_now=1000)
         assert abs(result - 0.5) < EPSILON
 
     def test_fresh_herd_perfect_read_alignment(self) -> None:
@@ -425,11 +439,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.8,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.8), t_now=1000
+        )
         assert abs(result - 0.74) < EPSILON
 
     def test_adaptive_w_fresh_hypothesis_blends_equally(self) -> None:
@@ -452,11 +468,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
-                c_herd_now=-0.5,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=-0.5), t_now=1000
+        )
         assert abs(result - 0.5625) < EPSILON
 
     def test_adaptive_w_mature_hypothesis_anchors_on_write_time(self) -> None:
@@ -476,11 +494,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
-                c_herd_now=-0.5,
+                c_herd_now=0.0,
                 n_oracle_prior=9,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=-0.5), t_now=1000
+        )
         assert abs(result - 27.0 / 44.0) < EPSILON
 
     def test_info_discount_settled_herd_earns_negligible_credit(self) -> None:
@@ -497,11 +517,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.9,
                 timestamp=1000,
                 c_herd_prior=0.9,
-                c_herd_now=0.9,
+                c_herd_now=0.0,
                 n_oracle_prior=5,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.9), t_now=1000
+        )
         assert abs(result - 0.545) < EPSILON
 
     def test_fresh_herd_calibration_reduces_to_conviction(self) -> None:
@@ -521,11 +543,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.7,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.5,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.5), t_now=1000
+        )
         assert abs(result - 0.6925) < EPSILON
 
     def test_conviction_calibrates_alignment_signal(self) -> None:
@@ -555,11 +579,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.2,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.2,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.2), t_now=1000
+        )
         assert abs(result - 0.6) < EPSILON
 
     def test_bandwagon_theorem_survives_calibration(self) -> None:
@@ -577,11 +603,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=1.0,
                 timestamp=1000,
                 c_herd_prior=1.0,
-                c_herd_now=1.0,
+                c_herd_now=0.0,
                 n_oracle_prior=4,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=1.0), t_now=1000
+        )
         assert abs(result - 0.5) < EPSILON
 
     def test_full_conviction_recovers_info_only_calibration(self) -> None:
@@ -605,11 +633,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=1.0,
                 timestamp=1000,
                 c_herd_prior=0.4,
-                c_herd_now=0.8,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.8), t_now=1000
+        )
         assert abs(result - 0.68) < EPSILON
 
     # --- Worked-example archetypes from docs/logic.md §Oracle Trust ---
@@ -629,11 +659,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
-                c_herd_now=0.6,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=0)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=0, h1=0.6), t_now=0
+        )
         assert abs(result - 0.700) < 1e-3
 
     def test_compute_oracle_trust_contrarian_archetype(self) -> None:
@@ -655,7 +687,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=-0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
-                c_herd_now=0.30,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -663,11 +695,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=-0.7,
                 timestamp=0,
                 c_herd_prior=0.50,
-                c_herd_now=0.55,
+                c_herd_now=0.0,
                 n_oracle_prior=2,
             ),
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=0)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=0, h1=0.30, h2=0.55), t_now=0
+        )
         assert abs(result - 0.493) < 1e-3
 
     def test_compute_oracle_trust_honest_conformist_archetype(self) -> None:
@@ -691,7 +725,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.60,
                 timestamp=0,
                 c_herd_prior=0.40,
-                c_herd_now=0.55,
+                c_herd_now=0.0,
                 n_oracle_prior=4,
             ),
             TrustSignal(
@@ -699,11 +733,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.50,
                 timestamp=0,
                 c_herd_prior=0.30,
-                c_herd_now=0.45,
+                c_herd_now=0.0,
                 n_oracle_prior=9,
             ),
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=0)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=0, h1=0.55, h2=0.45), t_now=0
+        )
         assert abs(result - 0.6457) < 1e-4
 
     def test_compute_oracle_trust_at_k_zero_collapses_to_write_time_alignment(self) -> None:
@@ -720,11 +756,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
-                c_herd_now=0.6,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=0)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=0, h1=0.6), t_now=0
+        )
         assert abs(result - 0.58) < EPSILON
 
     def test_pure_bandwagoner_against_dogmatic_herd_returns_base_rate(self) -> None:
@@ -740,7 +778,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=1.0,
                 timestamp=800,
                 c_herd_prior=1.0,
-                c_herd_now=1.0,
+                c_herd_now=0.0,
                 n_oracle_prior=3,
             ),
             TrustSignal(
@@ -748,11 +786,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=-1.0,
                 timestamp=1000,
                 c_herd_prior=-1.0,
-                c_herd_now=-1.0,
+                c_herd_now=0.0,
                 n_oracle_prior=7,
             ),
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=1.0, h2=-1.0), t_now=1000
+        )
         assert abs(result - 0.5) < EPSILON
 
     def test_all_vacuous_history_returns_base_rate(self) -> None:
@@ -776,7 +816,9 @@ class TestComputeOracleTrust:
                 n_oracle_prior=2,
             ),
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.0, h2=0.0), t_now=1000
+        )
         assert abs(result - 0.5) < EPSILON
 
     def test_k_zero_degeneracy_collapses_to_pure_write_time(self) -> None:
@@ -794,11 +836,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.8,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.8), t_now=1000
+        )
         assert abs(result - 0.58) < EPSILON
 
     def test_conviction_weighting_excludes_vacuous_rows(self) -> None:
@@ -815,7 +859,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.0,
                 timestamp=900,
                 c_herd_prior=0.4,
-                c_herd_now=0.4,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -823,11 +867,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.7,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.5,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.4, h2=0.5), t_now=1000
+        )
         assert abs(result - 0.6925) < EPSILON
 
     def test_mixed_history_conviction_weighted_average(self) -> None:
@@ -847,7 +893,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.8,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -855,11 +901,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
-                c_herd_now=-0.5,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.8, h2=-0.5), t_now=1000
+        )
         assert abs(result - (0.87325 / 1.3)) < EPSILON
 
     def test_decay_weights_recent_more(self) -> None:
@@ -873,7 +921,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=100,
                 c_herd_prior=0.0,
-                c_herd_now=0.8,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -881,7 +929,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=9000,
                 c_herd_prior=0.5,
-                c_herd_now=-0.5,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
@@ -899,7 +947,9 @@ class TestComputeOracleTrust:
             conv_old * w_old + conv_new * w_new
         )
 
-        result = svc.compute_oracle_trust(rows=rows, t_now=t_now)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=t_now, h1=0.8, h2=-0.5), t_now=t_now
+        )
         assert abs(result - expected) < EPSILON
 
     def test_compute_oracle_trust_asymmetric_prior_hand_calc(self) -> None:
@@ -924,11 +974,13 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.4,
                 timestamp=1000,
                 c_herd_prior=0.1,
-                c_herd_now=0.6,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.6), t_now=1000
+        )
         assert abs(result - 0.635) < EPSILON
 
     def test_compute_oracle_trust_is_row_order_invariant(self) -> None:
@@ -941,34 +993,42 @@ class TestComputeOracleTrust:
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
 
-        def row(c_oracle_raw: float, c_herd_prior: float, c_herd_now: float) -> TrustSignal:
+        def row(i: int, c_oracle_raw: float, c_herd_prior: float) -> TrustSignal:
             return TrustSignal(
-                hypothesis_id="h1",
+                hypothesis_id=f"h{i}",
                 c_oracle_raw=c_oracle_raw,
                 timestamp=1000,
                 c_herd_prior=c_herd_prior,
-                c_herd_now=c_herd_now,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
 
         rows = [
-            row(0.99, 0.10, 0.20),
-            row(1e-12, 0.50, -0.50),
-            row(0.80, 0.00, 0.60),
-            row(1e-10, -0.30, 0.30),
-            row(0.50, 0.20, 0.40),
-            row(1e-14, 0.00, 0.10),
-            row(0.70, -0.10, 0.50),
-            row(1e-8, 0.40, -0.40),
+            row(1, 0.99, 0.10),
+            row(2, 1e-12, 0.50),
+            row(3, 0.80, 0.00),
+            row(4, 1e-10, -0.30),
+            row(5, 0.50, 0.20),
+            row(6, 1e-14, 0.00),
+            row(7, 0.70, -0.10),
+            row(8, 1e-8, 0.40),
         ]
+        evidence = _evidence(
+            t_now=1000, h1=0.20, h2=-0.50, h3=0.60, h4=0.30, h5=0.40, h6=0.10, h7=0.50, h8=-0.40
+        )
 
-        baseline = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert svc.compute_oracle_trust(rows=list(reversed(rows)), t_now=1000) == baseline
+        baseline = svc.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=1000)
+        assert (
+            svc.compute_oracle_trust(rows=list(reversed(rows)), herd_evidence=evidence, t_now=1000)
+            == baseline
+        )
         # An explicit interleave: small/large magnitudes alternated so a
         # naive left-fold lands on a different intermediate than baseline
         # or reverse.
         shuffled = [rows[1], rows[0], rows[5], rows[2], rows[7], rows[4], rows[3], rows[6]]
-        assert svc.compute_oracle_trust(rows=shuffled, t_now=1000) == baseline
+        assert (
+            svc.compute_oracle_trust(rows=shuffled, herd_evidence=evidence, t_now=1000) == baseline
+        )
 
     def test_infinite_trust_half_life_means_no_decay(self) -> None:
         """t_half_life=inf → λ_trust=0 → all weights are 1.0.
@@ -984,7 +1044,7 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=100,
                 c_herd_prior=0.0,
-                c_herd_now=0.8,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -992,11 +1052,158 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=999_999,
                 c_herd_prior=0.0,
-                c_herd_now=0.8,
+                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
-        result = svc.compute_oracle_trust(rows=rows, t_now=1_000_000)
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1_000_000, h1=0.8, h2=0.8), t_now=1_000_000
+        )
+        assert abs(result - 0.74) < EPSILON
+
+    def test_unwitnessed_rows_leave_the_scan(self) -> None:
+        """A row no other oracle has answered carries no alignment information.
+
+        The witness rule drops it from numerator and denominator alike: an
+        all-solo history is informationally identical to cold start and
+        earns base rate exactly.
+        """
+        svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.9,
+                timestamp=1000,
+                c_herd_prior=0.0,
+                c_herd_now=0.0,
+                n_oracle_prior=0,
+            )
+        ]
+        result = svc.compute_oracle_trust(rows=rows, herd_evidence={"h1": []}, t_now=1000)
+        assert result == 0.5
+
+    def test_solo_spam_collapses_to_base_rate(self) -> None:
+        """The solo-spam attack pin: low-conviction novels, no witnesses.
+
+        Pre-fix, the stored herd snapshot included the oracle's own row, so
+        align_read = 1 on every solo hypothesis and iterated self-reference
+        converged on t = (1 − 0.5c)/(1 − 0.125c) ≈ 0.923 at c = 0.2. Under
+        the witness rule every unwitnessed row leaves the scan: the whole
+        campaign is worth exactly base rate. The stored c_herd_now = 0.2
+        (the oracle's own echo) is the lie the fix must never read.
+        """
+        svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
+        rows = [
+            TrustSignal(
+                hypothesis_id=f"h{i}",
+                c_oracle_raw=0.2,
+                timestamp=1000 + i,
+                c_herd_prior=0.0,
+                c_herd_now=0.2,
+                n_oracle_prior=0,
+            )
+            for i in range(20)
+        ]
+        evidence: dict[str, list[EvidenceInput]] = {f"h{i}": [] for i in range(20)}
+        result = svc.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=2000)
+        assert result == 0.5
+
+    def test_reference_is_others_only_refusion(self) -> None:
+        """align_read measures against the recomputed others-only herd state.
+
+        Evidence: two other-oracle rows, c = 0.15 and 0.30 at t_now; ECBF
+        fuses them to 72/191. The row's stored c_herd_now carries the lie
+        −1.0, which the computation must never read.
+
+          ref         = 72/191 ≈ 0.376963
+          align_write = 1 − 0.5·|0.5 − 0.0|     = 0.75
+          align_read  = 1 − 0.5·|0.5 − 72/191|  = 358.5/382
+          align       = 0.5·0.75 + 0.5·(358.5/382) = 645/764
+          signal      = 0.5·1.0
+          effective   = 0.5·(645/764) + 0.5·0.5 = 1027/1528 ≈ 0.672120
+        """
+        svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
+        t_now = 1000
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.5,
+                timestamp=t_now,
+                c_herd_prior=0.0,
+                c_herd_now=-1.0,
+                n_oracle_prior=0,
+            )
+        ]
+        evidence = {
+            "h1": [
+                EvidenceInput(c_oracle_discounted=0.15, timestamp=t_now),
+                EvidenceInput(c_oracle_discounted=0.30, timestamp=t_now),
+            ]
+        }
+        result = svc.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=t_now)
+        assert abs(result - 1027 / 1528) < EPSILON
+
+    def test_transfer_row_witnesses_a_novel(self) -> None:
+        """The synthetic _transfer oracle counts as a witness.
+
+        A contradicting novel receives a transfer prior before the oracle's
+        own row; that evidence keeps the row in the scan.
+
+          ref = −0.3 (the transfer row)
+          align_write = 1 − 0.5·|0.8 − (−0.3)| = 0.45
+          align_read  = 1 − 0.5·|0.8 − (−0.3)| = 0.45
+          align = 0.45; info = 1 − 0.3 = 0.7; signal = 0.8·0.7 = 0.56
+          effective = 0.56·0.45 + 0.44·0.5 = 0.472
+        """
+        svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
+        t_now = 1000
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.8,
+                timestamp=t_now,
+                c_herd_prior=-0.3,
+                c_herd_now=0.0,
+                n_oracle_prior=0,
+            )
+        ]
+        evidence = {"h1": [EvidenceInput(c_oracle_discounted=-0.3, timestamp=t_now)]}
+        result = svc.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=t_now)
+        assert abs(result - 0.472) < EPSILON
+
+    def test_mixed_history_averages_witnessed_rows_only(self) -> None:
+        """Witnessed and unwitnessed rows in one scan: only the witnessed count.
+
+        The h1 row scores effective = 0.74 (align_write 0.6, align_read 1.0,
+        signal 0.8). The h2 row carries conviction 0.9 and catastrophic
+        misalignment, but no witness: skipped, not averaged. Result equals
+        the single-witnessed-row value exactly.
+        """
+        svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
+        t_now = 1000
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.8,
+                timestamp=t_now,
+                c_herd_prior=0.0,
+                c_herd_now=0.0,
+                n_oracle_prior=0,
+            ),
+            TrustSignal(
+                hypothesis_id="h2",
+                c_oracle_raw=-0.9,
+                timestamp=t_now,
+                c_herd_prior=0.0,
+                c_herd_now=0.0,
+                n_oracle_prior=0,
+            ),
+        ]
+        evidence: dict[str, list[EvidenceInput]] = {
+            "h1": [EvidenceInput(c_oracle_discounted=0.8, timestamp=t_now)],
+            "h2": [],
+        }
+        result = svc.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=t_now)
         assert abs(result - 0.74) < EPSILON
 
 

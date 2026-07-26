@@ -10,7 +10,7 @@ MathService wraps all orchestrator-facing math: hypothesis-level operations
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from lore.domain import AttestationComputed, EvidenceInput, TrustSignal
@@ -119,19 +119,31 @@ class MathService:
         self,
         *,
         rows: Sequence[TrustSignal],
+        herd_evidence: Mapping[str, Sequence[EvidenceInput]],
         t_now: int,
     ) -> float:
         """Compute oracle trust as a conviction-weighted, decay-weighted alignment average.
 
-        The orchestrator fetches alignment rows from the repository
-        as TrustSignal and passes them here.
+        The orchestrator fetches alignment rows and per-hypothesis
+        others-only evidence from the repository and passes both here.
+        ``herd_evidence`` must carry a key for every hypothesis in
+        ``rows`` (the repository's all-keys-present contract); a missing
+        key is a caller bug and raises KeyError.
 
-        Each row's contribution combines four factors:
+        Each row's contribution combines five factors:
 
+        - **Witness rule.** A row counts only if other oracles (the
+          synthetic ``_transfer`` included) left evidence on its
+          hypothesis inside the decay window. Unwitnessed rows leave the
+          scan entirely: no numerator, no denominator. Solo novels earn
+          nothing; agreement with yourself is not alignment.
         - **Adaptive write/read blend.** Per-row maturity M_write (from
           n_oracle_prior) controls how much the write-time signal counts.
           Fresh hypotheses (M_write ≈ 0.5) give read-time the final say;
           mature hypotheses (M_write → 1) anchor on write-time alignment.
+          The read-time reference is the others-only herd state recomputed
+          at ``t_now`` from ``herd_evidence`` (decay + ECBF), never a
+          stored snapshot: the oracle's own rows cannot sit inside it.
         - **Informative-commitment gate (Def. 14.6).** The composite
           ``signal = conviction * info`` discounts the row's alignment
           toward the base rate (0.5): one discount, two conditions.
@@ -145,8 +157,9 @@ class MathService:
         - **Temporal decay.** Exponential over timestamp age.
 
         Returns t_oracle in [0, 1]. Empty rows or histories with no
-        informative contribution (all-vacuous or all-bandwagon) return 0.5.
-        See docs/logic.md, Oracle Trust section.
+        countable contribution (all-vacuous, all-bandwagon, or
+        all-unwitnessed) return 0.5. See docs/logic.md, Oracle Trust
+        section.
 
         Per-row alignment is ``1 - compute_projected_distance(...)`` over
         the uncertainty-maximized opinions for the two scalars (Eq. 4.61
@@ -158,15 +171,25 @@ class MathService:
         if not rows:
             return BASE_RATE
 
+        # One reference per witnessed hypothesis, recomputed at t_now.
+        # Presence in the map is the witness test: compute_confidence([])
+        # would return 0.0, indistinguishable from a genuine zero state.
+        references = {
+            hid: self.compute_confidence(attestations=evidence, t_now=t_now)
+            for hid in {row.hypothesis_id for row in rows}
+            if (evidence := herd_evidence[hid])
+        }
+
         def _row_contributions(row: TrustSignal) -> tuple[float, float]:
+            reference = references.get(row.hypothesis_id)
+            if reference is None:
+                return 0.0, 0.0
             m_write = compute_maturity(n_oracle_prior=row.n_oracle_prior, k=self._maturity_k)
             oracle_opinion = to_opinion(row.c_oracle_raw)
             align_write = 1.0 - compute_projected_distance(
                 oracle_opinion, to_opinion(row.c_herd_prior)
             )
-            align_read = 1.0 - compute_projected_distance(
-                oracle_opinion, to_opinion(row.c_herd_now)
-            )
+            align_read = 1.0 - compute_projected_distance(oracle_opinion, to_opinion(reference))
             align = m_write * align_write + (1.0 - m_write) * align_read
 
             info = 1.0 - abs(row.c_herd_prior)
@@ -187,9 +210,10 @@ class MathService:
         numerator = math.fsum(num for num, _ in contributions)
         denominator = math.fsum(den for _, den in contributions)
 
-        # Denominator is zero iff every row has conviction == 0 (all-vacuous
-        # history), since weight > 0 always. Informationally identical to
-        # cold start → base rate trust.
+        # Denominator is zero iff every countable row has conviction == 0
+        # (weight > 0 always; unwitnessed rows contribute zero to both sums).
+        # All-vacuous and all-unwitnessed alike are informationally identical
+        # to cold start → base rate trust.
         if denominator == 0.0:
             return BASE_RATE
 

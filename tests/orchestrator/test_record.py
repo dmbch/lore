@@ -29,7 +29,7 @@ from lore.domain import (
 )
 from lore.math import MathService
 from lore.math.opinion import EPSILON
-from lore.orchestrator.record import Recorder
+from lore.orchestrator.record import Recorder, record
 from lore.repositories import (
     AttestationRecord,
     HypothesisRecord,
@@ -112,6 +112,39 @@ class _NoopRequests:
 
     async def store(self, record: RequestRecord) -> None:
         del record
+
+
+class _WitnessRecordingAttestations(_StubAttestations):
+    """Serves canned trust rows and herd evidence; records the evidence fetch."""
+
+    def __init__(
+        self,
+        *,
+        trust_alignments: list[TrustSignal],
+        herd_evidence: dict[str, list[EvidenceInput]],
+    ) -> None:
+        super().__init__()
+        self._trust_alignments = trust_alignments
+        self._herd_evidence = herd_evidence
+        self.evidence_calls: list[tuple[list[str], str, int, float]] = []
+
+    async def fetch_trust_alignments(
+        self, *, oracle_id: str, t_now: int, trust_half_life: float
+    ) -> list[TrustSignal]:
+        return self._trust_alignments
+
+    async def fetch_herd_evidence(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        exclude_oracle: str,
+        t_now: int,
+        attestation_half_life: float,
+    ) -> dict[str, list[EvidenceInput]]:
+        self.evidence_calls.append(
+            (list(hypothesis_ids), exclude_oracle, t_now, attestation_half_life)
+        )
+        return {hid: self._herd_evidence.get(hid, []) for hid in hypothesis_ids}
 
 
 # Fixed identifiers used across tests.
@@ -564,3 +597,68 @@ class TestRecorderPassesDistinctOracleCountToAppend:
 
         assert len(attestations.appended) == 1
         assert attestations.appended[0].n_oracle_prior == 0
+
+
+class TestRecordWiresWitnessEvidence:
+    """``record()`` fetches others-only evidence for the scan's distinct
+    hypotheses, excluding the scoring oracle, and hands it to the trust
+    computation."""
+
+    async def test_record_wires_witness_evidence_into_trust(self) -> None:
+        """Scan: two rows on h-a, one on h-b → one fetch with sorted distinct
+        ["h-a", "h-b"]. Only h-a is witnessed (ref 0.6):
+
+          h-a rows: align_write = 0.7, align_read = 1.0, M = 0.5 → align 0.85
+                    signal = 0.6·1.0 → effective = 0.6·0.85 + 0.4·0.5 = 0.71
+          h-b row:  unwitnessed, skipped.
+
+        Identical effective aligns average to themselves; the appended novel
+        carries t_oracle = 0.71.
+        """
+
+        def scan_row(hypothesis_id: str, timestamp: int) -> TrustSignal:
+            return TrustSignal(
+                hypothesis_id=hypothesis_id,
+                c_oracle_raw=0.6,
+                timestamp=timestamp,
+                c_herd_prior=0.0,
+                c_herd_now=0.0,
+                n_oracle_prior=0,
+            )
+
+        attestations = _WitnessRecordingAttestations(
+            trust_alignments=[
+                scan_row("h-a", _T_NOW),
+                scan_row("h-b", _T_NOW),
+                scan_row("h-a", _T_NOW),
+            ],
+            herd_evidence={"h-a": [EvidenceInput(c_oracle_discounted=0.6, timestamp=_T_NOW)]},
+        )
+        repos = Repositories(
+            hypotheses=_StubHypotheses(),
+            attestations=attestations,
+            requests=_NoopRequests(),
+            cache=StubCache(),
+        )
+        settings = _settings_with_threshold()
+        context = WriteContext(
+            oracle_id="oracle-1",
+            correlation_id=_CORRELATION_ID,
+            confidence=0.7,
+            t_now=_T_NOW,
+        )
+
+        await record(
+            repos=repos,
+            math=MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0),
+            reasoned=_archivist_output(Resolution(contributes=_NOVEL_CONTENT)),
+            novel_embeddings={_NOVEL_CONTENT: [0.1, 0.2, 0.3]},
+            context=context,
+            settings=settings,
+        )
+
+        assert attestations.evidence_calls == [
+            (["h-a", "h-b"], "oracle-1", _T_NOW, settings.epistemics.attestation_half_life)
+        ]
+        assert len(attestations.appended) == 1
+        assert abs(attestations.appended[0].t_oracle - 0.71) < EPSILON

@@ -44,7 +44,21 @@ async def record(
             t_now=context.t_now,
             trust_half_life=settings.epistemics.trust_half_life,
         )
-        t_oracle = math.compute_oracle_trust(rows=alignments, t_now=context.t_now)
+        # Others-only evidence per scan hypothesis: the witness rule's
+        # reference material. Sorted ids keep the IN-list deterministic.
+        herd_evidence = (
+            await repos.attestations.fetch_herd_evidence(
+                sorted({a.hypothesis_id for a in alignments}),
+                exclude_oracle=context.oracle_id,
+                t_now=context.t_now,
+                attestation_half_life=settings.epistemics.attestation_half_life,
+            )
+            if alignments
+            else {}
+        )
+        t_oracle = math.compute_oracle_trust(
+            rows=alignments, herd_evidence=herd_evidence, t_now=context.t_now
+        )
 
         attestation_map = (
             await repos.attestations.find_by_hypotheses(list(target_ids)) if target_ids else {}
