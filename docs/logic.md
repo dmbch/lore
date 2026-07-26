@@ -917,16 +917,20 @@ Reaching 1.0 requires `signal = 1` and `align = 1` on the same row: full convict
 
 ### Trust Dynamics Clusters
 
-Under the revised formula, oracles fall into recognizable clusters. The table summarizes where each archetype tends to settle and why; the attack-analysis subsections below add detail on the adversarial cases.
+Under the revised formula, oracles fall into recognizable clusters. The ranges are simulated, not asserted: Monte-Carlo archetype histories run through the implemented formula (4000 histories per archetype, 8-24 rows each, K = 1, decay disabled), reported as the 10th-90th percentile band. The simulation reproduces all four worked examples exactly before generating distributions, and each example value falls inside its archetype's band. The attack-analysis subsections below add detail on the adversarial cases.
 
-| Archetype | Target hypotheses | Expected t_oracle | Why |
+| Archetype | Target hypotheses | Simulated t_oracle (p10–p90) | Why |
 |---|---|---|---|
-| Prophet | Fresh herds, later vindicated | ~0.85–1.0 | High ⟨info⟩, read-time dominates |
-| Honest conformist | Mature fluid herds | ~0.75–0.85 | Moderate ⟨info⟩, write-time dominates |
-| Bandwagoner | Settled herds | ~0.50–0.55 | info → 0 neuters alignment signal |
-| Contrarian (dogmatic herd) | Settled herds | ~0.45–0.50 | info → 0 neutralizes disagreement |
-| Informative troll | Fresh herds, wrong | ~0.10–0.30 | High ⟨info⟩, full-strength penalty |
-| Hedger (cold start) | Never commits | ~0.50 | Denominator fallback |
+| Prophet | Fresh herds, later vindicated | ~0.70–0.71 | info = 1: signal is pure conviction; the fresh-row cap is 0.75 |
+| Honest conformist | Mature fluid herds | ~0.64–0.65 | Moderate signal, write-time anchored |
+| Bandwagoner | Settled herds | ~0.53–0.54 | info → 0 collapses the signal at any conviction |
+| Contrarian (mixed targets) | Fresh and moderate herds, against | ~0.47–0.50 | Committed disagreement, softened where info < 1 |
+| Informative troll | Fresh herds, wrong | ~0.34–0.36 | High signal, full-strength penalty; floor 0.25 at \|c\| = 1 |
+| Hedger (cold start) | Never commits | 0.50 exactly | Denominator fallback |
+| Solo spammer | Unwitnessed novels | 0.50 exactly | Witness rule: no reference, no credit |
+| Scattershot | Fresh witnessed herds, near-vacuous | ~0.55 | Calibration bound: within conviction of base rate |
+
+The prophet's edge over the honest conformist (~0.70 vs ~0.64) is the calibration working as designed: committing hard where the herd knows nothing beats careful agreement where it knows plenty. The residual gap between the scattershot band and base rate is the fresh-row softness documented under Known Residuals.
 
 ### Time Axis: Trust Decay Tuning
 
