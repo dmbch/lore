@@ -391,8 +391,9 @@ class TestComputeOracleTrust:
       align_read_i     = 1 - 0.5 * |c_oracle_raw - c_herd_now|
       align_i          = M_write · align_write + (1 - M_write) · align_read
       info_i           = 1 - |c_herd_prior|
-      effective_align  = info · align + (1 - info) · 0.5     (Def. 14.6)
       conviction_i     = |c_oracle_raw|
+      signal_i         = conviction · info
+      effective_align  = signal · align + (1 - signal) · 0.5  (Def. 14.6)
       weight_i         = exp(-λ_trust · Δt)
       t_oracle         = Σ(effective_align · conviction · weight)
                        / Σ(conviction · weight)
@@ -412,8 +413,9 @@ class TestComputeOracleTrust:
         align_read  = 1 - 0.5·0.0 = 1.0
         align       = 0.5·0.6 + 0.5·1.0 = 0.8
         info        = 1 - 0 = 1.0
-        effective   = 0.8
-        t_oracle    = 0.8
+        signal      = 0.8·1.0 = 0.8
+        effective   = 0.8·0.8 + 0.2·0.5 = 0.74
+        t_oracle    = 0.74
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -426,7 +428,7 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.8) < EPSILON
+        assert abs(result - 0.74) < EPSILON
 
     def test_adaptive_w_fresh_hypothesis_blends_equally(self) -> None:
         """Fresh hypothesis (n_oracle_prior=0, K=1) → M_write=0.5.
@@ -437,8 +439,9 @@ class TestComputeOracleTrust:
         align_read  = 1 - 0.5·1.0 = 0.5
         align       = 0.5·1.0 + 0.5·0.5 = 0.75
         info        = 1 - 0.5 = 0.5
-        effective   = 0.5·0.75 + 0.5·0.5 = 0.625
-        t_oracle    = 0.625
+        signal      = 0.5·0.5 = 0.25
+        effective   = 0.25·0.75 + 0.75·0.5 = 0.5625
+        t_oracle    = 0.5625
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -451,7 +454,7 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.625) < EPSILON
+        assert abs(result - 0.5625) < EPSILON
 
     def test_adaptive_w_mature_hypothesis_anchors_on_write_time(self) -> None:
         """Mature hypothesis (n_oracle_prior=9, K=1) → M_write=10/11.
@@ -460,7 +463,8 @@ class TestComputeOracleTrust:
         (align=1.0) dominates instead of read-time (align=0.5).
           align = (10/11)·1.0 + (1/11)·0.5 = 21/22
           info  = 0.5
-          effective = 0.5·(21/22) + 0.5·0.5 = 21/44 + 11/44 = 32/44 = 8/11
+          signal = 0.5·0.5 = 0.25
+          effective = 0.25·(21/22) + 0.75·0.5 = 21/88 + 33/88 = 54/88 = 27/44
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -473,13 +477,14 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 8.0 / 11.0) < EPSILON
+        assert abs(result - 27.0 / 44.0) < EPSILON
 
     def test_info_discount_settled_herd_earns_negligible_credit(self) -> None:
         """Perfect agreement with a dogmatic herd → effective align ≈ 0.5.
 
-        c_herd_prior=0.9 → info = 0.1. Even align=1.0 collapses toward the
-        base rate: effective = 0.1·1.0 + 0.9·0.5 = 0.55.
+        c_herd_prior=0.9 → info = 0.1, signal = 0.9·0.1 = 0.09. Even
+        align=1.0 collapses toward the base rate:
+        effective = 0.09·1.0 + 0.91·0.5 = 0.545.
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -492,16 +497,17 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.55) < EPSILON
+        assert abs(result - 0.545) < EPSILON
 
-    def test_info_preserves_credit_on_fresh_herd(self) -> None:
-        """Fresh herd (c_herd_prior=0) → info=1 → raw alignment passes through.
+    def test_fresh_herd_calibration_reduces_to_conviction(self) -> None:
+        """Fresh herd (c_herd_prior=0) → info=1 → signal = conviction alone.
 
         n_oracle_prior=0, K=1 → M_write=0.5
         align_write = 1 - 0.5·0.7 = 0.65
         align_read  = 1 - 0.5·0.2 = 0.9
         align       = 0.5·0.65 + 0.5·0.9 = 0.775
-        info        = 1.0, effective = 0.775
+        info        = 1.0, signal = 0.7
+        effective   = 0.7·0.775 + 0.3·0.5 = 0.6925
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -514,16 +520,98 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.775) < EPSILON
+        assert abs(result - 0.6925) < EPSILON
+
+    def test_conviction_calibrates_alignment_signal(self) -> None:
+        """A perfectly aligned row moves trust only as far as its conviction.
+
+        K=inf is the pure read-time limit: M_write = 1/(1+inf) = 0, so
+        align = align_read exactly. (At any finite K the write leg mixes
+        in and align=1 with info=1 is unreachable for nonzero conviction.)
+        With c_herd_now = c_oracle_raw the row is perfectly aligned and
+        the herd was vacuous at write time:
+
+          align     = align_read = 1 - 0.5·|0.2 - 0.2| = 1.0
+          info      = 1 - 0 = 1.0
+          signal    = 0.2·1.0 = 0.2
+          effective = 0.2·1.0 + 0.8·0.5 = 0.6
+          t_oracle  = 0.6 exactly
+
+        Under info-only calibration this row would earn t = 1.0: the
+        low-conviction scattershot vector. Conviction caps it at 0.6.
+        """
+        svc = MathService(
+            c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=float("inf")
+        )
+        rows = [
+            TrustSignal(
+                c_oracle_raw=0.2,
+                timestamp=1000,
+                c_herd_prior=0.0,
+                c_herd_now=0.2,
+                n_oracle_prior=0,
+            )
+        ]
+        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        assert abs(result - 0.6) < EPSILON
+
+    def test_bandwagon_theorem_survives_calibration(self) -> None:
+        """Full conviction against a dogmatic herd still earns exactly 0.5.
+
+        info = 1 - |c_herd_prior| = 0, so signal = conviction·info = 0
+        regardless of conviction: effective_align = 0.5 by algebra, no
+        fallback involved. The conviction factor does not reopen the
+        bandwagon vector.
+        """
+        svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
+        rows = [
+            TrustSignal(
+                c_oracle_raw=1.0,
+                timestamp=1000,
+                c_herd_prior=1.0,
+                c_herd_now=1.0,
+                n_oracle_prior=4,
+            )
+        ]
+        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        assert abs(result - 0.5) < EPSILON
+
+    def test_full_conviction_recovers_info_only_calibration(self) -> None:
+        """At conviction = 1 the composite gate reduces to info alone.
+
+        signal = 1·info = info, so the calibrated formula reproduces the
+        old info-only weighting exactly.
+
+          n_oracle_prior=0, K=1 → M_write = 0.5
+          align_write = 1 - 0.5·|1.0 - 0.4| = 0.7
+          align_read  = 1 - 0.5·|1.0 - 0.8| = 0.9
+          align       = 0.5·0.7 + 0.5·0.9 = 0.8
+          info        = 1 - 0.4 = 0.6
+          info-only:  0.6·0.8 + 0.4·0.5 = 0.68
+          calibrated: signal = 1·0.6 = 0.6 → 0.6·0.8 + 0.4·0.5 = 0.68
+        """
+        svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
+        rows = [
+            TrustSignal(
+                c_oracle_raw=1.0,
+                timestamp=1000,
+                c_herd_prior=0.4,
+                c_herd_now=0.8,
+                n_oracle_prior=0,
+            )
+        ]
+        result = svc.compute_oracle_trust(rows=rows, t_now=1000)
+        assert abs(result - 0.68) < EPSILON
 
     # --- Worked-example archetypes from docs/logic.md §Oracle Trust ---
 
     def test_compute_oracle_trust_prophet_archetype(self) -> None:
-        """docs/logic.md Example 1: the Prophet earns ~0.750.
+        """docs/logic.md Example 1: the Prophet earns 0.700.
 
         First attester on a fresh hypothesis (n_oracle_prior=0) with high
         conviction (c=0.8); the herd later converges to 0.6. M_write=0.5,
-        info=1, effective=align, t_oracle = 0.6 / 0.8 = 0.750.
+        align = 0.5·0.6 + 0.5·0.9 = 0.75, info=1, signal=0.8,
+        effective = 0.8·0.75 + 0.2·0.5 = 0.700. Single row → t = 0.700.
         """
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
         rows = [
@@ -536,13 +624,19 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=0)
-        assert abs(result - 0.750) < 1e-3
+        assert abs(result - 0.700) < 1e-3
 
     def test_compute_oracle_trust_contrarian_archetype(self) -> None:
-        """docs/logic.md Example 3: the Contrarian earns ~0.489.
+        """docs/logic.md Example 3: the Contrarian earns ~0.493.
 
-        Two rows attesting against the herd, one fresh (info=1, signal
-        passes), one moderate (info=0.5, signal softened toward 0.5).
+        Two rows attesting against the herd, one fresh, one moderate.
+        Row 1: align = 0.5·0.6 + 0.5·0.45 = 0.525, info=1, signal=0.8,
+          effective = 0.8·0.525 + 0.2·0.5 = 0.52; num 0.416, den 0.8.
+        Row 2: align = 0.75·0.4 + 0.25·0.375 = 0.39375, info=0.5,
+          signal = 0.7·0.5 = 0.35,
+          effective = 0.35·0.39375 + 0.65·0.5 = 0.4628125;
+          num 0.32396875, den 0.7.
+        t = 0.73996875 / 1.5 = 0.4933125 ≈ 0.493.
         """
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
         rows = [
@@ -562,13 +656,21 @@ class TestComputeOracleTrust:
             ),
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=0)
-        assert abs(result - 0.489) < 1e-3
+        assert abs(result - 0.493) < 1e-3
 
     def test_compute_oracle_trust_honest_conformist_archetype(self) -> None:
-        """docs/logic.md Example 4: the Honest Conformist earns ~0.7644.
+        """docs/logic.md Example 4: the Honest Conformist earns ~0.6457.
 
         Two mature-but-fluid hypotheses, near-perfect alignment, moderate
         conviction.
+        Row 1: align = (5/6)·0.9 + (1/6)·0.975 = 0.9125, info=0.6,
+          signal = 0.6·0.6 = 0.36,
+          effective = 0.36·0.9125 + 0.64·0.5 = 0.6485; num 0.3891, den 0.6.
+        Row 2: align = (10/11)·0.9 + (1/11)·0.975 = 9.975/11 ≈ 0.90682,
+          info=0.7, signal = 0.5·0.7 = 0.35,
+          effective = 0.35·(9.975/11) + 0.65·0.5 ≈ 0.64239;
+          num ≈ 0.32119, den 0.5.
+        t ≈ 0.71029 / 1.1 ≈ 0.6457.
         """
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
         rows = [
@@ -588,13 +690,14 @@ class TestComputeOracleTrust:
             ),
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=0)
-        assert abs(result - 0.7644) < 1e-4
+        assert abs(result - 0.6457) < 1e-4
 
     def test_compute_oracle_trust_at_k_zero_collapses_to_write_time_alignment(self) -> None:
         """K=0 makes M_write=1 for any n_oracle_prior → pure write-time signal.
 
         Prophet inputs but K=0: align = align_write = 1 − 0.5·|0.8−0.0|
-        = 0.6. info=1, conviction=0.8 → t_oracle = 0.6.
+        = 0.6. info=1, signal=0.8 →
+        t_oracle = 0.8·0.6 + 0.2·0.5 = 0.58.
         """
         svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=0.0)
         rows = [
@@ -607,7 +710,7 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=0)
-        assert abs(result - 0.6) < EPSILON
+        assert abs(result - 0.58) < EPSILON
 
     def test_pure_bandwagoner_against_dogmatic_herd_returns_base_rate(self) -> None:
         """Dogmatic prior herd → info=0 → every row discounted to 0.5.
@@ -662,7 +765,8 @@ class TestComputeOracleTrust:
 
         Same row as test_fresh_herd_perfect_read_alignment but with K=0:
           align = align_write = 0.6 (not the 0.8 blend)
-          info  = 1, effective = 0.6
+          info  = 1, signal = 0.8
+          effective = 0.8·0.6 + 0.2·0.5 = 0.58
         """
         svc = MathService(c_half_life=100.0, maturity_k=0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -675,14 +779,14 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.6) < EPSILON
+        assert abs(result - 0.58) < EPSILON
 
     def test_conviction_weighting_excludes_vacuous_rows(self) -> None:
         """Vacuous rows drop out of the average (conviction=0).
 
         Vacuous row at t=900 contributes nothing. The single committed row
-        at t=1000 (same as test_info_preserves_credit_on_fresh_herd) gives
-        t_oracle = 0.775.
+        at t=1000 (same as test_fresh_herd_calibration_reduces_to_conviction)
+        gives t_oracle = 0.6925.
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -702,17 +806,17 @@ class TestComputeOracleTrust:
             ),
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.775) < EPSILON
+        assert abs(result - 0.6925) < EPSILON
 
     def test_mixed_history_conviction_weighted_average(self) -> None:
         """Two committed rows, different effective alignments.
 
-        Row 1 (fresh blend, perfect read): effective = 0.8, conv = 0.8
-        Row 2 (fresh blend, 0.5/0.5 signals): effective = 0.625, conv = 0.5
+        Row 1 (fresh blend, perfect read): effective = 0.74, conv = 0.8
+        Row 2 (fresh blend, 0.5/0.5 signals): effective = 0.5625, conv = 0.5
         No decay:
-          numerator   = 0.8·0.8 + 0.625·0.5 = 0.64 + 0.3125 = 0.9525
+          numerator   = 0.74·0.8 + 0.5625·0.5 = 0.592 + 0.28125 = 0.87325
           denominator = 0.8 + 0.5 = 1.3
-          t_oracle    = 0.9525 / 1.3
+          t_oracle    = 0.87325 / 1.3
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -732,7 +836,7 @@ class TestComputeOracleTrust:
             ),
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - (0.9525 / 1.3)) < EPSILON
+        assert abs(result - (0.87325 / 1.3)) < EPSILON
 
     def test_decay_weights_recent_more(self) -> None:
         """Recent attestation gets higher weight than old one."""
@@ -757,12 +861,12 @@ class TestComputeOracleTrust:
         ]
 
         lambda_trust = math.log(2) / trust_half_life
-        # Row 1: fresh blend (M=0.5), info=1 → effective=0.8
-        effective_old = 0.8
+        # Row 1: fresh blend (M=0.5), align=0.8, signal=0.8·1 → effective=0.74
+        effective_old = 0.74
         conv_old = 0.8
         w_old = math.exp(-lambda_trust * (t_now - 100))
-        # Row 2: fresh blend (M=0.5), info=0.5 → effective=0.625
-        effective_new = 0.625
+        # Row 2: fresh blend (M=0.5), align=0.75, signal=0.5·0.5 → effective=0.5625
+        effective_new = 0.5625
         conv_new = 0.5
         w_new = math.exp(-lambda_trust * (t_now - 9000))
         expected = (effective_old * conv_old * w_old + effective_new * conv_new * w_new) / (
@@ -784,7 +888,8 @@ class TestComputeOracleTrust:
           M_write     = 1/2 (n_oracle_prior=0, K=1)
           align       = 0.5·0.85 + 0.5·0.90 = 0.875
           info        = 1 − |0.1| = 0.9
-          effective   = 0.9·0.875 + 0.1·0.5 = 0.8375
+          signal      = 0.4·0.9 = 0.36
+          effective   = 0.36·0.875 + 0.64·0.5 = 0.315 + 0.320 = 0.635
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -797,7 +902,7 @@ class TestComputeOracleTrust:
             )
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.8375) < EPSILON
+        assert abs(result - 0.635) < EPSILON
 
     def test_compute_oracle_trust_is_row_order_invariant(self) -> None:
         """t_oracle is bit-exact under row reordering.
@@ -842,7 +947,7 @@ class TestComputeOracleTrust:
 
         Two identical-by-construction rows at wildly different timestamps
         must contribute equally to the average. Each row: fresh blend,
-        info=1, effective=0.8, conv=0.8. Result = 0.8.
+        align=0.8, signal=0.8·1, effective=0.74, conv=0.8. Result = 0.74.
         """
         svc = MathService(c_half_life=100.0, t_half_life=float("inf"))
         rows = [
@@ -862,7 +967,7 @@ class TestComputeOracleTrust:
             ),
         ]
         result = svc.compute_oracle_trust(rows=rows, t_now=1_000_000)
-        assert abs(result - 0.8) < EPSILON
+        assert abs(result - 0.74) < EPSILON
 
 
 # --- build_math factory ---

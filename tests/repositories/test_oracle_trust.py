@@ -74,8 +74,9 @@ class TestFetchTrustAlignments:
 
         n_oracle_prior = 1 (B), N_O = 2, M_write = 2/3.
         align_write = align_read = 1.0 → align = 1.0.
-        info = 1 - 0.5 = 0.5 → effective_align = 0.5*1.0 + 0.5*0.5 = 0.75.
-        Single row → t_oracle = 0.75.
+        info = 1 - 0.5 = 0.5, signal = 0.5*0.5 = 0.25
+        → effective_align = 0.25*1.0 + 0.75*0.5 = 0.625.
+        Single row → t_oracle = 0.625.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
@@ -119,7 +120,7 @@ class TestFetchTrustAlignments:
         assert abs(rows[0].c_herd_now - 0.5) < EPSILON
 
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, t_now=200)
-        assert abs(result - 0.75) < EPSILON
+        assert abs(result - 0.625) < EPSILON
 
     async def test_first_attestation_c_herd_prior_defaults_to_zero(
         self,
@@ -136,8 +137,9 @@ class TestFetchTrustAlignments:
         align_write = 1 - 0.5*0.6 = 0.7.
         align_read  = 1 - 0.5*0.0 = 1.0.
         align       = 0.5*0.7 + 0.5*1.0 = 0.85.
-        info        = 1 - 0 = 1.0 → effective_align = 0.85.
-        Single row → t_oracle = 0.85.
+        info        = 1 - 0 = 1.0, signal = 0.6*1.0 = 0.6
+        → effective_align = 0.6*0.85 + 0.4*0.5 = 0.71.
+        Single row → t_oracle = 0.71.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
@@ -166,7 +168,7 @@ class TestFetchTrustAlignments:
         assert abs(rows[0].c_herd_now - 0.6) < EPSILON
 
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, t_now=1000)
-        assert abs(result - 0.85) < EPSILON
+        assert abs(result - 0.71) < EPSILON
 
     async def test_lag_picks_immediate_predecessor_not_first(
         self,
@@ -183,9 +185,9 @@ class TestFetchTrustAlignments:
         align_write = 1 - 0.5*|0.5 - 0.6| = 0.95
         align_read  = 1 - 0.5*|0.5 - 0.7| = 0.9
         align       = 0.75*0.95 + 0.25*0.9 = 0.9375
-        info        = 1 - 0.6 = 0.4
-        effective_align = 0.4*0.9375 + 0.6*0.5 = 0.675
-        Single row → t_oracle = 0.675.
+        info        = 1 - 0.6 = 0.4, signal = 0.5*0.4 = 0.2
+        effective_align = 0.2*0.9375 + 0.8*0.5 = 0.5875
+        Single row → t_oracle = 0.5875.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
@@ -244,7 +246,7 @@ class TestFetchTrustAlignments:
         assert abs(rows[0].c_herd_now - 0.7) < EPSILON
 
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, t_now=300)
-        assert abs(result - 0.675) < EPSILON
+        assert abs(result - 0.5875) < EPSILON
 
     async def test_first_value_picks_latest_after_oracle(
         self,
@@ -261,8 +263,9 @@ class TestFetchTrustAlignments:
         align_write = 1 - 0.5*|0.4 - 0.0| = 0.8
         align_read  = 1 - 0.5*|0.4 - 0.8| = 0.8
         align       = 0.5*0.8 + 0.5*0.8 = 0.8
-        info        = 1 - 0 = 1.0 → effective_align = 0.8.
-        Single row → t_oracle = 0.8.
+        info        = 1 - 0 = 1.0, signal = 0.4*1.0 = 0.4
+        → effective_align = 0.4*0.8 + 0.6*0.5 = 0.62.
+        Single row → t_oracle = 0.62.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
 
@@ -306,7 +309,7 @@ class TestFetchTrustAlignments:
         assert abs(rows[0].c_herd_now - 0.8) < EPSILON
 
         result = _TRUST_SVC.compute_oracle_trust(rows=rows, t_now=200)
-        assert abs(result - 0.8) < EPSILON
+        assert abs(result - 0.62) < EPSILON
 
     async def test_decay_weighting_recent_dominates(
         self,
@@ -394,24 +397,26 @@ class TestFetchTrustAlignments:
         )
         assert len(rows) == 2
 
-        # Compute expected value (conviction-weighted, with adaptive w + info weighting).
+        # Compute expected value (conviction-weighted, adaptive w, signal calibration).
         lambda_trust = math.log(2) / trust_half_life
         # H1 row: n_oracle_prior=1 (B), N_O=2, M_write=2/3.
         #   align_write = 1 - 0.5*|-0.8 - 0.3|  = 0.45
         #   align_read  = 1 - 0.5*|-0.8 - -0.3| = 0.75
         #   align       = (2/3)*0.45 + (1/3)*0.75 = 0.55
-        #   info        = 1 - 0.3 = 0.7
-        #   effective   = 0.7*0.55 + 0.3*0.5    = 0.535
-        eff_h1 = 0.7 * ((2 / 3) * 0.45 + (1 / 3) * 0.75) + 0.3 * 0.5
+        #   info        = 1 - 0.3 = 0.7, signal = 0.8*0.7 = 0.56
+        #   effective   = 0.56*0.55 + 0.44*0.5   = 0.528
+        signal_h1 = 0.8 * (1 - 0.3)
+        eff_h1 = signal_h1 * ((2 / 3) * 0.45 + (1 / 3) * 0.75) + (1 - signal_h1) * 0.5
         conv_h1 = 0.8  # |c_oracle_raw|
         weight_h1 = math.exp(-lambda_trust * (t_now - 100))
         # H2 row: n_oracle_prior=1 (C), N_O=2, M_write=2/3.
         #   align_write = 1 - 0.5*|0.5 - -0.2| = 0.65
         #   align_read  = 1 - 0.5*|0.5 -  0.5| = 1.00
         #   align       = (2/3)*0.65 + (1/3)*1.0 ≈ 0.7667
-        #   info        = 1 - 0.2 = 0.8
-        #   effective   = 0.8*0.7667 + 0.2*0.5 ≈ 0.7133
-        eff_h2 = 0.8 * ((2 / 3) * 0.65 + (1 / 3) * 1.0) + 0.2 * 0.5
+        #   info        = 1 - 0.2 = 0.8, signal = 0.5*0.8 = 0.4
+        #   effective   = 0.4*0.7667 + 0.6*0.5 ≈ 0.6067
+        signal_h2 = 0.5 * (1 - 0.2)
+        eff_h2 = signal_h2 * ((2 / 3) * 0.65 + (1 / 3) * 1.0) + (1 - signal_h2) * 0.5
         conv_h2 = 0.5  # |c_oracle_raw|
         weight_h2 = math.exp(-lambda_trust * (t_now - 9000))
         expected = (eff_h1 * conv_h1 * weight_h1 + eff_h2 * conv_h2 * weight_h2) / (
@@ -439,8 +444,9 @@ class TestFetchTrustAlignments:
         Included row: n_oracle_prior=1 (C), N_O=2, M_write=2/3.
         c_oracle_raw=0.5, c_herd_prior=0.5, c_herd_now=0.5.
         align_write = align_read = 1.0 → align = 1.0.
-        info = 1 - 0.5 = 0.5 → effective_align = 0.5*1.0 + 0.5*0.5 = 0.75.
-        Single row → t_oracle = 0.75.
+        info = 1 - 0.5 = 0.5, signal = 0.5*0.5 = 0.25
+        → effective_align = 0.25*1.0 + 0.75*0.5 = 0.625.
+        Single row → t_oracle = 0.625.
         """
         trust_half_life = 1000.0
         t_now = 10000
@@ -517,7 +523,7 @@ class TestFetchTrustAlignments:
 
         svc = MathService(c_half_life=1e12, t_half_life=trust_half_life)
         result = svc.compute_oracle_trust(rows=rows, t_now=t_now)
-        assert abs(result - 0.75) < EPSILON
+        assert abs(result - 0.625) < EPSILON
 
     async def test_infinite_half_life_includes_all_history(
         self,
