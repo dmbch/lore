@@ -215,6 +215,36 @@ class TestFuseHandCalculated:
         assert abs(result.d - 0.0) < 0.001
         assert abs(result.u - 24.0 / 43.0) < 0.001
 
+    def test_fuse_nested_pairwise_differs_from_nary(self) -> None:
+        """Nested pairwise ECBF diverges from N-ary: never pre-fuse subsets.
+
+        Uncertainty maximization between pairwise steps discards canceled
+        evidence; associativity belongs to the inner ACBF only.
+
+        Nested: ACBF(A, B): κ=0.36, (4/9, 4/9, 1/9), P=0.5; maximization
+        collapses the canceled pair to VACUOUS. Fusing VACUOUS with C
+        returns C maximized: P=0.6, ü=0.8, b̈=0.2, d̈=0.
+        N-ary: ACBF(A, B, C): κ=13/45, (6.5/13, 5.5/13, 1/13), P=7/13.
+        Maximize once: ü=12/13, b̈=1/13, d̈=0.
+        """
+        a = Opinion(b=0.5, d=0.3, u=0.2)
+        b = Opinion(b=0.3, d=0.5, u=0.2)
+        c = Opinion(b=0.5, d=0.3, u=0.2)
+
+        nested = fuse([fuse([a, b]), c])
+        nary = fuse([a, b, c])
+
+        assert abs(nary.b - 1.0 / 13.0) < EPSILON
+        assert abs(nary.d - 0.0) < EPSILON
+        assert abs(nary.u - 12.0 / 13.0) < EPSILON
+
+        assert abs(nested.b - 0.2) < EPSILON
+        assert abs(nested.d - 0.0) < EPSILON
+        assert abs(nested.u - 0.8) < EPSILON
+
+        assert abs(nested.b - nary.b) > EPSILON
+        assert abs(nested.u - nary.u) > EPSILON
+
     def test_three_with_vacuous_neutral(self) -> None:
         """Adding vacuous opinions doesn't change the result."""
         a = Opinion(b=0.7, d=0.2, u=0.1)
