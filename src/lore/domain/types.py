@@ -274,7 +274,6 @@ class TrustSignal(DataModel):
     c_oracle_raw: SignedUnitInterval
     timestamp: NonNegativeInt
     c_herd_prior: SignedUnitInterval
-    c_herd_now: SignedUnitInterval
     n_oracle_prior: NonNegativeInt
 
 

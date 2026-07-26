@@ -372,7 +372,7 @@ def test_oracle_alignment_snapshot_requires_n_oracle_prior() -> None:
     """n_oracle_prior is required for adaptive w computation."""
     with pytest.raises(ValidationError):
         TrustSignal(  # pyright: ignore[reportCallIssue]
-            hypothesis_id="h1", c_oracle_raw=0.5, timestamp=100, c_herd_prior=0.0, c_herd_now=0.5
+            hypothesis_id="h1", c_oracle_raw=0.5, timestamp=100, c_herd_prior=0.0
         )
 
 
@@ -384,7 +384,6 @@ def test_oracle_alignment_snapshot_rejects_negative_n_oracle_prior() -> None:
             c_oracle_raw=0.5,
             timestamp=100,
             c_herd_prior=0.0,
-            c_herd_now=0.0,
             n_oracle_prior=-1,
         )
 
@@ -409,9 +408,8 @@ class TestComputeOracleTrust:
       t_oracle         = Σ(effective_align · conviction · weight)
                        / Σ(conviction · weight)
 
-    The stored ``c_herd_now`` field is never read; tests construct rows
-    with a dead 0.0 (or a deliberate lie where the test proves unread-ness)
-    and express the reference through ``herd_evidence``.
+    TrustSignal carries no herd-now snapshot; the read-time reference
+    always comes from ``herd_evidence``, recomputed at t_now.
     """
 
     def test_empty_rows_returns_base_rate(self) -> None:
@@ -439,7 +437,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -452,7 +449,7 @@ class TestComputeOracleTrust:
         """Fresh hypothesis (n_oracle_prior=0, K=1) → M_write=0.5.
 
         Write-time and read-time signals get equal weight.
-          c_oracle_raw=0.5, c_herd_prior=0.5, c_herd_now=-0.5
+          c_oracle_raw=0.5, c_herd_prior=0.5
         align_write = 1 - 0 = 1.0
         align_read  = 1 - 0.5·1.0 = 0.5
         align       = 0.5·1.0 + 0.5·0.5 = 0.75
@@ -468,7 +465,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -494,7 +490,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
-                c_herd_now=0.0,
                 n_oracle_prior=9,
             )
         ]
@@ -517,7 +512,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.9,
                 timestamp=1000,
                 c_herd_prior=0.9,
-                c_herd_now=0.0,
                 n_oracle_prior=5,
             )
         ]
@@ -543,7 +537,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.7,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -558,8 +551,8 @@ class TestComputeOracleTrust:
         K=inf is the pure read-time limit: M_write = 1/(1+inf) = 0, so
         align = align_read exactly. (At any finite K the write leg mixes
         in and align=1 with info=1 is unreachable for nonzero conviction.)
-        With c_herd_now = c_oracle_raw the row is perfectly aligned and
-        the herd was vacuous at write time:
+        With the reference equal to c_oracle_raw the row is perfectly
+        aligned and the herd was vacuous at write time:
 
           align     = align_read = 1 - 0.5·|0.2 - 0.2| = 1.0
           info      = 1 - 0 = 1.0
@@ -579,7 +572,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.2,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -603,7 +595,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=1.0,
                 timestamp=1000,
                 c_herd_prior=1.0,
-                c_herd_now=0.0,
                 n_oracle_prior=4,
             )
         ]
@@ -633,7 +624,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=1.0,
                 timestamp=1000,
                 c_herd_prior=0.4,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -659,7 +649,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -687,7 +676,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=-0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -695,7 +683,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=-0.7,
                 timestamp=0,
                 c_herd_prior=0.50,
-                c_herd_now=0.0,
                 n_oracle_prior=2,
             ),
         ]
@@ -725,7 +712,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.60,
                 timestamp=0,
                 c_herd_prior=0.40,
-                c_herd_now=0.0,
                 n_oracle_prior=4,
             ),
             TrustSignal(
@@ -733,7 +719,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.50,
                 timestamp=0,
                 c_herd_prior=0.30,
-                c_herd_now=0.0,
                 n_oracle_prior=9,
             ),
         ]
@@ -756,7 +741,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=0,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -778,7 +762,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=1.0,
                 timestamp=800,
                 c_herd_prior=1.0,
-                c_herd_now=0.0,
                 n_oracle_prior=3,
             ),
             TrustSignal(
@@ -786,7 +769,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=-1.0,
                 timestamp=1000,
                 c_herd_prior=-1.0,
-                c_herd_now=0.0,
                 n_oracle_prior=7,
             ),
         ]
@@ -804,7 +786,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.0,
                 timestamp=900,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -812,7 +793,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.0,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=2,
             ),
         ]
@@ -836,7 +816,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -859,7 +838,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.0,
                 timestamp=900,
                 c_herd_prior=0.4,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -867,7 +845,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.7,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
@@ -893,7 +870,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -901,7 +877,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=1000,
                 c_herd_prior=0.5,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
@@ -921,7 +896,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=100,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -929,7 +903,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=9000,
                 c_herd_prior=0.5,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
@@ -958,7 +931,7 @@ class TestComputeOracleTrust:
         Pins the §4.8 alignment identity ``1 - PD(to_opinion(c_a),
         to_opinion(c_b)) = 1 - 0.5·|c_a − c_b|`` to a worked example:
 
-          c_oracle_raw=0.4, c_herd_prior=0.1, c_herd_now=0.6
+          c_oracle_raw=0.4, c_herd_prior=0.1
           align_write = 1 − 0.5·|0.4 − 0.1| = 0.85
           align_read  = 1 − 0.5·|0.4 − 0.6| = 0.90
           M_write     = 1/2 (n_oracle_prior=0, K=1)
@@ -974,7 +947,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.4,
                 timestamp=1000,
                 c_herd_prior=0.1,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -999,7 +971,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=c_oracle_raw,
                 timestamp=1000,
                 c_herd_prior=c_herd_prior,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
 
@@ -1044,7 +1015,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=100,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -1052,7 +1022,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=999_999,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]
@@ -1075,7 +1044,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.9,
                 timestamp=1000,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -1089,8 +1057,7 @@ class TestComputeOracleTrust:
         align_read = 1 on every solo hypothesis and iterated self-reference
         converged on t = (1 − 0.5c)/(1 − 0.125c) ≈ 0.923 at c = 0.2. Under
         the witness rule every unwitnessed row leaves the scan: the whole
-        campaign is worth exactly base rate. The stored c_herd_now = 0.2
-        (the oracle's own echo) is the lie the fix must never read.
+        campaign is worth exactly base rate.
         """
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
         rows = [
@@ -1099,7 +1066,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.2,
                 timestamp=1000 + i,
                 c_herd_prior=0.0,
-                c_herd_now=0.2,
                 n_oracle_prior=0,
             )
             for i in range(20)
@@ -1112,8 +1078,8 @@ class TestComputeOracleTrust:
         """align_read measures against the recomputed others-only herd state.
 
         Evidence: two other-oracle rows, c = 0.15 and 0.30 at t_now; ECBF
-        fuses them to 72/191. The row's stored c_herd_now carries the lie
-        −1.0, which the computation must never read.
+        fuses them to 72/191, and that recomputation is the only source
+        the read-time leg has.
 
           ref         = 72/191 ≈ 0.376963
           align_write = 1 − 0.5·|0.5 − 0.0|     = 0.75
@@ -1130,7 +1096,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.5,
                 timestamp=t_now,
                 c_herd_prior=0.0,
-                c_herd_now=-1.0,
                 n_oracle_prior=0,
             )
         ]
@@ -1163,7 +1128,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=t_now,
                 c_herd_prior=-0.3,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
         ]
@@ -1187,7 +1151,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=0.8,
                 timestamp=t_now,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
             TrustSignal(
@@ -1195,7 +1158,6 @@ class TestComputeOracleTrust:
                 c_oracle_raw=-0.9,
                 timestamp=t_now,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             ),
         ]

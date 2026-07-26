@@ -26,7 +26,6 @@ def _valid_snapshot(**overrides: object) -> TrustSignal:
         "c_oracle_raw": 0.5,
         "timestamp": 1000,
         "c_herd_prior": 0.3,
-        "c_herd_now": 0.6,
         "n_oracle_prior": 0,
     }
     defaults.update(overrides)
@@ -41,13 +40,11 @@ class TestTrustSignalValidation:
         assert s.c_oracle_raw == 0.5
         assert s.timestamp == 1000
         assert s.c_herd_prior == 0.3
-        assert s.c_herd_now == 0.6
 
     def test_accepts_boundary_confidence_values(self) -> None:
-        s = _valid_snapshot(c_oracle_raw=-1.0, c_herd_prior=1.0, c_herd_now=-1.0)
+        s = _valid_snapshot(c_oracle_raw=-1.0, c_herd_prior=1.0)
         assert s.c_oracle_raw == -1.0
         assert s.c_herd_prior == 1.0
-        assert s.c_herd_now == -1.0
 
     def test_rejects_c_oracle_raw_out_of_range(self) -> None:
         with pytest.raises(ValueError, match="c_oracle_raw"):
@@ -56,10 +53,6 @@ class TestTrustSignalValidation:
     def test_rejects_c_herd_prior_out_of_range(self) -> None:
         with pytest.raises(ValueError, match="c_herd_prior"):
             _valid_snapshot(c_herd_prior=-1.1)
-
-    def test_rejects_c_herd_now_out_of_range(self) -> None:
-        with pytest.raises(ValueError, match="c_herd_now"):
-            _valid_snapshot(c_herd_now=float("inf"))
 
     def test_rejects_nan_confidence(self) -> None:
         with pytest.raises(ValueError, match="c_oracle_raw"):
@@ -95,9 +88,7 @@ class TestTrustSignalModelConstruct:
     """model_construct() skips validation: hot path for DB reads."""
 
     def test_model_construct_skips_validation(self) -> None:
-        s = TrustSignal.model_construct(
-            c_oracle_raw=999.0, timestamp=-1, c_herd_prior=0.0, c_herd_now=0.0
-        )
+        s = TrustSignal.model_construct(c_oracle_raw=999.0, timestamp=-1, c_herd_prior=0.0)
         assert s.c_oracle_raw == 999.0
         assert s.timestamp == -1
 

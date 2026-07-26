@@ -622,7 +622,6 @@ class TestRecordWiresWitnessEvidence:
                 c_oracle_raw=0.6,
                 timestamp=timestamp,
                 c_herd_prior=0.0,
-                c_herd_now=0.0,
                 n_oracle_prior=0,
             )
 
