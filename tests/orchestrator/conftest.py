@@ -36,8 +36,10 @@ from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTyp
 from lore.repositories import (
     AttestationRecord,
     CacheEntry,
+    DecayWindow,
     HypothesisRecord,
     HypothesisResult,
+    LedgerView,
     PostgresConfig,
     Repositories,
     RequestRecord,
@@ -152,9 +154,22 @@ class StubAttestations:
         return self._by_hypotheses.get(hypothesis_id, [])
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
-        return {hid: self._by_hypotheses.get(hid, []) for hid in hypothesis_ids}
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
+        def view(records: list[AttestationRecord]) -> LedgerView:
+            rows = records
+            if window is not None:
+                rows = [r for r in records if window.start <= r.timestamp <= window.t_now]
+            return LedgerView(
+                rows=rows,
+                attestation_count=len(records),
+                last_attested=max((r.timestamp for r in records), default=None),
+            )
+
+        return {hid: view(self._by_hypotheses.get(hid, [])) for hid in hypothesis_ids}
 
     async def fetch_trust_alignments(
         self,
@@ -170,8 +185,7 @@ class StubAttestations:
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
         return {hid: self._herd_evidence.get(hid, []) for hid in hypothesis_ids}
 

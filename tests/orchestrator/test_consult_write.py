@@ -23,7 +23,8 @@ from lore.orchestrator import Orchestrator
 from lore.prompts import load_prompt
 from lore.providers import Providers
 from lore.repositories import (
-    AttestationRecord,
+    DecayWindow,
+    LedgerView,
     Repositories,
 )
 from tests.orchestrator.conftest import (
@@ -224,12 +225,23 @@ class TestRecordUsesPostTransactionAttestationState:
                 self._call_count = 0
 
             async def find_by_hypotheses(
-                self, hypothesis_ids: Sequence[str]
-            ) -> dict[str, list[AttestationRecord]]:
+                self,
+                hypothesis_ids: Sequence[str],
+                *,
+                window: DecayWindow | None = None,
+            ) -> dict[str, LedgerView]:
                 self._call_count += 1
                 if self._call_count == 1:
-                    return {hid: [] for hid in hypothesis_ids}
-                return {hid: [prior] for hid in hypothesis_ids}
+                    return {
+                        hid: LedgerView(rows=[], attestation_count=0, last_attested=None)
+                        for hid in hypothesis_ids
+                    }
+                return {
+                    hid: LedgerView(
+                        rows=[prior], attestation_count=1, last_attested=prior.timestamp
+                    )
+                    for hid in hypothesis_ids
+                }
 
         result = make_hypothesis_result(id=hypothesis_id, content="existing claim")
         embedder = StubEmbedder()

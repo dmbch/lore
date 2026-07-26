@@ -14,7 +14,7 @@ from lore.domain import (
     WriteContext,
 )
 from lore.math import MathService
-from lore.repositories import AttestationRecord, Repositories
+from lore.repositories import AttestationRecord, DecayWindow, LedgerView, Repositories
 from lore.repositories.records import generate_id
 from lore.telemetry import start_span
 
@@ -46,12 +46,14 @@ async def record(
         )
         # Others-only evidence per scan hypothesis: the witness rule's
         # reference material. Sorted ids keep the IN-list deterministic.
+        evidence_window = DecayWindow(
+            t_now=context.t_now, half_life=settings.epistemics.attestation_half_life
+        )
         herd_evidence = (
             await repos.attestations.fetch_herd_evidence(
                 sorted({a.hypothesis_id for a in alignments}),
                 exclude_oracle=context.oracle_id,
-                t_now=context.t_now,
-                attestation_half_life=settings.epistemics.attestation_half_life,
+                window=evidence_window,
             )
             if alignments
             else {}
@@ -60,8 +62,12 @@ async def record(
             rows=alignments, herd_evidence=herd_evidence, t_now=context.t_now
         )
 
-        attestation_map = (
-            await repos.attestations.find_by_hypotheses(list(target_ids)) if target_ids else {}
+        # No decay window here: maturity counts distinct oracles over full
+        # history and the transfer needs the true latest row.
+        attestation_map: dict[str, LedgerView] = (
+            await repos.attestations.find_by_hypotheses(list(target_ids), window=None)
+            if target_ids
+            else {}
         )
 
         recorder = Recorder(
@@ -140,7 +146,7 @@ class Recorder:
         repos: Repositories,
         math: MathService,
         reasoned: ArchivistOutput,
-        attestation_map: dict[str, list[AttestationRecord]],
+        attestation_map: dict[str, LedgerView],
         novel_embeddings: dict[str, list[float]],
         context: WriteContext,
         t_oracle: float,
@@ -250,7 +256,8 @@ class Recorder:
         balanced contradictions): no transfer row is written."""
         evidence_pieces: list[EvidenceInput] = []
         for h_id in contradicts:
-            latest = _latest_row(self._attestation_map.get(h_id, []))
+            view = self._attestation_map.get(h_id)
+            latest = _latest_row(view.rows) if view is not None else None
             if latest is None:
                 continue
             evidence_pieces.append(
@@ -272,7 +279,8 @@ class Recorder:
         return c_transfer
 
     async def _attest_existing(self, *, hypothesis_id: str, confidence: float) -> None:
-        existing = self._attestation_map.get(hypothesis_id, [])
+        view = self._attestation_map.get(hypothesis_id)
+        existing = view.rows if view is not None else []
         # ``n_oracle_prior`` is stored on the row at write time and read back
         # unchanged by the trust scan: the column is the single source of
         # truth. The semantics ("distinct oracles other than self") live here;

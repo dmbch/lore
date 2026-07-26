@@ -64,14 +64,18 @@ def _repos(
 
 
 async def test_frontier_empty_archive_returns_empty() -> None:
-    entries = await frontier(repos=_repos([]), math=make_math(), limit=10, t_now=_T)
+    entries = await frontier(
+        repos=_repos([]), math=make_math(), settings=make_settings(), limit=10, t_now=_T
+    )
     assert entries == []
 
 
 async def test_frontier_unattested_hypothesis_is_fully_uncertain() -> None:
     """No attestations means vacuous: c_herd = 0.0, uncertainty = 1.0."""
     record = _record("aaa00001-e29b-41d4-a716-446655440000")
-    entries = await frontier(repos=_repos([record]), math=make_math(), limit=10, t_now=_T)
+    entries = await frontier(
+        repos=_repos([record]), math=make_math(), settings=make_settings(), limit=10, t_now=_T
+    )
 
     assert len(entries) == 1
     entry = entries[0]
@@ -95,7 +99,9 @@ async def test_frontier_sorts_most_uncertain_first() -> None:
     # find_recent order is deliberately not the sorted order.
     repos = _repos([low, mid, high], by_hypotheses=by_hypotheses)
 
-    entries = await frontier(repos=repos, math=make_math(), limit=10, t_now=_T)
+    entries = await frontier(
+        repos=repos, math=make_math(), settings=make_settings(), limit=10, t_now=_T
+    )
 
     assert [e.id for e in entries] == [high.id, mid.id, low.id]
     assert [e.uncertainty for e in entries] == sorted(
@@ -122,10 +128,41 @@ async def test_frontier_decays_stale_attestations() -> None:
     }
     repos = _repos([record], by_hypotheses=by_hypotheses)
 
-    entries = await frontier(repos=repos, math=make_math(), limit=10, t_now=_T)
+    entries = await frontier(
+        repos=repos, math=make_math(), settings=make_settings(), limit=10, t_now=_T
+    )
 
     assert entries[0].c_herd == pytest.approx(0.4)
     assert entries[0].uncertainty == pytest.approx(0.6)
+
+
+async def test_frontier_ignores_rows_beyond_decay_window() -> None:
+    """Rows older than 5 half-lives leave the fusion; the summary sees them.
+
+    The stale row (10 half-lives old, c 0.9) would still contribute ~9e-4
+    after decay, so its absence pins the fetch cutoff, not the decay
+    algebra. The fresh row alone gives c_herd = 0.3 exactly.
+    attestation_count and last_attested stay full-history: this hypothesis
+    is stale, not unattested.
+    """
+    record = _record("aaa00001-e29b-41d4-a716-446655440000")
+    by_hypotheses = {
+        record.id: [
+            make_attestation(
+                hypothesis_id=record.id, c_oracle_discounted=0.9, timestamp=_T - 10 * _HALF_LIFE
+            ),
+            make_attestation(hypothesis_id=record.id, c_oracle_discounted=0.3, timestamp=_T),
+        ]
+    }
+    repos = _repos([record], by_hypotheses=by_hypotheses)
+
+    entries = await frontier(
+        repos=repos, math=make_math(), settings=make_settings(), limit=10, t_now=_T
+    )
+
+    assert abs(entries[0].c_herd - 0.3) < 1e-9
+    assert entries[0].attestation_count == 2
+    assert entries[0].last_attested == date(2033, 5, 18)
 
 
 async def test_frontier_breaks_uncertainty_ties_by_id_ascending() -> None:
@@ -135,7 +172,9 @@ async def test_frontier_breaks_uncertainty_ties_by_id_ascending() -> None:
     # Both unattested => both uncertainty 1.0; find_recent yields them id-descending.
     repos = _repos([later_id, earlier_id])
 
-    entries = await frontier(repos=repos, math=make_math(), limit=10, t_now=_T)
+    entries = await frontier(
+        repos=repos, math=make_math(), settings=make_settings(), limit=10, t_now=_T
+    )
 
     assert [e.id for e in entries] == [earlier_id.id, later_id.id]
 

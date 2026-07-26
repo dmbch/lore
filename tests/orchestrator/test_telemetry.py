@@ -7,7 +7,7 @@ from lore.domain import (
     ConsultLoreRequest,
     Resolution,
 )
-from lore.repositories import AttestationRecord
+from lore.repositories import DecayWindow, LedgerView
 from tests.orchestrator.conftest import (
     instrumented,
     make_hypothesis_result,
@@ -297,9 +297,13 @@ class TestWritePathOneFetchOverUnion:
         original = fixture.attestations.find_by_hypotheses
         calls: list[set[str]] = []
 
-        async def tracking_find(hids: Sequence[str]) -> dict[str, list[AttestationRecord]]:
+        async def tracking_find(
+            hids: Sequence[str],
+            *,
+            window: DecayWindow | None = None,
+        ) -> dict[str, LedgerView]:
             calls.append(set(hids))
-            return await original(hids)
+            return await original(hids, window=window)
 
         fixture.attestations.find_by_hypotheses = tracking_find  # pyright: ignore[reportAttributeAccessIssue]
 

@@ -52,8 +52,10 @@ from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
     AttestationRecord,
+    DecayWindow,
     HypothesisRecord,
     HypothesisResult,
+    LedgerView,
     PostgresConfig,
     Repositories,
     RepositoryPool,
@@ -131,9 +133,15 @@ class _NoopAttestations:
         return []
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
-        return {h: [] for h in hypothesis_ids}
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
+        del window
+        return {
+            h: LedgerView(rows=[], attestation_count=0, last_attested=None) for h in hypothesis_ids
+        }
 
     async def fetch_trust_alignments(
         self,
@@ -150,10 +158,9 @@ class _NoopAttestations:
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
-        del exclude_oracle, t_now, attestation_half_life
+        del exclude_oracle, window
         return {h: [] for h in hypothesis_ids}
 
 

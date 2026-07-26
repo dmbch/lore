@@ -32,12 +32,14 @@ from lore.math.opinion import EPSILON
 from lore.orchestrator.record import Recorder, record
 from lore.repositories import (
     AttestationRecord,
+    DecayWindow,
     HypothesisRecord,
     HypothesisResult,
+    LedgerView,
     Repositories,
     RequestRecord,
 )
-from tests.orchestrator.conftest import StubCache, make_settings
+from tests.orchestrator.conftest import StubAttestations, StubCache, make_settings
 
 
 class _StubHypotheses:
@@ -87,8 +89,11 @@ class _StubAttestations:
         raise NotImplementedError
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
         raise NotImplementedError
 
     async def fetch_trust_alignments(
@@ -101,8 +106,7 @@ class _StubAttestations:
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
         raise NotImplementedError
 
@@ -126,7 +130,7 @@ class _WitnessRecordingAttestations(_StubAttestations):
         super().__init__()
         self._trust_alignments = trust_alignments
         self._herd_evidence = herd_evidence
-        self.evidence_calls: list[tuple[list[str], str, int, float]] = []
+        self.evidence_calls: list[tuple[list[str], str, DecayWindow]] = []
 
     async def fetch_trust_alignments(
         self, *, oracle_id: str, t_now: int, trust_half_life: float
@@ -138,12 +142,9 @@ class _WitnessRecordingAttestations(_StubAttestations):
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
-        self.evidence_calls.append(
-            (list(hypothesis_ids), exclude_oracle, t_now, attestation_half_life)
-        )
+        self.evidence_calls.append((list(hypothesis_ids), exclude_oracle, window))
         return {hid: self._herd_evidence.get(hid, []) for hid in hypothesis_ids}
 
 
@@ -177,6 +178,15 @@ def _attestation_with_c_herd(c_herd: float) -> AttestationRecord:
     )
 
 
+def _ledger_view(records: list[AttestationRecord]) -> LedgerView:
+    """Wrap seeded rows in the view shape find_by_hypotheses returns."""
+    return LedgerView(
+        rows=records,
+        attestation_count=len(records),
+        last_attested=max((r.timestamp for r in records), default=None),
+    )
+
+
 _DEFAULT_THRESHOLD = 1e-3
 
 
@@ -206,7 +216,9 @@ def _make_recorder(
     hypotheses = _StubHypotheses()
     attestations = _StubAttestations()
     math_service = MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0)
-    attestation_map = {_CONTRADICTED_ID: [_attestation_with_c_herd(c_herd_of_contradicted)]}
+    attestation_map = {
+        _CONTRADICTED_ID: _ledger_view([_attestation_with_c_herd(c_herd_of_contradicted)])
+    }
     repos = Repositories(
         hypotheses=hypotheses,
         attestations=attestations,
@@ -346,35 +358,39 @@ class TestComputeTransferBalancedContradictionsSkipsTransfer:
         h_a = "550e8400-e29b-41d4-a716-446655440101"
         h_b = "550e8400-e29b-41d4-a716-446655440102"
 
-        attestation_map: dict[str, list[AttestationRecord]] = {
-            h_a: [
-                AttestationRecord.model_construct(
-                    id="660e8400-e29b-41d4-a716-446655440101",
-                    hypothesis_id=h_a,
-                    oracle_id="oracle-other-a",
-                    correlation_id="corr-prior-a",
-                    timestamp=_T_NOW,
-                    t_oracle=0.5,
-                    c_oracle_raw=c_herd_a,
-                    c_oracle_discounted=c_herd_a,
-                    c_herd=c_herd_a,
-                    n_oracle_prior=0,
-                )
-            ],
-            h_b: [
-                AttestationRecord.model_construct(
-                    id="660e8400-e29b-41d4-a716-446655440102",
-                    hypothesis_id=h_b,
-                    oracle_id="oracle-other-b",
-                    correlation_id="corr-prior-b",
-                    timestamp=_T_NOW,
-                    t_oracle=0.5,
-                    c_oracle_raw=c_herd_b,
-                    c_oracle_discounted=c_herd_b,
-                    c_herd=c_herd_b,
-                    n_oracle_prior=0,
-                )
-            ],
+        attestation_map: dict[str, LedgerView] = {
+            h_a: _ledger_view(
+                [
+                    AttestationRecord.model_construct(
+                        id="660e8400-e29b-41d4-a716-446655440101",
+                        hypothesis_id=h_a,
+                        oracle_id="oracle-other-a",
+                        correlation_id="corr-prior-a",
+                        timestamp=_T_NOW,
+                        t_oracle=0.5,
+                        c_oracle_raw=c_herd_a,
+                        c_oracle_discounted=c_herd_a,
+                        c_herd=c_herd_a,
+                        n_oracle_prior=0,
+                    )
+                ]
+            ),
+            h_b: _ledger_view(
+                [
+                    AttestationRecord.model_construct(
+                        id="660e8400-e29b-41d4-a716-446655440102",
+                        hypothesis_id=h_b,
+                        oracle_id="oracle-other-b",
+                        correlation_id="corr-prior-b",
+                        timestamp=_T_NOW,
+                        t_oracle=0.5,
+                        c_oracle_raw=c_herd_b,
+                        c_oracle_discounted=c_herd_b,
+                        c_herd=c_herd_b,
+                        n_oracle_prior=0,
+                    )
+                ]
+            ),
         }
 
         # c_herd_a and c_herd_b are engineered to fuse into a magnitude that
@@ -549,7 +565,7 @@ class TestRecorderPassesDistinctOracleCountToAppend:
             repos=repos,
             math=math_service,
             reasoned=_archivist_output(Resolution(corroborates=existing_id)),
-            attestation_map={existing_id: existing},
+            attestation_map={existing_id: _ledger_view(existing)},
             novel_embeddings={},
             context=context,
             t_oracle=0.5,
@@ -586,7 +602,7 @@ class TestRecorderPassesDistinctOracleCountToAppend:
             repos=repos,
             math=math_service,
             reasoned=_archivist_output(Resolution(corroborates=existing_id)),
-            attestation_map={existing_id: []},
+            attestation_map={existing_id: _ledger_view([])},
             novel_embeddings={},
             context=context,
             t_oracle=0.5,
@@ -657,7 +673,80 @@ class TestRecordWiresWitnessEvidence:
         )
 
         assert attestations.evidence_calls == [
-            (["h-a", "h-b"], "oracle-1", _T_NOW, settings.epistemics.attestation_half_life)
+            (
+                ["h-a", "h-b"],
+                "oracle-1",
+                DecayWindow(t_now=_T_NOW, half_life=settings.epistemics.attestation_half_life),
+            )
         ]
         assert len(attestations.appended) == 1
         assert abs(attestations.appended[0].t_oracle - 0.71) < EPSILON
+
+
+class _WindowRecordingAttestations(StubAttestations):
+    """Records the decay window of every ledger fetch."""
+
+    def __init__(self, *, by_hypotheses: dict[str, list[AttestationRecord]]) -> None:
+        super().__init__(by_hypotheses=by_hypotheses)
+        self.ledger_windows: list[DecayWindow | None] = []
+
+    async def find_by_hypotheses(
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
+        self.ledger_windows.append(window)
+        return await super().find_by_hypotheses(hypothesis_ids, window=window)
+
+
+class TestRecordFetchesFullHistoryLedger:
+    """The write path's ledger fetch carries no decay window.
+
+    Maturity counts distinct oracles over full history and the transfer
+    needs the true latest row: a windowed fetch here would silently
+    undercount the persisted ``n_oracle_prior`` and skip transfers on
+    all-stale ledgers. The seeded prior row sits ~12 half-lives in the
+    past, so both assertions fail loudly if the fetch ever gains a window
+    (the stub windows faithfully when one is passed).
+    """
+
+    async def test_record_counts_stale_attesters_toward_maturity(self) -> None:
+        existing_id = "550e8400-e29b-41d4-a716-446655440096"
+        stale_row = AttestationRecord.model_construct(
+            id="660e8400-e29b-41d4-a716-446655440096",
+            hypothesis_id=existing_id,
+            oracle_id="oracle-stale",
+            correlation_id="corr-prior",
+            timestamp=_T_NOW - 1_000_000,
+            t_oracle=0.5,
+            c_oracle_raw=0.5,
+            c_oracle_discounted=0.25,
+            c_herd=0.5,
+            n_oracle_prior=0,
+        )
+        attestations = _WindowRecordingAttestations(by_hypotheses={existing_id: [stale_row]})
+        repos = Repositories(
+            hypotheses=_StubHypotheses(),
+            attestations=attestations,
+            requests=_NoopRequests(),
+            cache=StubCache(),
+        )
+        context = WriteContext(
+            oracle_id="oracle-1",
+            correlation_id=_CORRELATION_ID,
+            confidence=0.7,
+            t_now=_T_NOW,
+        )
+
+        await record(
+            repos=repos,
+            math=MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0),
+            reasoned=_archivist_output(Resolution(corroborates=existing_id)),
+            novel_embeddings={},
+            context=context,
+            settings=_settings_with_threshold(),
+        )
+
+        assert attestations.ledger_windows == [None]
+        assert [a.n_oracle_prior for a in attestations.appended] == [1]

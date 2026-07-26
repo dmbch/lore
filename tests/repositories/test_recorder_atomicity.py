@@ -36,6 +36,8 @@ from lore.providers import Providers
 from lore.repositories import (
     AttestationRecord,
     AttestationsRepository,
+    DecayWindow,
+    LedgerView,
     Repositories,
     RepositoryPool,
 )
@@ -78,9 +80,12 @@ class _FailingOnSecondCallAttestationsRepo:
         return await self._inner.find_by_hypothesis(hypothesis_id)
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
-        return await self._inner.find_by_hypotheses(hypothesis_ids)
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
+        return await self._inner.find_by_hypotheses(hypothesis_ids, window=window)
 
     async def fetch_trust_alignments(
         self,
@@ -98,14 +103,10 @@ class _FailingOnSecondCallAttestationsRepo:
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
         return await self._inner.fetch_herd_evidence(
-            hypothesis_ids,
-            exclude_oracle=exclude_oracle,
-            t_now=t_now,
-            attestation_half_life=attestation_half_life,
+            hypothesis_ids, exclude_oracle=exclude_oracle, window=window
         )
 
 

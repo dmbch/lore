@@ -14,8 +14,10 @@ from lore.domain import EvidenceInput, TrustSignal
 from lore.repositories.records import (
     AttestationRecord,
     CacheEntry,
+    DecayWindow,
     HypothesisRecord,
     HypothesisResult,
+    LedgerView,
     RequestRecord,
 )
 
@@ -105,12 +107,22 @@ class AttestationsRepository(Protocol):
         ...
 
     async def find_by_hypotheses(
-        self, hypothesis_ids: Sequence[str]
-    ) -> dict[str, list[AttestationRecord]]:
-        """Batch fetch attestations for multiple hypotheses.
+        self,
+        hypothesis_ids: Sequence[str],
+        *,
+        window: DecayWindow | None = None,
+    ) -> dict[str, LedgerView]:
+        """Batch fetch each hypothesis's ledger view.
 
-        Hypothesis IDs with no attestations map to an empty list by
-        construction; callers do not need to guard for missing keys.
+        With a ``window``, ``rows`` holds only attestations inside the
+        5-half-life decay window ``[window.start, window.t_now]``: older
+        rows carry under ~3% of their weight, so read paths skip fetching
+        them. Without one, ``rows`` is full history.
+
+        ``attestation_count`` and ``last_attested`` are exact over full
+        history in both modes, so an all-stale ledger stays
+        distinguishable from a never-attested one. Every requested ID is
+        present as a key; unattested hypotheses map to an empty view.
         """
         ...
 
@@ -139,17 +151,16 @@ class AttestationsRepository(Protocol):
         hypothesis_ids: Sequence[str],
         *,
         exclude_oracle: str,
-        t_now: int,
-        attestation_half_life: float,
+        window: DecayWindow,
     ) -> dict[str, list[EvidenceInput]]:
         """Batch fetch others-only fusion evidence per hypothesis.
 
         Returns, per requested hypothesis ID, the attestations by every
         oracle except ``exclude_oracle``, projected to ``EvidenceInput``
         and ordered by ``(timestamp, id)``. The synthetic ``_transfer``
-        oracle is an ordinary includable oracle here. Rows outside the
-        decay window ``[t_now - 5 * attestation_half_life, t_now]`` are
-        excluded; a non-finite half-life collapses the lower bound to 0.
+        oracle is an ordinary includable oracle here. Rows outside
+        ``window`` are excluded; a non-finite half-life collapses its
+        lower bound to 0.
 
         Every requested ID is present as a key; hypotheses with no
         qualifying rows map to an empty list, so callers never guard for

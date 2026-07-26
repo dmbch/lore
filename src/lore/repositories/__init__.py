@@ -19,8 +19,10 @@ from lore.repositories.protocols import (
 from lore.repositories.records import (
     AttestationRecord,
     CacheEntry,
+    DecayWindow,
     HypothesisRecord,
     HypothesisResult,
+    LedgerView,
     RequestRecord,
 )
 
@@ -30,9 +32,11 @@ __all__ = [
     "CacheConfig",
     "CacheEntry",
     "CacheRepository",
+    "DecayWindow",
     "HypothesisRecord",
     "HypothesisRepository",
     "HypothesisResult",
+    "LedgerView",
     "LoreCacheStore",
     "PoolCell",
     "PostgresConfig",
