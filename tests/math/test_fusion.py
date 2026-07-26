@@ -149,7 +149,8 @@ class TestFuseHandCalculated:
     def test_fuse_mixed_dogmatic_same_direction_uses_dogmatic_subset(self) -> None:
         """Mixed dogmatic + non-dogmatic partitions to the dogmatic subset.
 
-        Jøsang Eq. 12.15 (Aggregatio reading): when ≥1 input is dogmatic and
+        Aggregatio's ``cumulativeCollectionFuse`` (Jøsang, Wang & Zhang,
+        FUSION 2017, Eqs. 16-17): when ≥1 input is dogmatic and
         ≥1 is non-dogmatic, the N-ary equal-weight mean runs over the
         dogmatic subset only. Same-direction is the strict pin: the
         cancelling-pair case would coincidentally pass via uncertainty
