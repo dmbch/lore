@@ -25,8 +25,8 @@ An opinion expresses an observer's epistemic state about a binary proposition:
 ω = (b, d, u)
 ```
 
-- **b (belief):** evidence-weighted probability the proposition is true.
-- **d (disbelief):** evidence-weighted probability the proposition is false.
+- **b (belief):** the belief mass supporting the proposition; b is the lower bound of the projected probability P, not itself a probability (SL Def. 3.1).
+- **d (disbelief):** the belief mass against the proposition; symmetrically, 1 − d upper-bounds P.
 - **u (uncertainty):** ignorance, lack of evidence either way.
 
 **Invariant:** `b + d + u = 1.0`. Always. Every operator must preserve this.
@@ -63,7 +63,7 @@ c < 0:  ω = (0, |c|, 1 − |c|) (disbelief and uncertainty)
 c = 0:  ω = (0, 0, 1)         (vacuous, pure ignorance)
 ```
 
-**Proof of uncertainty maximization.** For c > 0: P = 0.5 + 0.5c. Uncertainty maximization (Eq. 3.27) yields ü = 2 · min(P, 1 − P). Since P ≥ 0.5, min(P, 1 − P) = 1 − P = 0.5 − 0.5c = (1 − c)/2, so ü = 1 − c. Then b̈ = P − 0.5ü = (0.5 + 0.5c) − 0.5(1 − c) = c, d̈ = 0. This matches the forward mapping. Symmetric for c < 0.
+**Proof of uncertainty maximization.** For c > 0: P = 0.5 + 0.5c. Uncertainty maximization (Eq. 3.27) yields ü = 2 · min(P, 1 − P). Since P > 0.5, min(P, 1 − P) = 1 − P = 0.5 − 0.5c = (1 − c)/2, so ü = 1 − c. Then b̈ = P − 0.5ü = (0.5 + 0.5c) − 0.5(1 − c) = c, d̈ = 0. This matches the forward mapping. Symmetric for c < 0.
 
 **Endpoints.** `c = ±1.0` produces dogmatic opinions `(1, 0, 0)` and `(0, 1, 0)`. These are valid in the mapping's mathematical domain. The trust pipeline prevents dogmatic opinions from reaching ECBF: trust discounting with P_effective < 1 (guaranteed when K ≥ 1) strictly reduces `|c|`, and ECBF with non-dogmatic inputs cannot produce dogmatic outputs. The undogmatic constraint is a pipeline property, not an input restriction. Values outside `[-1, 1]` are rejected: they produce invalid opinions (`b > 1` or `d > 1`).
 
@@ -100,7 +100,7 @@ u_⊕ = (u_A · u_B) / κ
 
 **Case II.** When all opinions are dogmatic (u = 0): the result is their average with equal weights (γ_i = 1/N, generalizing Eq. 12.15). This is the limit case: formally, γ_A = lim u_B/(u_A + u_B) as both approach zero. The implementation must handle this explicitly to avoid division by zero.
 
-**Mixed-dogmatic partition.** When some inputs are dogmatic and the rest are non-dogmatic, the equal-weight N-ary mean runs over the dogmatic subset only. The non-dogmatic minority is excluded; its ``u_B/(u_A + u_B)`` weight collapses to zero in the same limit that drives Case II. The implementation follows the tum-i4 Aggregatio reading of Eq. 12.15. Default Lore tuning keeps ``K ≥ 1``, which prevents dogmatic intermediates from ever reaching ECBF; the partition is the formal contract for ``K = 0`` deployments and any future code path that produces dogmatic discounted opinions.
+**Mixed-dogmatic partition.** When some inputs are dogmatic and the rest are non-dogmatic, the equal-weight N-ary mean runs over the dogmatic subset only. The non-dogmatic minority is excluded; its ``u_B/(u_A + u_B)`` weight collapses to zero in the same limit that drives Case II. The implementation follows Aggregatio's ``cumulativeCollectionFuse`` partitioning, whose own source cites Jøsang, Wang & Zhang (FUSION 2017, DOI 10.23919/ICIF.2017.8009820), Eqs. 16-17; in the book's terms the exclusion is Case I's dogmatic limit. Default Lore tuning keeps ``K ≥ 1``, which prevents dogmatic intermediates from ever reaching ECBF; the partition is the formal contract for ``K = 0`` deployments and any future code path that produces dogmatic discounted opinions.
 
 **Algebraic underflow detection.** The dogmatic predicate above extends the routing to opinions whose ``u`` is small enough that ``u · u`` would underflow to zero in IEEE-754 doubles (anything below the ``2^-1074`` knee). The routing predicate `_u_in_underflow_regime` compares ``2 · log₂(u)`` to the minimum-positive-double exponent rather than testing ``u * u == 0.0`` directly, so the decision is independent of FTZ/DAZ FP-environment flags and fast-math contexts that flush subnormals platform-specifically. The boundary classifier on ``Opinion`` (``is_dogmatic`` using ``EPSILON``) is intentionally distinct from this routing predicate: ``Opinion.is_dogmatic`` is a user-facing tolerance for "treat this as dogmatic"; the routing predicate identifies the exact ``u`` range where Case I's algebra emits an order-dependent ``u = 0`` intermediate. ``_acbf_pair``'s Case II guard remains an exact ``u == 0.0`` check: Eq. 12.14 is well-defined for any ``u > 0`` and the algebraic helper only redirects inputs whose pairwise reduction would otherwise corrupt the result.
 
@@ -145,7 +145,7 @@ ECBF itself is therefore not associative: maximizing between pairwise steps disc
 
 Lore's propositions are epistemic: "Did PR #405 cause the memory leak?" is a one-time fact, not a repeatable experiment. This distinction drove the choice of ECBF over CCF (Def. 12.9).
 
-CCF is idempotent: `fuse([a, a]) = a`. This means 50 oracles each submitting moderate uncertainty would never drive the fused uncertainty below that of any individual; the herd could never converge.
+CCF is idempotent: `fuse([a, a]) = a`. This means 50 oracles each submitting the *identical* moderately-uncertain opinion would never drive the fused uncertainty below that of any individual (for merely-agreeing, non-identical inputs CCF can still reduce uncertainty; idempotency's premise is the identical case); the herd could never converge on repeated agreement.
 
 **ECBF solves two problems:**
 
@@ -155,7 +155,7 @@ CCF is idempotent: `fuse([a, a]) = a`. This means 50 oracles each submitting mod
 
 **Source correlation.** ECBF assumes source independence, which oracles in an organization aren't, strictly speaking. But uncertainty maximization is inherently conservative: it maximizes ignorance given the evidence. This is the correct stance for epistemic propositions where corroboration should accumulate evidence but the system shouldn't claim more certainty than warranted.
 
-**Multiple attestations from the same oracle** compound via ACBF, with temporal decay as the natural correction: the older attestation decays toward vacuous over time, while the fresh one enters at full strength. No special "latest-per-oracle" logic is needed.
+**Multiple attestations from the same oracle** compound via ACBF. Temporal decay corrects *staleness*, on the half-life timescale: an older attestation fades toward vacuous while the fresh one enters at full strength. Repetition inside a half-life still compounds; the guard that does not move with time is maturity's distinct-oracle count, which one oracle cannot raise however often they repeat themselves. No special "latest-per-oracle" logic is needed.
 
 ### Behavioral Summary
 
@@ -261,7 +261,7 @@ Direction preserved; magnitude reduced.
 
 **Proof.** For c > 0, source opinion is (c, 0, 1 − c). Def. 14.6 gives (P_eff · c, 0, 1 − P_eff · c). Inverse mapping: b − d = P_eff · c. Symmetric for c < 0. The output is uncertainty-maximized (min(b, d) = 0 is preserved by the proof above).
 
-**Magnitude reduction.** |c_oracle_discounted| = |P_effective · c_oracle_raw| ≤ |c_oracle_raw|. Trust discounting never amplifies; it can only reduce magnitude. When K ≥ 1: P_effective < 1.0, so |c_oracle_discounted| < |c_oracle_raw| strictly. Even if the oracle submits c = ±1.0, the discounted value is strictly interior to (-1, 1).
+**Magnitude reduction.** |c_oracle_discounted| = |P_effective · c_oracle_raw| ≤ |c_oracle_raw|. Trust discounting never amplifies; it can only reduce magnitude. When K ≥ 1: P_effective < 1.0, so |c_oracle_discounted| < |c_oracle_raw| strictly for c ≠ 0 (the vacuous input is the fixed point: 0 maps to 0). Even if the oracle submits c = ±1.0, the discounted value is strictly interior to (-1, 1).
 
 **M and t_oracle have no underlying opinion structure.** They are scalars in [0, 1] interpreted as projected probabilities of implicit trust edges (following the structure of Def. 14.7 / Eq. 14.13). Trust revision operators (Jøsang §14.5) cannot apply to these edges; they are novel compositions, not direct instantiations of agent-to-agent referral trust.
 
@@ -273,7 +273,7 @@ The effective discount factor composes two independent trust signals:
 P_effective = M · t_oracle
 ```
 
-Where M is hypothesis maturity (see below) and t_oracle is oracle trust (see below). The operator that consumes P_effective is Def. 14.6 (the single-edge binomial trust discount with base rate a = 0.5), applied once per attestation (one source, one target). The path-form generalization (Def. 14.7 / Eq. 14.13) reduces to Def. 14.6 when the path has one edge; Lore's composition `M · t_oracle` is a product of two implicit edge probabilities collapsed into a single effective discount, so only the single-edge form is ever instantiated. The discount algebra depends only on P_effective, not on the internal structure of the trust edges.
+Where M is hypothesis maturity (see below) and t_oracle is oracle trust (see below). The operator that consumes P_effective is Def. 14.6 (the binomial trust discount with base rate a = 0.5), applied once per attestation (one source, one target). (An edge-count caveat: the book titles Def. 14.6 a "Two-Edge Path" because it counts the terminal functional edge alongside the referral edge; Lore's "single-edge" reading counts referral edges only. Same operator, different bookkeeping.) The path-form generalization (Def. 14.7 / Eq. 14.13) reduces to Def. 14.6 when the path has one edge; Lore's composition `M · t_oracle` is a product of two implicit edge probabilities collapsed into a single effective discount, so only the single-edge form is ever instantiated. The discount algebra depends only on P_effective, not on the internal structure of the trust edges.
 
 ### Graceful Degradation
 
@@ -312,7 +312,7 @@ n_oracle_prior = 9 → N_O = 10:         M = 10/11 ≈ 0.91
 - **K = 1** means "one phantom skeptic is always in the room."
 - **K = 0** makes maturity transparent: M = 1.0 for all N_O ≥ 1.
 
-`n_oracle_prior` is not stored on the attestation; it is derived from the ledger at write time and used to compute M. Storage is unnecessary; the ledger is the source of truth.
+`n_oracle_prior` is derivable from the ledger, and the Recorder derives it at write time against the transaction's attestation snapshot to compute M. It is *also* persisted on the row as a write-time snapshot: trust scans read the column instead of recomputing the count with a correlated subquery. The immutable ledger remains the source of truth; the column is a consistent-by-construction cache of what the Recorder saw.
 
 The same `N_O = n_oracle_prior + 1` rule is reused inside the oracle trust derivation (see Adaptive Blend below). Both call sites apply it relative to "the current oracle on the row being scored": at write time that is the new attestor, at trust-scan time it is the oracle whose trust we are computing. One rule, two roles.
 
@@ -320,7 +320,7 @@ The same `N_O = n_oracle_prior + 1` rule is reused inside the oracle trust deriv
 
 ## Oracle Trust
 
-The oracle's alignment probability t_oracle ∈ [0, 1], computed from the immutable ledger at write time. No peer assessment, no settlement events. A bounded scan of the oracle's recent attestation history, gated by a witness rule: only rows whose hypothesis carries evidence from other oracles are scored. The derivation is built entirely from standard Subjective Logic operators (PD (Eq. 4.61) for alignment, the maturity saturation M for the adaptive blend, and Def. 14.6 (binomial trust discounting) for the informative-commitment gate), composed into a conviction-weighted average. No novel operators.
+The oracle's alignment probability t_oracle ∈ [0, 1], computed from the immutable ledger at write time. No peer assessment, no settlement events. A bounded scan of the oracle's recent attestation history, gated by a witness rule: only rows whose hypothesis carries evidence from other oracles are scored. The derivation composes standard Subjective Logic operators (PD (Eq. 4.61) for alignment, Def. 14.6 (binomial trust discounting) for the informative-commitment gate) with Lore's own maturity saturation M for the adaptive blend (a Lore construction, see Hypothesis Maturity), into a conviction-weighted average. No novel operators; one Lore-defined saturation function.
 
 ### The Principle
 
@@ -371,12 +371,12 @@ M_write_i uses exactly the same `N_O = n_oracle_prior + 1` rule and the same K a
 
 | State | n_oracle_prior | M_write (K=1) | Dominant signal |
 |---|---|---|---|
-| Fresh hypothesis, oracle X is first attester | 0 | 0.50 | 50/50: read-time dominates over vacuous prior |
+| Fresh hypothesis, oracle X is first attester | 0 | 0.50 | 50/50: read-time at parity, its K = 1 ceiling |
 | Second distinct oracle | 1 | 0.67 | Read-time still weighty (prophet-friendly) |
 | Fifth distinct oracle | 4 | 0.83 | Write-time dominates (conformity-rewarding) |
 | Tenth+ distinct oracle | 9 | 0.91 | Write-time strongly dominates |
 
-Fresh hypothesis: read-time dominates → the prophet is judged by the eventual herd, not by the vacuous prior they had no reason to agree with. Mature hypothesis: write-time dominates → the oracle is judged by the herd's state when they spoke, which has become an informative reference.
+Fresh hypothesis: read-time holds half the weight, its K = 1 ceiling, which caps the write-time penalty against the vacuous prior at half; K > 1 shifts fresh rows further toward read-time. Mature hypothesis: write-time dominates → the oracle is judged by the herd's state when they spoke, which has become an informative reference.
 
 **K = 0 degeneracy.** When K = 0: M_write = 1.0 for all N_O ≥ 1, so `align_i = align_write_i`, pure write-time. This is consistent with the discount operator's K = 0 behavior ("maturity transparent"): both the discount and the trust blend become transparent together. An explicit deployer opt-in.
 
@@ -663,7 +663,7 @@ The transfer reads `c_herd` from each contradicted hypothesis's most recent atte
 
 ### Partition completeness as proxy
 
-The transfer assumes the herd's belief on `¬h₁` is a usable proxy for the herd's belief on `h₂`. That is correct under exhaustive binary partition `{h₁, ¬h₁}` and overstates otherwise: "the speed of light is 300,000 km/s" and "= 150,000 km/s" do not partition the value space; the truth could be neither. The complement operator (Def. 6.3) on a binomial opinion ω = (b, d, u) is ω̄ = (d, b, u); the partition assumption is what makes that inversion match the herd's belief on h₂.
+The transfer assumes the herd's belief on `¬h₁` is a usable proxy for the herd's belief on `h₂`. That is correct under exhaustive binary partition `{h₁, ¬h₁}` and overstates otherwise: "the speed of light is 300,000 km/s" and "= 150,000 km/s" do not partition the value space; the truth could be neither. The complement operator (Def. 6.3) on a binomial opinion ω = (b, d, u) is ω̄ = (d, b, u) with base rate ā = 1 − a (Eq. 6.6); Lore's global a = 0.5 is that map's fixed point, so the triple form is exact here. The partition assumption is what makes the inversion match the herd's belief on h₂.
 
 We accept the proxy with eyes open. The transfer's role is to block γ's self-referential trust credit on h₂'s otherwise vacuous slate; that role does not depend on partition exhaustivity. If h₂ later turns out compatible with the herd's broader belief space, further attestations on h₂ compound against the transfer and resolve the gap. If h₂ is genuinely contrary, the transfer correctly prices γ's attestation against the existing prior.
 
@@ -727,12 +727,12 @@ If γ contradicts h₁ (`c_herd = +0.4`) and h₃ (`c_herd = −0.4`), the evide
 
 **Balanced multi-contradict** (ECBF over the contradicted priors fuses to ≈ 0): no transfer attestation is stored. The novel starts vacuous, correctly reflecting the absence of net contrary herd opinion.
 
-**Near-zero transfer** (|c_transfer| < ε): when the transfer magnitude rounds to zero, no transfer attestation is stored.
+**Near-zero transfer** (|c_transfer| < ε, where ε is `[epistemics] transfer_threshold`, default 1e-3): when the fused magnitude falls below the epistemic-significance floor, no transfer attestation is stored. The threshold is a deployment knob, deliberately decoupled from IEEE float noise.
 
 ### References
 
-- Jøsang (2016) Def. 6.3: Complement of binomial opinions: ω̄ = (d, b, u). The inversion operator for binary propositions; the partition-completeness assumption underlying the transfer's proxy.
-- Jøsang (2016) Def. 12.6: Cumulative belief fusion. Used to combine multiple contradicted priors at the transfer-evidence level.
+- Jøsang (2016) Def. 6.3: Complement of binomial opinions: ω̄ = (d, b, u), ā = 1 − a (Eq. 6.6); a = 0.5 is the base-rate fixed point. The inversion operator for binary propositions; the partition-completeness assumption underlying the transfer's proxy.
+- Jøsang (2016) Def. 12.6: Epistemic cumulative belief fusion. Used to combine multiple contradicted priors at the transfer-evidence level.
 
 ---
 
@@ -809,7 +809,7 @@ Every math implementation and test must be verified against prior art before com
 
 2. **Jøsang & Ismail (2002)**: *The Beta Reputation System.* Mathpix Markdown at `references/beta-reputation-system.md`. Prior art for per-attestation decay (Eq. 12; order-based forgetting, not wall-clock ageing) and scalar confidence (Eq. 15).
 
-3. **Reference implementation**: cross-check against `references/src/Aggregatio/` (Java, tum-i4). Cumulative fusion. Key: `SubjectiveOpinion.java`.
+3. **Reference implementation**: cross-check against `references/src/Aggregatio/` (Java, tum-i4). Cumulative fusion. Key: `SubjectiveOpinion.java`. Aggregatio's own cited source for the N-ary partitioning is Jøsang, Wang & Zhang, "Multi-source fusion in subjective logic" (FUSION 2017, DOI 10.23919/ICIF.2017.8009820).
 
 4. **Edge cases**: verify vacuous, dogmatic, and both-dogmatic degenerate cases against at least one reference.
 
@@ -843,7 +843,7 @@ The first version of oracle trust used a global configuration parameter `w` to b
 1. **Prophet penalization.** On a fresh hypothesis, `c_herd_prior ≈ 0` (vacuous). An oracle who speaks first with high conviction is compared against nothing: a meaningless signal. A fixed `w > 0` still forces this meaningless alignment into the average, penalizing the prophet for being "far from the prior" when the prior was empty.
 2. **Fixed knob, fixed tradeoff.** The deployer had to pick one point on the conformity-prophecy spectrum for all hypotheses, regardless of each hypothesis's maturity. A w tuned for mature hypotheses punished prophets; one tuned for prophets rewarded write-time noise on fresh hypotheses.
 
-The fix is to make the blend adaptive per attestation, derived from the same maturity function already used by the discount operator: `M_write_i = N_O_i / (N_O_i + K)`. On fresh hypotheses, M_write ≈ 0.5 (K = 1), so read-time dominates and the prophet is judged by the eventual herd. On mature hypotheses, M_write → 1, so write-time dominates and the oracle is judged by the established consensus. No new parameter, no new operator; M is reused from hypothesis maturity, giving a single coherent meaning to "maturity" across the entire trust pipeline.
+The fix is to make the blend adaptive per attestation, derived from the same maturity function already used by the discount operator: `M_write_i = N_O_i / (N_O_i + K)`. On fresh hypotheses, M_write = 0.5 (K = 1), so the write-time penalty against the vacuous prior is capped at half and the prophet's judgment leans on the eventual herd; K > 1 shifts the blend further toward read-time. On mature hypotheses, M_write → 1, so write-time dominates and the oracle is judged by the established consensus. No new parameter, no new operator; M is reused from hypothesis maturity, giving a single coherent meaning to "maturity" across the entire trust pipeline.
 
 ### Info Weighting over Flat Alignment
 
