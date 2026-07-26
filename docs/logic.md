@@ -39,7 +39,7 @@ An opinion expresses an observer's epistemic state about a binary proposition:
 - **Vacuous:** `(0, 0, 1)`: complete ignorance. The neutral element for information content.
 - **Dogmatic:** any opinion where `u = 0`: the observer claims certainty.
 
-**Why Subjective Logic.** Lore needed a formalism that treats uncertainty as a first-class value, not as the absence of confidence. Weighted averaging conflates "I'm split 50/50" with "I don't know." Dempster-Shafer handles uncertainty but lacks built-in operators for fusion across multiple sources. Bayesian networks require global structure and conditional independence assumptions that don't fit an append-only, multi-oracle system. Subjective Logic provides the BDU tuple, commutative and associative fusion, and temporal decay, all as built-in, algebraically consistent operators.
+**Why Subjective Logic.** Lore needed a formalism that treats uncertainty as a first-class value, not as the absence of confidence. Weighted averaging conflates "I'm split 50/50" with "I don't know." Dempster-Shafer handles uncertainty but has no base rates (its pignistic probability falls back to relative cardinalities) and a single classical combination rule where fusion situations call for a family of operators (cumulative, averaging, constraint); Jøsang's critique is not that Dempster's rule is wrong ("nothing wrong with Dempster's rule per se") but that no single rule fits every situation. Bayesian networks require global structure and conditional independence assumptions that don't fit an append-only, multi-oracle system. Subjective Logic provides the BDU tuple, commutative and associative fusion, and temporal decay, all as built-in, algebraically consistent operators.
 
 ---
 
@@ -184,7 +184,7 @@ where Δt = t_now − t_attestation (integer seconds)
 
 λ = ln(2) / half_life, where half_life comes from `[epistemics] attestation_half_life` in the config. Decay is calculated at read time, never stored. The base rate a is preserved.
 
-**Per-attestation, not post-fusion.** Each attestation decays individually by its own age before fusion. This follows Jøsang's canonical design (BRS 2002, Eq. 12) where individual evidence contributions are weighted by age before aggregation. Lore uses continuous elapsed time (`e^(−λΔt)`) where BRS uses discrete periods (`λ^(n−i)`). The principle is the same: fresh evidence naturally dominates stale evidence because old decayed attestations carry high uncertainty, contributing proportionally less to cumulative fusion.
+**Per-attestation, not post-fusion.** Each attestation decays individually by its own age before fusion. The nearest prior art differs on the axis: BRS (2002, Eq. 12) weights each evidence contribution by `λ^(n−i)`, sequence position rather than wall-clock age (the order in which feedback was received "plays a key role"). The time-based anchor is Jøsang (2016) §16.2.2 (Eqs. 16.5/16.6): discrete-period ageing of accumulated ratings. Structurally, Lore's decay is the trust-discounting operator (Def. 14.6) with `P = e^(−λΔt)`: b and d scale by P, uncertainty absorbs the rest, and the preserved base rate matches Eq. 14.6's third line. Note the symbol inversion: Lore's λ is a decay rate (λ = 0 means no decay); BRS and Jøsang 2016 use λ as a retention factor (λ = 1 means nothing is forgotten). The principle is shared: fresh evidence naturally dominates stale evidence because old decayed attestations carry high uncertainty, contributing proportionally less to cumulative fusion.
 
 **Invariant preservation:** `b₀ · e^(−λΔt) + d₀ · e^(−λΔt) + 1 − (1 − u₀) · e^(−λΔt) = (b₀ + d₀ + u₀) · e^(−λΔt) − e^(−λΔt) + 1`. Since `b₀ + d₀ + u₀ = 1`, this simplifies to `e^(−λΔt) − e^(−λΔt) + 1 = 1`. ✓
 
@@ -431,7 +431,7 @@ For uncertainty-maximized oracle inputs, `conviction = 1 − u_oracle`. Convicti
 - **Conviction** is a row weight: how much this attestation matters in the aggregate trust score.
 - **Info** is a signal calibration: how reliable the alignment measurement is as evidence about the oracle's judgment.
 
-Trust credit requires both to be non-trivial. An oracle must have expressed conviction (conviction > 0) for the row to count at all, and the herd must have been uncertain (info > 0) for the alignment signal to escape the pull toward 0.5. These are different axes (one gates row weight, the other gates signal strength), so there is no double-count. Structurally the motivation mirrors Jøsang's conjunctive certainty CC (Eq. 4.62), which requires "both speakers to have something to say"; here we require "the speaker had something to say and the audience could benefit from hearing it."
+Trust credit requires both to be non-trivial. An oracle must have expressed conviction (conviction > 0) for the row to count at all, and the herd must have been uncertain (info > 0) for the alignment signal to escape the pull toward 0.5. These are different axes (one gates row weight, the other gates signal strength), so there is no double-count. Structurally the motivation parallels Jøsang's conjunctive certainty CC (Eq. 4.62), a product of two certainties: both parties must have something to say for agreement or conflict to be meaningful. Lore's pair complements one factor: speaker certainty (conviction) × audience uncertainty (info). The speaker had something to say, and the audience could benefit from hearing it.
 
 ### Trust Derivation
 
@@ -793,7 +793,7 @@ Every math implementation and test must be verified against prior art before com
    - Ch. 14: Trust Discounting (Def. 14.6), Multi-Edge Trust Paths (Def. 14.7, Eq. 14.13)
    - Cite by definition number.
 
-2. **Jøsang & Ismail (2002)**: *The Beta Reputation System.* Mathpix Markdown at `references/beta-reputation-system.md`. Foundation for per-attestation decay (Eq. 12) and scalar confidence prior art (Eq. 15).
+2. **Jøsang & Ismail (2002)**: *The Beta Reputation System.* Mathpix Markdown at `references/beta-reputation-system.md`. Prior art for per-attestation decay (Eq. 12; order-based forgetting, not wall-clock ageing) and scalar confidence (Eq. 15).
 
 3. **Reference implementation**: cross-check against `references/src/Aggregatio/` (Java, tum-i4). Cumulative fusion. Key: `SubjectiveOpinion.java`.
 
@@ -804,7 +804,7 @@ Neither programmer nor Claude trusts their own math alone.
 ### Canonical Citations
 
 - Jøsang, A. (2016). *Subjective Logic: A Formalism for Reasoning Under Uncertainty.* Springer.
-- Jøsang, A. & Ismail, R. (2002). *The Beta Reputation System.* Proc. 15th Bled eCommerce Conference. Foundation for per-attestation decay (Eq. 12) and scalar confidence prior art (Eq. 15).
+- Jøsang, A. & Ismail, R. (2002). *The Beta Reputation System.* Proc. 15th Bled eCommerce Conference. Prior art for per-attestation decay (Eq. 12; order-based forgetting, not wall-clock ageing) and scalar confidence (Eq. 15).
 - Chen et al. (EMNLP 2024). *Dense X Retrieval: What Retrieval Granularity Should We Use?*
 - AFEV (2025). *Fact in Fragments: Deconstructing Complex Claims via LLM-based Atomic Fact Extraction and Verification.*
 - T2RAG (2025). *Beyond Chunks and Graphs: Retrieval-Augmented Generation through Triplet-Driven Thinking.*
@@ -859,7 +859,7 @@ CCF (Def. 12.9) was initially considered because oracles share information sourc
 
 ### Per-Attestation Decay over Post-Fusion Decay
 
-Post-fusion decay (applying decay to the already-fused hypothesis state) loses temporal resolution: it treats a hypothesis attested yesterday and one attested a year ago the same way. Per-attestation decay preserves the individual contribution timeline. The immutable ledger makes this possible; no need for the recursive shortcut that discards history.
+Post-fusion decay (applying decay to the already-fused hypothesis state) loses temporal resolution: it treats a hypothesis attested yesterday and one attested a year ago the same way. Per-attestation decay preserves the individual contribution timeline. BRS's recursive update (Eq. 13) is not the contrast here: it is exactly equivalent to the per-item form (Eq. 12) and discards nothing. Lore's reason is algebraic: opinion-space decay does not commute with fusion (two c = 0.6 attestations a half-life apart cannot be maintained as a single decaying aggregate that stays equal to re-fusing the individually decayed rows), so each attestation's age must be applied before every fusion. The immutable ledger makes this affordable.
 
 ### Propositional Decomposition without Structural Links
 
@@ -930,7 +930,7 @@ A malicious oracle submits c = ±1.0 (or near it) on a fresh hypothesis, attempt
 
 ### Echo Chamber Attack (Reputation Cashing)
 
-An oracle builds a high trust score by consistently agreeing with the herd, then exploits that trust to push a false opinion (what BRS 2002 calls "reputation cashing").
+An oracle builds a high trust score by consistently agreeing with the herd, then exploits that trust to push a false opinion. Reputation cashing is Lore's name for the attack; the underlying observation is BRS's, which describes reputation as an asset that "can be cashed in through a fraudulent transaction."
 
 **Mitigation:** Two defenses compose. First, info weighting makes trust-building through conformity much harder: agreeing with a near-dogmatic herd has `info ≈ 0`, so the attestation earns almost no trust credit regardless of how well it aligns. The attacker has to build reputation through *informative* agreement (attestations on hypotheses the herd was uncertain about), which is the honest path. Second, if the attacker does build genuine trust this way, the exploit itself is still bounded: the high-trust false attestation enters at elevated P_effective, but it is still a single opinion. Subsequent honest attestations compound against it via ECBF. The attacker's trust score drops immediately on the next trust computation (the false opinion diverges from the herd that corrected it; align_read drops). Trust decay ensures the damage window is finite. One bullet, one shot, diminishing damage.
 
