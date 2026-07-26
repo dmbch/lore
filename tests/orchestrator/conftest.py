@@ -138,9 +138,11 @@ class StubAttestations:
         self,
         by_hypotheses: dict[str, list[AttestationRecord]] | None = None,
         trust_alignments: list[TrustSignal] | None = None,
+        herd_evidence: dict[str, list[EvidenceInput]] | None = None,
     ) -> None:
         self._by_hypotheses = by_hypotheses or {}
         self._trust_alignments = trust_alignments or []
+        self._herd_evidence = herd_evidence or {}
         self.appended: list[AttestationRecord] = []
 
     async def append(self, record: AttestationRecord) -> None:
@@ -171,7 +173,7 @@ class StubAttestations:
         t_now: int,
         attestation_half_life: float,
     ) -> dict[str, list[EvidenceInput]]:
-        return {hid: [] for hid in hypothesis_ids}
+        return {hid: self._herd_evidence.get(hid, []) for hid in hypothesis_ids}
 
 
 class StubRequests:
@@ -360,6 +362,7 @@ def make_orchestrator(
     search_results: list[HypothesisResult] | None = None,
     by_hypotheses: dict[str, list[AttestationRecord]] | None = None,
     trust_alignments: list[TrustSignal] | None = None,
+    herd_evidence: dict[str, list[EvidenceInput]] | None = None,
     interpreter_output: InterpreterOutput | None = None,
     archivist_output: ArchivistOutput | None = None,
     settings: LoreSettings | None = None,
@@ -376,7 +379,11 @@ def make_orchestrator(
 
     request_store = StubRequests()
     hypotheses = StubHypotheses(search_results=search_results)
-    attestations = StubAttestations(by_hypotheses=by_hypotheses, trust_alignments=trust_alignments)
+    attestations = StubAttestations(
+        by_hypotheses=by_hypotheses,
+        trust_alignments=trust_alignments,
+        herd_evidence=herd_evidence,
+    )
     repos = Repositories(
         hypotheses=hypotheses,
         attestations=attestations,

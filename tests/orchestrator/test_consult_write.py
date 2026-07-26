@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from lore.domain import (
     ArchivistOutput,
     ConsultLoreRequest,
+    EvidenceInput,
     InferenceError,
     Resolution,
     TrustSignal,
@@ -395,18 +396,21 @@ class TestWritePathVacuousConfidence:
 
 class TestWritePathNonColdStartTrust:
     async def test_write_path_trust_from_alignment_history(self) -> None:
-        # Oracle who agreed perfectly with the herd on a prior attestation
+        # Oracle who agreed perfectly with the herd on a prior attestation.
+        # Another oracle's evidence witnesses the hypothesis; an unwitnessed
+        # row would leave the trust scan and yield base rate exactly.
         alignment = TrustSignal(
             hypothesis_id="hyp-1",
             c_oracle_raw=0.6,
             timestamp=2000000000,
             c_herd_prior=0.6,
-            c_herd_now=0.6,
+            c_herd_now=0.0,
             n_oracle_prior=0,
         )
 
         fixture = make_orchestrator(
             trust_alignments=[alignment],
+            herd_evidence={"hyp-1": [EvidenceInput(c_oracle_discounted=0.6, timestamp=2000000000)]},
             archivist_output=ArchivistOutput(
                 reasoning="test reasoning",
                 answer="Noted.",
