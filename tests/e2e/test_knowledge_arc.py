@@ -20,7 +20,7 @@ from lore.domain import TRANSFER_ORACLE
 from lore.orchestrator import Orchestrator
 from tests.e2e.conftest import attestations, consult, judge
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
 
 def _assert_invariants(row: dict[str, Any]) -> None:

@@ -38,6 +38,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
+import pytest_asyncio
 import structlog
 from structlog.typing import EventDict
 
@@ -46,10 +47,10 @@ from lore.domain import TRANSFER_ORACLE
 from lore.orchestrator import Orchestrator
 from tests.e2e.conftest import age_attestations, attestations, consult
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
 
-@pytest.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def captured_system(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> AsyncGenerator[tuple[Orchestrator, list[EventDict]]]:

@@ -5,6 +5,7 @@ from typing import Any, Literal, cast
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from pydantic import BaseModel, ConfigDict
 
 from lore.config import load_settings
@@ -30,14 +31,16 @@ async def _bootstrap(dsn: str, **overrides: object) -> AsyncGenerator[Orchestrat
         yield orchestrator
 
 
-@pytest.fixture(scope="session")
+# The composition root's cache-sweep task holds the pool lock across awaits, so
+# fixtures and tests must share one event loop or the first consult deadlocks on pool.session().
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def system(tmp_path_factory: pytest.TempPathFactory) -> AsyncGenerator[Orchestrator]:
     dsn = f"sqlite:///{tmp_path_factory.mktemp('lore') / 'lore.db'}"
     async for orchestrator in _bootstrap(dsn):
         yield orchestrator
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def decay_system(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> AsyncGenerator[Orchestrator]:

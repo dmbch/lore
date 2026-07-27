@@ -15,7 +15,7 @@ from lore.domain import EvidenceInput
 from lore.orchestrator import Orchestrator
 from tests.e2e.conftest import attestations, consult
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
 
 async def test_decay_reduces_confidence(decay_system: Orchestrator) -> None:
