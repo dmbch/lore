@@ -101,6 +101,7 @@ venv = ".venv"
 testpaths = ["tests"]
 addopts = "--cov=lore --cov-report=term-missing --cov-config=pyproject.toml -m 'not e2e'"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = ["e2e: end-to-end tests requiring real LLM and database"]
 filterwarnings = [
     # litellm's logging worker drops queued success-handler coroutines at

@@ -25,7 +25,7 @@ from lore.orchestrator import Orchestrator
 from lore.orchestrator.interpret import interpret
 from tests.e2e.conftest import judge
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
 T_NOW = int(datetime(2026, 11, 17, tzinfo=UTC).timestamp())
 
