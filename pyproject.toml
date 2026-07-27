@@ -48,6 +48,7 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "commitizen>=4.16.5",
     "httpx2>=2.7.0",
+    "pytest-timeout>=2.4.0",
 ]
 
 [tool.ruff]
@@ -102,6 +103,9 @@ testpaths = ["tests"]
 addopts = "--cov=lore --cov-report=term-missing --cov-config=pyproject.toml -m 'not e2e'"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# Global so an e2e module missing its session-loop mark fails in 300s with a
+# stack dump instead of hanging forever; inert for the seconds-long unit suite.
+timeout = 300
 markers = ["e2e: end-to-end tests requiring real LLM and database"]
 filterwarnings = [
     # litellm's logging worker drops queued success-handler coroutines at
