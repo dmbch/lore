@@ -1,13 +1,11 @@
 # pyright: reportPrivateUsage=false
-"""Decay: prove confidence decreases over real elapsed time.
+"""Decay: prove confidence is a read-time function of timestamp deltas.
 
-Writes a hypothesis via the full pipeline, waits for real time to pass,
-then verifies that compute_confidence() produces decayed values. The stored
+Writes a hypothesis via the full pipeline (live), then verifies that
+compute_confidence() produces decayed values for constructed read times.
+The test builds the deltas instead of living them: no sleeps. The stored
 c_herd on the ledger is immutable. Decay is computed at read time.
 """
-
-import asyncio
-import time
 
 import pytest
 
@@ -35,12 +33,9 @@ async def test_decay_reduces_confidence(decay_system: Orchestrator) -> None:
     stored_timestamp = int(rows[0]["timestamp"])
     stored_c_discounted = float(rows[0]["c_oracle_discounted"])
 
-    # Wait 2 half-lives (~75% decay)
-    await asyncio.sleep(4)
-
-    # Compute current confidence with real attestation data
+    # Read 2 half-lives after the write (~75% decay)
     evidence = [EvidenceInput(c_oracle_discounted=stored_c_discounted, timestamp=stored_timestamp)]
-    t_now_1 = int(time.time())
+    t_now_1 = stored_timestamp + 4
     current_1 = decay_system._math.compute_confidence(attestations=evidence, t_now=t_now_1)
 
     # Decay reduced confidence
@@ -48,11 +43,8 @@ async def test_decay_reduces_confidence(decay_system: Orchestrator) -> None:
         f"Decay should reduce: |{current_1}| should be < |{stored_c_herd}|"
     )
 
-    # Wait another 1.5 half-lives
-    await asyncio.sleep(3)
-
-    # Compute again
-    t_now_2 = int(time.time())
+    # Read 3.5 half-lives after the write
+    t_now_2 = stored_timestamp + 7
     current_2 = decay_system._math.compute_confidence(attestations=evidence, t_now=t_now_2)
 
     # Monotonic: further decay
