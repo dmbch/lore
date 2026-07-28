@@ -17,7 +17,7 @@ Process every input in this order.
 
 2. Normalize. Rewrite jargon, acronyms, and colloquialisms into plain prose: CDN becomes content delivery network, p99 becomes 99th percentile. Keep the meaning identical. Transcribe like a narrator: never correct, challenge, or soften the claim, even a false one. Proper names (products, projects, teams, standards) stay verbatim. When unsure whether a term is jargon or a proper name, keep it verbatim.
 
-3. Ground. Each proposition is stored and retrieved alone, so references like "the fix", "the change", or "it" must name what they point at. Resolve each reference with words already in the inputs: the rest of the `hypothesis`, the `context`, and the `reasoning` supply content; the `question` supplies referents only, never an assertion. When unsure whether question material refers or asserts, use it for reference only. Your own knowledge never enters a proposition: grounding adds only words the inputs already hold; the jargon rewriting of step 2 and the date arithmetic of step 4 are the sole exceptions. When no input resolves a reference, keep that reference unchanged: no guess, no caveat, no flag.
+3. Ground. Each proposition is stored and retrieved alone, so references like "the fix", "the change", or "it" must name what they point at. Grounding scopes over every proposition: like a fixed date in step 4, an identity that anchors the hypothesis (often supplied by `context`) is written into every atom it scopes over, not only the atoms that still mention it; no proposition may lean on the first proposition or a sibling to be understood. Grounding chains through: when "it" resolves to "the settlement", the settlement's own identity comes along; a reference is not resolved until the proposition, read alone, says which one. Before emitting, reread each proposition alone and write in the identity of any definite reference the inputs can name. Resolve each reference with words already in the inputs: the rest of the `hypothesis`, the `context`, and the `reasoning` supply content; the `question` supplies referents only, never an assertion. When unsure whether question material refers or asserts, use it for reference only. Your own knowledge never enters a proposition: grounding adds only words the inputs already hold; the jargon rewriting of step 2 and the date arithmetic of step 4 are the sole exceptions. When no input resolves a reference, keep that reference unchanged: no guess, no caveat, no flag.
 
 4. Resolve dates. Claim time and speech time are different axes; the claim keeps its own time in its text.
    - A fixed calendar point (2025-03-15, Q3 2025) identifies its event: keep it in every proposition the event scopes over, atoms included.
@@ -99,7 +99,15 @@ propositions: ["Emperor penguins breed on Antarctic sea ice through the winter. 
 keywords: ["emperor penguins", "Antarctic sea ice", "incubation"]
 Both sentences are asserted, so each becomes an atom; the causal "because" keeps the second whole; "the males" and "the females" ground to emperor penguins from the first sentence, since the rest of the hypothesis is a source too.
 
+Example 9: an identity from context lands in every atom; grounding chains through a pronoun.
+Input: {"question": null, "hypothesis": "the recall is finished and the auditors signed off on it", "context": "closing out the Kestrel-3 pump recall", "reasoning": null, "today": "2026-07-03"}
+Output:
+question: null
+propositions: ["The Kestrel-3 pump recall is finished, and the auditors signed off on the Kestrel-3 pump recall.", "The Kestrel-3 pump recall is finished.", "The auditors signed off on the Kestrel-3 pump recall."]
+keywords: ["Kestrel-3 pump recall", "auditors"]
+Context names the recall once; every proposition carries it. In the second atom, "it" first resolves to the recall, then the recall's identity comes along: read alone, the atom still says which recall.
+
 Above all:
 - When unsure, do not split: return only the normalized original as the first proposition.
-- When grounding, add only words the inputs already hold; step 2 jargon rewriting and step 4 date arithmetic are the exceptions. Keep unresolvable references as-is.
+- When grounding, add only words the inputs already hold; step 2 jargon rewriting and step 4 date arithmetic are the exceptions. Ground atom by atom and all the way: an anchoring identity lands in every atom it scopes over, no proposition leans on a sibling, and a reference is not resolved until the proposition, read alone, says which one. Keep unresolvable references as-is.
 - Resolve relative time against `today`; keep fixed dates; never invent one.
