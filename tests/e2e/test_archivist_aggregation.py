@@ -199,29 +199,24 @@ async def test_ambiguous_composite_emits_consult_notes_log(
 
 
 async def test_claims_at_different_reference_times_do_not_contradict(
-    system: Orchestrator,
+    golden_system: Orchestrator,
 ) -> None:
     # Two explicit `as of <date>` readings are anchored at different reference times.
     # The wage was 7 dollars in 2010 and 15 dollars in 2025: both true, so the newer
     # reading is orthogonal-novel and no disbelief lands on the older. Writing disbelief
     # would assert the 2010 reading was false, which it was not; decay carries its age.
-    seed_id = await _seed(
-        system,
-        "reftime-diff-seed",
-        "As of 2010, the national minimum wage is 7 dollars per hour.",
-        0.8,
-    )
+    seed = await golden_seed_id(golden_system, "reftime-diff-seed")
 
     await consult(
-        system,
+        golden_system,
         hypothesis="As of 2025, the national minimum wage is 15 dollars per hour.",
         confidence=0.8,
         oracle="oracle-prober",
         correlation_id="reftime-diff-probe",
     )
 
-    rows = await attestations(system, "reftime-diff-probe")
-    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    rows = await attestations(golden_system, "reftime-diff-probe")
+    seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
     negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
     assert not negative, (
         "Claims at different reference times do not contradict: the 2010 and 2025 wage "
@@ -230,28 +225,23 @@ async def test_claims_at_different_reference_times_do_not_contradict(
 
 
 async def test_claims_at_the_same_reference_time_can_contradict(
-    system: Orchestrator,
+    golden_system: Orchestrator,
 ) -> None:
     # Two undated present-tense claims, both anchored now, state incompatible values for
     # one thing. A city has one tallest building; the two candidates cannot both be it at
     # the same reference time, so the newer reading contradicts the older.
-    seed_id = await _seed(
-        system,
-        "reftime-same-seed",
-        "The tallest building in Harborview is the Meridian Tower.",
-        0.8,
-    )
+    seed = await golden_seed_id(golden_system, "reftime-same-seed")
 
     await consult(
-        system,
+        golden_system,
         hypothesis="The tallest building in Harborview is the Solstice Tower.",
         confidence=0.8,
         oracle="oracle-prober",
         correlation_id="reftime-same-probe",
     )
 
-    rows = await attestations(system, "reftime-same-probe")
-    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    rows = await attestations(golden_system, "reftime-same-probe")
+    seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
     negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
     assert negative, (
         "Claims at the same reference time can contradict: two names for the current "
@@ -261,31 +251,18 @@ async def test_claims_at_the_same_reference_time_can_contradict(
 
 
 async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
-    system: Orchestrator,
+    golden_system: Orchestrator,
 ) -> None:
     # Complexity tier: one paragraph-scale consult mixing a dated historical event with a
     # differently-referenced value update. The 1789 event and the 2015 tax reading are
     # both anchored in the past; the prober's 2018 reading is a different reference again.
     # No two of these share a reference time, so no false contradiction lands on either
     # seed. The expensive error is over-contradicting; this case tests restraint.
-    event_id = await _seed(
-        system,
-        "reftime-mixed-event",
-        "The 1789 ratification of the Bill of Rights established the first ten amendments "
-        "to the United States Constitution.",
-        0.8,
-        oracle="oracle-seeder-e",
-    )
-    value_id = await _seed(
-        system,
-        "reftime-mixed-value",
-        "As of 2015, the United States federal corporate tax rate is 35 percent.",
-        0.8,
-        oracle="oracle-seeder-v",
-    )
+    event_id = await golden_seed_id(golden_system, "reftime-mixed-event", oracle="oracle-seeder-e")
+    value_id = await golden_seed_id(golden_system, "reftime-mixed-value", oracle="oracle-seeder-v")
 
     await consult(
-        system,
+        golden_system,
         hypothesis=(
             "Building on the framework the Bill of Rights established when it was ratified "
             "in 1789, tax policy has since changed: as of 2018 the federal corporate tax "
@@ -296,7 +273,7 @@ async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
         correlation_id="reftime-mixed-probe",
     )
 
-    rows = await attestations(system, "reftime-mixed-probe")
+    rows = await attestations(golden_system, "reftime-mixed-probe")
 
     event_neg = [
         r for r in _by_seed(rows, event_id, oracle="oracle-prober") if float(r["c_oracle_raw"]) < 0
@@ -316,30 +293,25 @@ async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
 
 
 async def test_aged_standing_claim_is_still_contradicted(
-    system: Orchestrator,
+    golden_system: Orchestrator,
 ) -> None:
     # An undated standing claim seeded 90 days back: `last_attested` falls well
     # before `today`, but a single-valued attribute still cannot hold two values,
     # so an incompatible present claim contradicts it. Being untouched makes a
     # claim stale, not immune; this guards against reading age as a wall.
-    seed_id = await _seed(
-        system,
-        "aged-standing-seed",
-        "The language of instruction at the Valletta maritime academy is English.",
-        0.8,
-    )
-    await age_attestations(system, "aged-standing-seed", days=90)
+    seed = await golden_seed_id(golden_system, "aged-standing-seed")
+    await age_attestations(golden_system, "aged-standing-seed", days=90)
 
     await consult(
-        system,
+        golden_system,
         hypothesis="The language of instruction at the Valletta maritime academy is Italian.",
         confidence=0.8,
         oracle="oracle-prober",
         correlation_id="aged-standing-probe",
     )
 
-    rows = await attestations(system, "aged-standing-probe")
-    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    rows = await attestations(golden_system, "aged-standing-probe")
+    seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
     negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
     assert negative, (
         "An aged standing claim is still contradicted: one academy has one language "
@@ -349,29 +321,24 @@ async def test_aged_standing_claim_is_still_contradicted(
 
 
 async def test_aged_dated_snapshot_is_not_contradicted(
-    system: Orchestrator,
+    golden_system: Orchestrator,
 ) -> None:
     # The control for case 7: an old dated snapshot aged the same 90 days. The
     # two readings date themselves to different years, so both are true and the
     # newer one enters as novel; age must not tip the call toward disbelief.
-    seed_id = await _seed(
-        system,
-        "aged-dated-seed",
-        "As of 2023, Cedarbrook Health employs 1,200 nurses.",
-        0.8,
-    )
-    await age_attestations(system, "aged-dated-seed", days=90)
+    seed = await golden_seed_id(golden_system, "aged-dated-seed")
+    await age_attestations(golden_system, "aged-dated-seed", days=90)
 
     await consult(
-        system,
+        golden_system,
         hypothesis="As of 2026, Cedarbrook Health employs 2,300 nurses.",
         confidence=0.8,
         oracle="oracle-prober",
         correlation_id="aged-dated-probe",
     )
 
-    rows = await attestations(system, "aged-dated-probe")
-    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    rows = await attestations(golden_system, "aged-dated-probe")
+    seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
     negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
     assert not negative, (
         "An aged dated snapshot is not contradicted: the 2023 and 2026 headcounts "
