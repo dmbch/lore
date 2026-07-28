@@ -1,7 +1,7 @@
 # pyright: reportPrivateUsage=false
 import os
 from collections.abc import AsyncGenerator
-from typing import Any, Literal, cast
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -125,13 +125,12 @@ async def judge(
     *,
     answer: str,
     criterion: str,
-    grader: Literal["reasoning", "fast"] = "reasoning",
 ) -> Verdict:
-    # Grade with a provider decorrelated from the model under test: a judge that
-    # shares the graded model's blind spots rubber-stamps them. Interpreter
-    # suites grade with the reasoning model, archivist suites with the fast one.
-    providers = system._providers
-    completer = providers.archivist if grader == "reasoning" else providers.interpreter
+    """Grade on the fast role: cheap; its thinking budget keeps checklist grading steady.
+
+    Accepted cost: interpreter suites are judged by the model under test's own weights.
+    """
+    completer = system._providers.interpreter
     return await completer.complete(
         system=_JUDGE_SYSTEM,
         user=f"Criterion: {criterion}\n\nAnswer: {answer}",
