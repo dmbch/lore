@@ -29,6 +29,9 @@ decouple the two.
 8. Aging does not indict: an old `as of <date>` snapshot is not contradicted by
    a newer reading.
 
+Seeds arrange in the golden archive (tests/e2e/corpus.py, rebuilt via
+`mise run golden-rebuild`); probes stay live.
+
 Marked @pytest.mark.e2e, skipped without GEMINI_API_KEY (autouse fixture in
 tests/e2e/conftest.py).
 """
@@ -45,7 +48,7 @@ from structlog.typing import EventDict
 from lore.config import load_settings
 from lore.domain import TRANSFER_ORACLE
 from lore.orchestrator import Orchestrator
-from tests.e2e.conftest import age_attestations, attestations, consult
+from tests.e2e.conftest import age_attestations, attestations, consult, golden_seed_id
 
 pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
@@ -88,23 +91,20 @@ async def _seed(
     return str(seed_id)
 
 
-def _by_seed(rows: list[dict[str, Any]], seed_id: str, *, oracle: str) -> list[dict[str, Any]]:
-    return [r for r in rows if r["hypothesis_id"] == seed_id and r["oracle_id"] == oracle]
+def _by_seed(
+    rows: list[dict[str, Any]], hypothesis_id: str, *, oracle: str
+) -> list[dict[str, Any]]:
+    return [r for r in rows if r["hypothesis_id"] == hypothesis_id and r["oracle_id"] == oracle]
 
 
 async def test_paraphrase_aggregation_yields_at_most_one_positive_per_seed(
-    system: Orchestrator,
+    golden_system: Orchestrator,
 ) -> None:
-    seed_id = await _seed(
-        system,
-        "agg-scen1-seed",
-        "Database B is built on PostgreSQL",
-        0.7,
-    )
+    seed = await golden_seed_id(golden_system, "agg-scen1-seed")
 
     composite_corr_id = "agg-scen1-composite"
     await consult(
-        system,
+        golden_system,
         hypothesis=(
             "Database B uses PostgreSQL as its storage engine, "
             "Database B is backed by PostgreSQL, and "
@@ -115,8 +115,8 @@ async def test_paraphrase_aggregation_yields_at_most_one_positive_per_seed(
         correlation_id=composite_corr_id,
     )
 
-    rows = await attestations(system, composite_corr_id)
-    seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    rows = await attestations(golden_system, composite_corr_id)
+    seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
     positive = [r for r in seed_atts if float(r["c_oracle_raw"]) > 0]
     assert len(positive) <= 1, (
         f"Cross-resolution disjointness: at most one positive attestation on the "
@@ -125,26 +125,14 @@ async def test_paraphrase_aggregation_yields_at_most_one_positive_per_seed(
 
 
 async def test_multi_contradict_writes_consolidated_transfer(
-    system: Orchestrator,
+    golden_system: Orchestrator,
 ) -> None:
-    seed_a = await _seed(
-        system,
-        "agg-scen2-seed-a",
-        "All planets in the solar system orbit clockwise as seen from the north pole",
-        0.7,
-        oracle="oracle-seeder-a",
-    )
-    seed_b = await _seed(
-        system,
-        "agg-scen2-seed-b",
-        "Mars's orbit is clockwise as seen from above the northern celestial hemisphere",
-        0.7,
-        oracle="oracle-seeder-b",
-    )
+    seed_a = await golden_seed_id(golden_system, "agg-scen2-seed-a", oracle="oracle-seeder-a")
+    seed_b = await golden_seed_id(golden_system, "agg-scen2-seed-b", oracle="oracle-seeder-b")
 
     novel_corr_id = "agg-scen2-novel"
     await consult(
-        system,
+        golden_system,
         hypothesis=(
             "Planets in the solar system orbit counter-clockwise as seen from "
             "above the northern celestial hemisphere."
@@ -154,7 +142,7 @@ async def test_multi_contradict_writes_consolidated_transfer(
         correlation_id=novel_corr_id,
     )
 
-    rows = await attestations(system, novel_corr_id)
+    rows = await attestations(golden_system, novel_corr_id)
 
     # Exactly one consolidated transfer row.
     transfers = [r for r in rows if r["oracle_id"] == TRANSFER_ORACLE]
@@ -167,11 +155,11 @@ async def test_multi_contradict_writes_consolidated_transfer(
     assert float(transfer["c_oracle_raw"]) < 0  # negated positive herd state
 
     # At most one negative attestation per seed from the prober.
-    for seed_id in (seed_a, seed_b):
-        seed_atts = _by_seed(rows, seed_id, oracle="oracle-prober")
+    for seed in (seed_a, seed_b):
+        seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
         negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
         assert len(negative) <= 1, (
-            f"At most one negative attestation per seed, got {len(negative)} on {seed_id}"
+            f"At most one negative attestation per seed, got {len(negative)} on {seed}"
         )
 
 
