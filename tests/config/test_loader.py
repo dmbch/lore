@@ -352,7 +352,7 @@ def test_refusal_names_fields_never_values() -> None:
         load_settings(toml_path=_NO_TOML)
     message = str(excinfo.value)
     assert "embedding: Field required" in message
-    assert "fast.model: Field required" in message
+    assert "fast: Field required" in message
     assert "reasoning: Field required" in message
     assert "input_value" not in message
     assert "Lore" not in message  # the bundled [server] name: a value, not a field

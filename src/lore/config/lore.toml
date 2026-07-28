@@ -18,9 +18,6 @@ limit = 10
 fan_out = 2
 max_keywords = 10
 
-[fast]
-temperature = 0.0
-
 [limits]
 question = 1024
 hypothesis = 3072
