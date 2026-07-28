@@ -10,7 +10,8 @@ so relative-date greens measure arithmetic, not example recall. The pre-rewrite
 prompt baselined red on deictic grounding and relative-date resolution.
 
 Measurement protocol: pass rate over repeated runs (k=5), not single-run green;
-the stage is stochastic even at temperature 0.
+the stage is stochastic (Gemini 3 runs at default temperature; LiteLLM warns
+against setting it lower).
 
 Marked @pytest.mark.e2e, skipped without GEMINI_API_KEY (autouse fixture in
 tests/e2e/conftest.py).
@@ -28,6 +29,16 @@ from tests.e2e.conftest import judge
 pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
 T_NOW = int(datetime(2026, 11, 17, tzinfo=UTC).timestamp())
+
+
+def _lines(propositions: list[str]) -> str:
+    """One proposition per line for the judge.
+
+    Criteria treat each line as one statement; an embedded newline would
+    split a proposition into two bogus lines and false-fail the probe.
+    """
+    assert all("\n" not in p for p in propositions), "propositions must be single-line"
+    return "\n".join(propositions)
 
 
 async def _interpret(
@@ -228,7 +239,7 @@ async def test_question_presupposition_stays_out_of_propositions(
     assert out.propositions, "hypothesis present, expected at least one proposition"
     verdict = await judge(
         system,
-        answer="\n".join(out.propositions),
+        answer=_lines(out.propositions),
         criterion=(
             "None of the statements asserts that a rate hike crashed the housing "
             "market. Statements about mortgage lending standards tightening in "
@@ -283,7 +294,7 @@ async def test_absolute_date_survives_in_proposition(
     assert out.propositions, "hypothesis present, expected at least one proposition"
     verdict = await judge(
         system,
-        answer="\n".join(out.propositions),
+        answer=_lines(out.propositions),
         criterion=(
             "Every statement identifies the rockfall by the date September 4, 2025. "
             "The date may appear in any format, but a statement about an undated "
@@ -413,16 +424,20 @@ async def test_paragraph_hypothesis_grounds_deixis_across_fields(
     assert out.propositions, "hypothesis present, expected at least one proposition"
     verdict = await judge(
         system,
-        answer=out.propositions[0],
+        answer=_lines(out.propositions),
         criterion=(
-            "The statement stands alone and identifies the settlement as the one "
-            "in the Hartwell v. Meridian Logistics contract dispute, and it "
-            "invents nothing: any figure or fact it carries appears in the source "
-            "material (a 1.2 million revised offer, a 4 million reserve or "
-            "exposure estimate, an arbitration clause capping discovery costs, "
-            "acceptance within a day). Omitting some of those details does not "
-            "fail. A statement that still says 'the settlement' or 'it' without "
-            "naming the dispute, or that carries a fact outside that source "
+            "The answer is a list of statements, one per line; judge each "
+            "line as one unit. A multi-sentence line is a single statement, "
+            "and a reference that resolves earlier in the same line is "
+            "resolved. Each line, read alone, can be tied to the Hartwell v. "
+            "Meridian Logistics contract dispute: no line leans on another "
+            "line to resolve 'the settlement', 'it', or 'their'. The "
+            "statements invent nothing: any figure or fact they carry appears "
+            "in the source material (a 1.2 million revised offer, a 4 million "
+            "reserve or exposure estimate, an arbitration clause capping "
+            "discovery costs, acceptance within a day). Omitting some of "
+            "those details does not fail. A line that cannot be tied to the "
+            "dispute on its own, or that carries a fact outside that source "
             "material, fails."
         ),
     )
@@ -442,7 +457,7 @@ async def test_paragraph_hypothesis_preserves_all_claims_across_propositions(
     assert out.propositions, "hypothesis present, expected at least one proposition"
     verdict = await judge(
         system,
-        answer="\n".join(out.propositions),
+        answer=_lines(out.propositions),
         criterion=(
             "Taken together, the statements cover all three claims: the "
             "settlement came in well below the exposure estimate or reserve; "
@@ -480,7 +495,7 @@ async def test_overloaded_compound_stays_within_cap_without_dropping_claims(
     assert len(out.propositions) <= 16, out.propositions
     verdict = await judge(
         system,
-        answer="\n".join(out.propositions),
+        answer=_lines(out.propositions),
         criterion=(
             "Taken together, the statements represent every audit finding: the "
             "walk-in fridge at 6 degrees Celsius, two degrees above spec, cracked "
