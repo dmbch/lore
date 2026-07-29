@@ -36,7 +36,6 @@ Marked @pytest.mark.e2e, skipped without GEMINI_API_KEY (autouse fixture in
 tests/e2e/conftest.py).
 """
 
-import os
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -45,10 +44,16 @@ import pytest_asyncio
 import structlog
 from structlog.typing import EventDict
 
-from lore.config import load_settings
 from lore.domain import TRANSFER_ORACLE
 from lore.orchestrator import Orchestrator
-from tests.e2e.conftest import age_attestations, attestations, consult, golden_seed_id
+from tests.e2e.conftest import (
+    _bootstrap,
+    _golden_copy,
+    age_attestations,
+    attestations,
+    consult,
+    golden_seed_id,
+)
 
 pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
@@ -57,38 +62,11 @@ pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 async def captured_system(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> AsyncGenerator[tuple[Orchestrator, list[EventDict]]]:
-    """Per-test orchestrator with structlog event capture for inspecting consult.notes."""
-    from lore.server import system
-
-    dsn = f"sqlite:///{tmp_path_factory.mktemp('lore') / 'lore.db'}"
-    os.environ.setdefault("DATABASE_URL", dsn)
-    settings = load_settings()
-    settings = settings.model_copy(update={"dsn": dsn})
-    async with system(settings) as orchestrator:
+    """Per-test golden-archive copy with structlog capture for inspecting consult.notes."""
+    dsn = _golden_copy(tmp_path_factory.mktemp("lore"))
+    async for orchestrator in _bootstrap(dsn):
         with structlog.testing.capture_logs() as cap:
             yield orchestrator, cap
-
-
-async def _seed(
-    system: Orchestrator,
-    correlation_id: str,
-    hypothesis: str,
-    confidence: float,
-    *,
-    oracle: str = "oracle-seeder",
-) -> str:
-    """Seed a hypothesis, return its DB id."""
-    await consult(
-        system,
-        hypothesis=hypothesis,
-        confidence=confidence,
-        oracle=oracle,
-        correlation_id=correlation_id,
-    )
-    rows = await attestations(system, correlation_id)
-    # Single new hypothesis → single oracle attestation on it.
-    [seed_id] = {r["hypothesis_id"] for r in rows if r["oracle_id"] == oracle}
-    return str(seed_id)
 
 
 def _by_seed(
@@ -168,21 +146,7 @@ async def test_ambiguous_composite_emits_consult_notes_log(
 ) -> None:
     system, cap = captured_system
 
-    await _seed(
-        system,
-        "agg-scen3-seed-1",
-        "The HTTP service uses gRPC for internal RPC calls",
-        0.7,
-        oracle="oracle-seeder-1",
-    )
-    await _seed(
-        system,
-        "agg-scen3-seed-2",
-        "Internal RPC traffic in the HTTP service is gRPC over HTTP/2",
-        0.7,
-        oracle="oracle-seeder-2",
-    )
-
+    # The two gRPC seeds ship in the golden archive; only the probe is live.
     await consult(
         system,
         hypothesis=(
