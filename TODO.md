@@ -191,11 +191,14 @@ downgrade.
 - Reachability holds only while Lore stays an SDK consumer. Adopting the litellm proxy
   re-exposes all seven.
 
-**Status:** blocked upstream (instructor plus litellm/pydantic pins); dismissed as
-non-reachable; revisit on the next instructor release. A scoped pytest filterwarnings
-entry (pyproject) silences litellm's teardown RuntimeWarning (`Logging.async_success_handler`
-never awaited) in e2e runs; drop the filter together with this entry when the cap lifts.
-Re-checked 2026-07-19: instructor's latest release is still 1.15.4; nothing has moved.
+**Status:** resolved 2026-07-31 on `build/dependabot-uv-sync`. The `[litellm]`
+extra is dropped: litellm is a direct dependency, and the extra only contributed
+instructor's cap. litellm sits at 1.94.0 with the whole stack bumped, and the
+filterwarnings entry is gone with it. macOS builds litellm's sdist with a
+mise-provisioned Rust toolchain until upstream ships macOS wheels
+(BerriAI/litellm#31261). The seven dismissed alerts clear once main carries the
+new lock; instructor's litellm compatibility now rests on the e2e gate (34/34
+against 1.94.0) instead of instructor's own cap.
 
 ---
 
