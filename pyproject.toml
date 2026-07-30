@@ -62,7 +62,7 @@ dev = [
 # The one authoritative uv pin: setup-uv reads it in CI (no version input
 # there), and any other uv (mise-installed, Docker uv stage) hard-errors on
 # mismatch. Bump together with mise.toml and the Dockerfile uv stage.
-required-version = "==0.11.30"
+required-version = "==0.12.0"
 
 [tool.ruff]
 line-length = 100
