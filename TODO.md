@@ -131,9 +131,35 @@ a tag.
   live jobs a few minutes earlier. `release` must then name `gate` in its
   needs list, or the tag loses the unit gate.
 
-**Status:** speedup and restored gate reviewed 2026-07-30 on
-`build/e2e-speedup` (contains `build/e2e-loop-topology`), PR pending;
-residual items open.
+**Status:** landed on main via PR #76 (2026-07-30); residual items open.
+
+---
+
+## Archivist: a search tool for follow-up retrieval
+
+**Found:** 2026-07-30, programmer request at the e2e-speedup wrap-up.
+
+**What.** The archivist reasons over a fixed neighborhood: the orchestrator
+runs two-lane retrieval once, enriches, and hands over the results. A search
+tool would let it query the archive mid-reasoning through a bounded
+tool-calling loop: probe a suspected paraphrase, chase a contradicted
+claim's neighbors, widen a thin neighborhood before declaring novelty.
+
+**Why it matters.** Retrieval bounds paraphrase detection, and a missed
+paraphrase becomes a false orthogonal-novel on the append-only ledger: the
+failure mode the math cannot digest. Today the archivist cannot ask for
+more; the fan-out constant is the only knob.
+
+**Options / open questions.** Expose `search_candidates` + `enrich` as the
+tool (read-only, pre-transaction: the write path is untouched); embed tool
+queries via `embed_many`; cap calls per consult (cost and latency multiply
+per consult, and the e2e wall clock just got paid down). Instructor
+tool-calling vs. a hand-rolled loop. Prompt change: golden-rebuild trigger.
+IDEA.md's Stage 2/3 describe single-shot retrieval, so the interface change
+needs explicit approval there. Interacts with the under-grounded-atom
+filter (e2e entry): a probe tool may be that filter's mechanism.
+
+**Status:** open; not started.
 
 ---
 
