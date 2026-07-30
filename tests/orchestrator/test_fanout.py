@@ -205,6 +205,11 @@ class TestFanOutEmbeddingFailureFailsEntireRequest:
                     raise RuntimeError("embedding service down")
                 return STUB_EMBEDDING
 
+            async def embed_many(
+                self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
+            ) -> list[list[float]]:
+                return [await self.embed(t, task_type_key=task_type_key) for t in texts]
+
         embedder = _FailingEmbedder()
         interpreter = StubCompletion(
             InterpreterOutput(

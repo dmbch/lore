@@ -41,6 +41,11 @@ class FixedEmbedder:
     async def embed(self, text: str, *, task_type_key: str | None = None) -> list[float]:
         return [0.1] * 1024
 
+    async def embed_many(
+        self, texts: list[str], *, task_type_key: str | None = None
+    ) -> list[list[float]]:
+        return [await self.embed(t, task_type_key=task_type_key) for t in texts]
+
 
 def bundled_prompt(name: str) -> Path:
     return Path(str(importlib.resources.files("lore.prompts").joinpath(f"{name}.md")))

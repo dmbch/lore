@@ -67,6 +67,11 @@ class _StubEmbedder:
         del text, task_type_key
         return list(_STUB_EMBEDDING)
 
+    async def embed_many(
+        self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
+    ) -> list[list[float]]:
+        return [await self.embed(t, task_type_key=task_type_key) for t in texts]
+
 
 class _StubCompletion:
     """Returns a fixed Pydantic model regardless of the requested response_model."""

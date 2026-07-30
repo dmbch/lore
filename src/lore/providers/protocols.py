@@ -12,6 +12,10 @@ class Embedder(Protocol):
         self, text: str, *, task_type_key: TaskTypeKey | None = None
     ) -> list[float]: ...
 
+    async def embed_many(
+        self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
+    ) -> list[list[float]]: ...
+
 
 class Completer(Protocol):
     async def complete[T: BaseModel](
