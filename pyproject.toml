@@ -21,10 +21,16 @@ dependencies = [
     "opentelemetry-distro>=0.64b0",
     "opentelemetry-exporter-otlp>=1.43.0",
     "opentelemetry-instrumentation-psycopg>=0.64b0",
+    # Since 1.92.0 litellm bundles a Rust extension with linux and windows
+    # wheels only; on macOS the sdist builds against the mise-provisioned
+    # Rust toolchain until upstream ships macOS wheels (BerriAI/litellm#31261).
     "litellm>=1.83.0",
     # SOCKS extra so HTTPS_PROXY=socks5://... works under the Claude sandbox (no direct import).
     "httpx[socks]>=0.28.1",
-    "instructor[litellm]>=1.15.4",
+    # No [litellm] extra: litellm is a direct dependency above, and the extra
+    # only adds instructor's litellm cap (<=1.83.7 as of 1.15.4), which pinned
+    # the whole stack behind seven proxy-only security advisories.
+    "instructor>=1.15.4",
     "aiosqlite>=0.22.1",
     "pydantic>=2.13.4,<3",
     "fastmcp[apps]>=3.4.4",
