@@ -131,8 +131,9 @@ a tag.
   live jobs a few minutes earlier. `release` must then name `gate` in its
   needs list, or the tag loses the unit gate.
 
-**Status:** speedup and restored gate on `build/e2e-loop-topology` plus
-`build/e2e-speedup`, pending review; residual items open.
+**Status:** speedup and restored gate reviewed 2026-07-30 on
+`build/e2e-speedup` (contains `build/e2e-loop-topology`), PR pending;
+residual items open.
 
 ---
 
