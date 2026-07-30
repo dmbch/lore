@@ -6,7 +6,7 @@ Technical debt and findings discovered during work. Each entry: what, why it mat
 
 ## Mutation testing for the math suite
 
-**Found:** 2026-07-25, trust-fix planning (PLAN.md Part II).
+**Found:** 2026-07-25, trust-fix planning.
 
 **What.** Add mutation testing for `lore.math` first, wider later (mutmut is
 the boring choice; cosmic-ray the alternative). The suite pins exact values
@@ -17,9 +17,9 @@ guard could survive any assertion looser than it looks.
 
 **Why it matters.** The math module is the product, and the trust-farming
 vector was caught by simulation, not by the suite. Mutation score measures
-directly whether the tests would catch the next algebra regression; Part II
-adds security-load-bearing branches (witness rule, conviction calibration)
-worth hardening first.
+directly whether the tests would catch the next algebra regression; the trust
+fix landed security-load-bearing branches (witness rule, conviction
+calibration) worth hardening first.
 
 **Options / open questions.** Scope to `src/lore/math` initially; run as a
 manual mise task rather than CI-blocking until baseline score and runtime are
