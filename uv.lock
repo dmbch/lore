@@ -1234,7 +1234,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
-    { name = "fastmcp", extras = ["apps"], specifier = ">=3.4.4" },
+    { name = "fastmcp", extras = ["apps"], specifier = ">=3.4.5" },
     { name = "httpx", extras = ["socks"], specifier = ">=0.28.1" },
     { name = "instructor", specifier = ">=1.15.4" },
     { name = "litellm", specifier = ">=1.83.0" },
