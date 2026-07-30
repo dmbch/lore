@@ -20,6 +20,7 @@ run = "uv run ruff check . && uv run ruff format --check ."
 [tasks.check]
 depends = ["test", "types", "lint"]
 
+# Mirrored by the e2e job in .github/workflows/release.yml; keep the flags in sync.
 [tasks.e2e]
 run = "uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20"
 

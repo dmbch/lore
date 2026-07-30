@@ -53,6 +53,27 @@ jobs:
             echo "released=false" >> "$GITHUB_OUTPUT"
           fi
 
+  # Real LLM + SQLite, xdist with the knowledge arc pinned to one worker.
+  # --no-cov: the suite's fail_under=100 gate would fail on the e2e subset.
+  # The job timeout is the backstop against the deadlock class that got this
+  # gate removed in 2026-07. The run line mirrors mise.toml [tasks.e2e];
+  # keep the flags in sync.
+  e2e:
+    needs: plan
+    if: needs.plan.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.16"
+          enable-cache: true
+      - run: uv sync
+      - run: uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
   # Build the image and prove it boots + serves before anything is tagged.
   smoke:
     needs: plan
@@ -65,12 +86,10 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-  # Gate is structural: tag only after smoke is green. The e2e job is removed
-  # until its parallelized rebuild lands (TODO.md, e2e wall clock); restore it
-  # to this needs list then. Tag-only — no commit to main (protected); tags
-  # are unprotected so GITHUB_TOKEN pushes.
+  # Gate is structural: tag only after e2e AND smoke are green. Tag-only —
+  # no commit to main (protected); tags are unprotected so GITHUB_TOKEN pushes.
   release:
-    needs: [plan, smoke]
+    needs: [plan, e2e, smoke]
     if: needs.plan.outputs.released == 'true'
     runs-on: ubuntu-latest
     permissions:
