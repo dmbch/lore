@@ -40,14 +40,14 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-    "hypothesis>=6.158.1",
-    "ruff>=0.15.21",
+    "hypothesis>=6.163.0",
+    "ruff>=0.16.0",
     "pyright>=1.1.411",
     "testcontainers[postgres]>=4.14.2",
     "python-semantic-release>=10.6.1",
     "pytest-asyncio>=1.4.0",
-    "commitizen>=4.16.5",
-    "httpx2>=2.7.0",
+    "commitizen>=4.17.0",
+    "httpx2>=2.9.1",
 ]
 
 [tool.ruff]
