@@ -37,7 +37,7 @@ from lore.domain import (
 )
 from lore.math import EpistemicsConfig, MathService
 from lore.orchestrator import Orchestrator
-from lore.orchestrator.retrieve import enrich, search_candidates
+from lore.orchestrator.retrieve import embed_novels, embed_sources, enrich, search_candidates
 from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (
@@ -393,6 +393,85 @@ class TestSearchCandidatesForwardsKeywordList:
         )
 
         assert hypotheses.received == [["content delivery network", "latency"]]
+
+
+class _BatchRecordingEmbedder:
+    """Records ``embed_many`` batches; hands out one distinct vector per text."""
+
+    def __init__(self) -> None:
+        self.batches: list[tuple[list[str], TaskTypeKey | None]] = []
+        self._vectors: dict[str, list[float]] = {}
+
+    def vector(self, text: str) -> list[float]:
+        return self._vectors.setdefault(text, [float(len(self._vectors))])
+
+    async def embed_many(
+        self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
+    ) -> list[list[float]]:
+        self.batches.append((list(texts), task_type_key))
+        return [self.vector(t) for t in texts]
+
+
+def _batch_session(embedder: _BatchRecordingEmbedder) -> Providers:
+    completion = _StubCompletion(ArchivistOutput(reasoning="r", answer="a"))
+    return Providers(embedder=embedder, interpreter=completion, archivist=completion)
+
+
+class TestEmbedBatchesPerTaskType:
+    """One embedding request per task-type group, not one per source.
+
+    The latency win was already banked by ``gather``; the batch buys request
+    count, which is RPM headroom under parallel e2e workers.
+    """
+
+    async def test_embed_sources_issues_one_call_per_task_type(self) -> None:
+        embedder = _BatchRecordingEmbedder()
+        interpreted = InterpreterOutput(
+            question="normalized question",
+            propositions=["prop A", "prop B", "prop C"],
+            keywords=["kw1"],
+        )
+
+        await embed_sources(
+            providers=_batch_session(embedder),
+            interpreted=interpreted,
+            question="What is X?",
+        )
+
+        assert embedder.batches == [
+            (["What is X?"], "question"),
+            (["prop A", "prop B", "prop C"], "verification"),
+        ]
+
+    async def test_embed_novels_issues_one_batch(self) -> None:
+        embedder = _BatchRecordingEmbedder()
+
+        await embed_novels(
+            providers=_batch_session(embedder),
+            novels=["novel A", "novel B", "novel C"],
+        )
+
+        assert embedder.batches == [(["novel A", "novel B", "novel C"], "document")]
+
+    async def test_source_embedding_order_matches_source_order(self) -> None:
+        embedder = _BatchRecordingEmbedder()
+        interpreted = InterpreterOutput(
+            question="normalized question",
+            propositions=["prop A", "prop B"],
+            keywords=["kw1"],
+        )
+
+        result = await embed_sources(
+            providers=_batch_session(embedder),
+            interpreted=interpreted,
+            question="What is X?",
+        )
+
+        assert result == [
+            embedder.vector("What is X?"),
+            embedder.vector("prop A"),
+            embedder.vector("prop B"),
+        ]
 
 
 class TestEnrichClampsEngineFloatNoise:

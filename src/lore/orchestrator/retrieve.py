@@ -29,15 +29,27 @@ async def embed_sources(
     """Embed the per-source texts. Pure LLM: must run outside any DB scope."""
     with start_span("lore.embed_sources"):
         # Questions are queries; propositions are facts to verify. Vendors that
-        # distinguish task types (Gemini) need them tagged separately.
+        # distinguish task types (Gemini) need them tagged separately. One
+        # batched request per task-type group cuts request count per consult.
         sources: list[tuple[str, TaskTypeKey]] = []
         if question and question.strip():
             sources.append((question, "question"))
         sources.extend((p, "verification") for p in interpreted.propositions if p and p.strip())
 
-        return await asyncio.gather(
-            *(providers.embedder.embed(text, task_type_key=key) for text, key in sources)
+        groups: dict[TaskTypeKey, list[str]] = {}
+        for text, key in sources:
+            groups.setdefault(key, []).append(text)
+
+        batches = await asyncio.gather(
+            *(
+                providers.embedder.embed_many(texts, task_type_key=key)
+                for key, texts in groups.items()
+            )
         )
+        # Reassemble in source order: each source pulls the next vector from
+        # its group's batch, which preserved per-group input order.
+        pulls = {key: iter(batch) for key, batch in zip(groups, batches, strict=True)}
+        return [next(pulls[key]) for _, key in sources]
 
 
 async def embed_novels(
@@ -49,9 +61,7 @@ async def embed_novels(
     with start_span("lore.embed_novels"):
         if not novels:
             return {}
-        vectors: list[list[float]] = await asyncio.gather(
-            *(providers.embedder.embed(text, task_type_key="document") for text in novels)
-        )
+        vectors = await providers.embedder.embed_many(novels, task_type_key="document")
         return dict(zip(novels, vectors, strict=True))
 
 
