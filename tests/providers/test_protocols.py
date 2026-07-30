@@ -25,13 +25,11 @@ T = TypeVar("T", bound=BaseModel)
 class _DummyEmbedding:
     """Minimal implementation satisfying Embedder shape."""
 
-    async def embed(self, text: str, *, task_type_key: TaskTypeKey | None = None) -> list[float]:
-        return [0.1, 0.2, 0.3]
-
     async def embed_many(
         self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
     ) -> list[list[float]]:
-        return [await self.embed(t, task_type_key=task_type_key) for t in texts]
+        del task_type_key
+        return [[0.1, 0.2, 0.3] for _ in texts]
 
 
 class _DummyResponse(BaseModel):
@@ -51,20 +49,20 @@ class _DummyCompletion:
 
 
 class TestEmbedderProtocol:
-    async def test_embed_without_task_type_returns_floats(self) -> None:
+    async def test_embed_many_without_task_type_returns_vectors(self) -> None:
         provider: Embedder = _DummyEmbedding()
-        result = await provider.embed("hello world")
+        result = await provider.embed_many(["hello world"])
         assert isinstance(result, list)
-        assert all(isinstance(v, float) for v in result)
+        assert all(isinstance(v, float) for vector in result for v in vector)
 
-    async def test_embed_with_task_type_key_returns_floats(self) -> None:
+    async def test_embed_many_with_task_type_key_returns_vectors(self) -> None:
         provider: Embedder = _DummyEmbedding()
-        result = await provider.embed("hello world", task_type_key="document")
+        result = await provider.embed_many(["hello world"], task_type_key="document")
         assert isinstance(result, list)
 
-    async def test_embed_with_none_task_type_key_returns_floats(self) -> None:
+    async def test_embed_many_with_none_task_type_key_returns_vectors(self) -> None:
         provider: Embedder = _DummyEmbedding()
-        result = await provider.embed("hello world", task_type_key=None)
+        result = await provider.embed_many(["hello world"], task_type_key=None)
         assert isinstance(result, list)
 
 

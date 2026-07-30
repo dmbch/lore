@@ -37,33 +37,15 @@ class EmbeddingProvider:
     def __init__(self, config: EmbeddingModelConfig) -> None:
         self._config = config
 
-    async def embed(self, text: str, *, task_type_key: TaskTypeKey | None = None) -> list[float]:
-        # Pass-through extras: every TOML key beyond what Lore acts on
-        # itself flows to LiteLLM via ``model_dump``. ``model`` is bound as
-        # a positional kwarg below; ``task_type`` is resolved per-call from
-        # the semantic ``task_type_key``, not from the config sub-table.
-        extra: dict[str, Any] = self._config.model_dump(
-            exclude={"model", "task_type"}, exclude_none=True
-        )
-        if task_type_key is not None:
-            vendor_string = self.resolve_task_type(task_type_key)
-            if vendor_string is not None:
-                extra["task_type"] = vendor_string
-
-        try:
-            response = await _call_litellm_embedding(
-                model=self._config.model, input=[text], **extra
-            )
-        except openai.OpenAIError as e:
-            raise InferenceError(str(e)) from e
-
-        return response.data[0].embedding
-
     async def embed_many(
         self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
     ) -> list[list[float]]:
         if not texts:
             return []
+        # Pass-through extras: every TOML key beyond what Lore acts on
+        # itself flows to LiteLLM via ``model_dump``. ``model`` is bound as
+        # a positional kwarg below; ``task_type`` is resolved per-call from
+        # the semantic ``task_type_key``, not from the config sub-table.
         extra: dict[str, Any] = self._config.model_dump(
             exclude={"model", "task_type"}, exclude_none=True
         )

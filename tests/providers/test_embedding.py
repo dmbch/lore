@@ -11,15 +11,6 @@ from lore.providers import EmbeddingModelConfig, TaskTypeConfig
 from lore.providers.embedding import EmbeddingProvider
 
 
-def _make_embedding_response(embedding: list[float]) -> EmbeddingResponse:
-    """Build a real EmbeddingResponse to mimic the LiteLLM contract."""
-    return EmbeddingResponse(
-        model="test-model",
-        data=[Embedding(embedding=embedding, index=0, object="embedding")],
-        object="list",
-    )
-
-
 def _make_batch_response(embeddings: list[list[float]]) -> EmbeddingResponse:
     """Batch response with index=0 on every entry, as litellm's gemini path returns."""
     return EmbeddingResponse(
@@ -34,196 +25,7 @@ def _make_batch_response(embeddings: list[list[float]]) -> EmbeddingResponse:
 # ---------------------------------------------------------------------------
 
 
-class TestEmbedHappyPath:
-    async def test_embed_returns_embedding_vector(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small")
-        provider = EmbeddingProvider(config)
-        expected = [0.1, 0.2, 0.3]
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response(expected),
-            )
-            result = await provider.embed("hello world")
-
-        assert result == expected
-
-    async def test_embed_passes_model_to_litellm(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small")
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
-            )
-            await provider.embed("test")
-
-        mock_litellm.aembedding.assert_called_once()
-        call_kwargs = mock_litellm.aembedding.call_args
-        assert call_kwargs.kwargs["model"] == "text-embedding-3-small"
-        assert call_kwargs.kwargs["input"] == ["test"]
-
-
-# ---------------------------------------------------------------------------
-# Dimensions passthrough
-# ---------------------------------------------------------------------------
-
-
-class TestEmbedDimensions:
-    async def test_embed_with_dimensions_passes_to_litellm(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small", dimensions=256)
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1, 0.2]),
-            )
-            await provider.embed("test")
-
-        call_kwargs = mock_litellm.aembedding.call_args.kwargs
-        assert call_kwargs["dimensions"] == 256
-
-
-# ---------------------------------------------------------------------------
-# Task type resolution
-# ---------------------------------------------------------------------------
-
-
-class TestEmbedTaskType:
-    async def test_embed_with_task_type_key_resolves_vendor_string(self) -> None:
-        task_type = TaskTypeConfig(document="RETRIEVAL_DOCUMENT")
-        config = EmbeddingModelConfig(
-            model="gemini/gemini-embedding-001",
-            task_type=task_type,
-        )
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
-            )
-            await provider.embed("test", task_type_key="document")
-
-        call_kwargs = mock_litellm.aembedding.call_args.kwargs
-        assert call_kwargs["task_type"] == "RETRIEVAL_DOCUMENT"
-
-    async def test_embed_with_question_task_type_resolves_correctly(self) -> None:
-        task_type = TaskTypeConfig(question="QUESTION_ANSWERING")
-        config = EmbeddingModelConfig(
-            model="gemini/gemini-embedding-001",
-            task_type=task_type,
-        )
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
-            )
-            await provider.embed("test", task_type_key="question")
-
-        call_kwargs = mock_litellm.aembedding.call_args.kwargs
-        assert call_kwargs["task_type"] == "QUESTION_ANSWERING"
-
-    async def test_embed_with_none_task_type_value_omits_kwarg(self) -> None:
-        task_type = TaskTypeConfig(verification=None)
-        config = EmbeddingModelConfig(
-            model="gemini/gemini-embedding-001",
-            task_type=task_type,
-        )
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
-            )
-            await provider.embed("test", task_type_key="verification")
-
-        call_kwargs = mock_litellm.aembedding.call_args.kwargs
-        assert "task_type" not in call_kwargs
-
-
-# ---------------------------------------------------------------------------
-# Omitted optionals
-# ---------------------------------------------------------------------------
-
-
-class TestEmbedOmittedOptionals:
-    async def test_embed_without_dimensions_omits_kwarg(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small")
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
-            )
-            await provider.embed("test")
-
-        call_kwargs = mock_litellm.aembedding.call_args.kwargs
-        assert "dimensions" not in call_kwargs
-
-    async def test_embed_without_task_type_config_omits_kwarg(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small")
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
-            )
-            await provider.embed("test")
-
-        call_kwargs = mock_litellm.aembedding.call_args.kwargs
-        assert "task_type" not in call_kwargs
-
-    async def test_embed_with_task_type_key_but_no_config_omits_kwarg(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small")
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
-            )
-            await provider.embed("test", task_type_key="document")
-
-        call_kwargs = mock_litellm.aembedding.call_args.kwargs
-        assert "task_type" not in call_kwargs
-
-
-# ---------------------------------------------------------------------------
-# Error mapping
-# ---------------------------------------------------------------------------
-
-
-class TestEmbedErrorMapping:
-    async def test_embed_maps_openai_error_to_inference_error(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small")
-        provider = EmbeddingProvider(config)
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(
-                side_effect=openai.OpenAIError("rate limited"),
-            )
-            with pytest.raises(InferenceError, match="rate limited"):
-                await provider.embed("test")
-
-    async def test_embed_preserves_original_error_as_cause(self) -> None:
-        config = EmbeddingModelConfig(model="text-embedding-3-small")
-        provider = EmbeddingProvider(config)
-        original = openai.OpenAIError("timeout")
-
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock(side_effect=original)
-            with pytest.raises(InferenceError) as exc_info:
-                await provider.embed("test")
-
-        assert exc_info.value.__cause__ is original
-
-
-# ---------------------------------------------------------------------------
-# Batch embedding
-# ---------------------------------------------------------------------------
-
-
-class TestEmbedMany:
+class TestEmbedManyHappyPath:
     async def test_embed_many_returns_vectors_in_input_order(self) -> None:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
@@ -237,6 +39,59 @@ class TestEmbedMany:
 
         assert result == expected
 
+    async def test_embed_many_passes_model_and_texts_to_litellm(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1]]),
+            )
+            await provider.embed_many(["test"])
+
+        mock_litellm.aembedding.assert_called_once()
+        call_kwargs = mock_litellm.aembedding.call_args.kwargs
+        assert call_kwargs["model"] == "text-embedding-3-small"
+        assert call_kwargs["input"] == ["test"]
+
+    async def test_embed_many_empty_input_returns_empty_without_a_call(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock()
+            result = await provider.embed_many([])
+
+        assert result == []
+        mock_litellm.aembedding.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Dimensions passthrough
+# ---------------------------------------------------------------------------
+
+
+class TestEmbedManyDimensions:
+    async def test_embed_many_with_dimensions_passes_to_litellm(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small", dimensions=256)
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1, 0.2]]),
+            )
+            await provider.embed_many(["test"])
+
+        call_kwargs = mock_litellm.aembedding.call_args.kwargs
+        assert call_kwargs["dimensions"] == 256
+
+
+# ---------------------------------------------------------------------------
+# Task type resolution
+# ---------------------------------------------------------------------------
+
+
+class TestEmbedManyTaskType:
     async def test_embed_many_resolves_task_type_once_for_the_batch(self) -> None:
         task_type = TaskTypeConfig(document="RETRIEVAL_DOCUMENT")
         config = EmbeddingModelConfig(
@@ -256,17 +111,80 @@ class TestEmbedMany:
         assert call_kwargs["input"] == ["alpha", "beta"]
         assert call_kwargs["task_type"] == "RETRIEVAL_DOCUMENT"
 
-    async def test_embed_many_empty_input_returns_empty_without_a_call(self) -> None:
+    async def test_embed_many_with_question_task_type_resolves_correctly(self) -> None:
+        task_type = TaskTypeConfig(question="QUESTION_ANSWERING")
+        config = EmbeddingModelConfig(
+            model="gemini/gemini-embedding-001",
+            task_type=task_type,
+        )
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1]]),
+            )
+            await provider.embed_many(["test"], task_type_key="question")
+
+        call_kwargs = mock_litellm.aembedding.call_args.kwargs
+        assert call_kwargs["task_type"] == "QUESTION_ANSWERING"
+
+    async def test_embed_many_with_none_task_type_value_omits_kwarg(self) -> None:
+        task_type = TaskTypeConfig(verification=None)
+        config = EmbeddingModelConfig(
+            model="gemini/gemini-embedding-001",
+            task_type=task_type,
+        )
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1]]),
+            )
+            await provider.embed_many(["test"], task_type_key="verification")
+
+        call_kwargs = mock_litellm.aembedding.call_args.kwargs
+        assert "task_type" not in call_kwargs
+
+    async def test_embed_many_without_task_type_config_omits_kwarg(self) -> None:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
 
         with patch("lore.providers.embedding.litellm") as mock_litellm:
-            mock_litellm.aembedding = AsyncMock()
-            result = await provider.embed_many([])
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1]]),
+            )
+            await provider.embed_many(["test"], task_type_key="document")
 
-        assert result == []
-        mock_litellm.aembedding.assert_not_called()
+        call_kwargs = mock_litellm.aembedding.call_args.kwargs
+        assert "task_type" not in call_kwargs
 
+
+# ---------------------------------------------------------------------------
+# Omitted optionals
+# ---------------------------------------------------------------------------
+
+
+class TestEmbedManyOmittedOptionals:
+    async def test_embed_many_without_dimensions_omits_kwarg(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1]]),
+            )
+            await provider.embed_many(["test"])
+
+        call_kwargs = mock_litellm.aembedding.call_args.kwargs
+        assert "dimensions" not in call_kwargs
+
+
+# ---------------------------------------------------------------------------
+# Error mapping
+# ---------------------------------------------------------------------------
+
+
+class TestEmbedManyErrorMapping:
     async def test_embed_many_maps_openai_error_to_inference_error(self) -> None:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
@@ -295,13 +213,25 @@ class TestEmbedMany:
             with pytest.raises(InferenceError, match="1 entries for 3 inputs"):
                 await provider.embed_many(["alpha", "beta", "gamma"])
 
+    async def test_embed_many_preserves_original_error_as_cause(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+        original = openai.OpenAIError("timeout")
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(side_effect=original)
+            with pytest.raises(InferenceError) as exc_info:
+                await provider.embed_many(["test"])
+
+        assert exc_info.value.__cause__ is original
+
 
 # ---------------------------------------------------------------------------
 # Pass-through extras (B6 / S2.6)
 # ---------------------------------------------------------------------------
 
 
-class TestEmbedPassThroughExtras:
+class TestEmbedManyPassThroughExtras:
     """``EmbeddingModelConfig`` is a pass-through container for LiteLLM kwargs.
 
     Vendor-specific keys beyond what Lore types itself flow into the
@@ -309,7 +239,7 @@ class TestEmbedPassThroughExtras:
     the design commitment (see ``docs/architecture.md`` §LLM Providers).
     """
 
-    async def test_embed_extra_config_field_passes_through_to_litellm_kwargs(self) -> None:
+    async def test_embed_many_extra_config_field_passes_through_to_litellm_kwargs(self) -> None:
         config = EmbeddingModelConfig.model_validate(
             {"model": "text-embedding-3-small", "vendor_specific_knob": "deep"}
         )
@@ -317,23 +247,23 @@ class TestEmbedPassThroughExtras:
 
         with patch("lore.providers.embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
+                return_value=_make_batch_response([[0.1]]),
             )
-            await provider.embed("test")
+            await provider.embed_many(["test"])
 
         call_kwargs = mock_litellm.aembedding.call_args.kwargs
         assert call_kwargs["vendor_specific_knob"] == "deep"
 
-    async def test_embed_typed_field_is_not_duplicated_in_extra(self) -> None:
+    async def test_embed_many_typed_field_is_not_duplicated_in_extra(self) -> None:
         """The typed ``model`` is bound positionally; it must not also appear via extras."""
         config = EmbeddingModelConfig(model="text-embedding-3-small", dimensions=256)
         provider = EmbeddingProvider(config)
 
         with patch("lore.providers.embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
-                return_value=_make_embedding_response([0.1]),
+                return_value=_make_batch_response([[0.1]]),
             )
-            await provider.embed("test")
+            await provider.embed_many(["test"])
 
         call_args = mock_litellm.aembedding.call_args
         # ``model`` is the only allowed positional/keyword binding for the
