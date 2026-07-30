@@ -24,7 +24,7 @@ from typing import Any, NamedTuple, cast
 import aiosqlite
 import psycopg
 import pytest
-from testcontainers.postgres import PostgresContainer
+from testcontainers.community.postgres import PostgresContainer
 
 from lore.config import LoreSettings
 from lore.repositories import (
