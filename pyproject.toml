@@ -52,6 +52,12 @@ dev = [
     "pytest-xdist>=3.8.0",
 ]
 
+[tool.uv]
+# The one authoritative uv pin: setup-uv reads it in CI (no version input
+# there), and any other uv (mise-installed, Docker uv stage) hard-errors on
+# mismatch. Bump together with mise.toml and the Dockerfile uv stage.
+required-version = "==0.11.30"
+
 [tool.ruff]
 line-length = 100
 target-version = "py314"
