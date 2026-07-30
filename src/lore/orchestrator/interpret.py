@@ -14,13 +14,13 @@ if TYPE_CHECKING:
 
 async def interpret(
     *,
-    session: Providers,
+    providers: Providers,
     request: ConsultLoreRequest,
     settings: LoreSettings,
     t_now: int,
 ) -> InterpreterOutput:
     with start_span("lore.interpret"):
-        return await session.interpreter.complete(
+        return await providers.interpreter.complete(
             response_model=InterpreterOutput,
             system=build_core_prompt(settings.prompts, base=settings.prompts.interpreter),
             user=InterpreterInput(

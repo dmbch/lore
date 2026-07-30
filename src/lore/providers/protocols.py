@@ -1,7 +1,5 @@
 """Provider Protocols: structural subtyping contracts for inference."""
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from typing import Literal, NamedTuple, Protocol
 
 from pydantic import BaseModel
@@ -25,14 +23,3 @@ class Providers(NamedTuple):
     embedder: Embedder
     interpreter: Completer
     archivist: Completer
-
-    @asynccontextmanager
-    async def session(self) -> AsyncGenerator[Providers]:
-        """Per-request scope with memoized embedder."""
-        from lore.providers._cache import CachedEmbedder
-
-        yield Providers(
-            embedder=CachedEmbedder(self.embedder),
-            interpreter=self.interpreter,
-            archivist=self.archivist,
-        )

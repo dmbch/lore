@@ -60,13 +60,12 @@ async def _interpret(
         reasoning=reasoning,
         confidence=0.7 if hypothesis is not None else None,
     )
-    async with system._providers.session() as session:
-        return await interpret(
-            session=session,
-            request=request,
-            settings=system._settings,
-            t_now=T_NOW,
-        )
+    return await interpret(
+        providers=system._providers,
+        request=request,
+        settings=system._settings,
+        t_now=T_NOW,
+    )
 
 
 async def test_atomic_hypothesis_yields_single_equivalent_proposition(

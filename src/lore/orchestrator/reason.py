@@ -24,7 +24,7 @@ log = structlog.get_logger(__name__)
 
 async def reason(
     *,
-    session: Providers,
+    providers: Providers,
     request: ConsultLoreRequest,
     interpreted: InterpreterOutput,
     enriched: list[SearchResult],
@@ -32,7 +32,7 @@ async def reason(
     t_now: int,
 ) -> ArchivistOutput:
     with start_span("lore.reason"):
-        reasoned = await session.archivist.complete(
+        reasoned = await providers.archivist.complete(
             response_model=ArchivistOutput,
             system=build_core_prompt(settings.prompts, base=settings.prompts.archivist),
             user=ArchivistInput(

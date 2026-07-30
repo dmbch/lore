@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 async def embed_sources(
     *,
-    session: Providers,
+    providers: Providers,
     interpreted: InterpreterOutput,
     question: str,
 ) -> list[list[float]]:
@@ -36,13 +36,13 @@ async def embed_sources(
         sources.extend((p, "verification") for p in interpreted.propositions if p and p.strip())
 
         return await asyncio.gather(
-            *(session.embedder.embed(text, task_type_key=key) for text, key in sources)
+            *(providers.embedder.embed(text, task_type_key=key) for text, key in sources)
         )
 
 
 async def embed_novels(
     *,
-    session: Providers,
+    providers: Providers,
     novels: list[str],
 ) -> dict[str, list[float]]:
     """Embed novel hypotheses for the write path. Pure LLM: must run outside the transaction."""
@@ -50,7 +50,7 @@ async def embed_novels(
         if not novels:
             return {}
         vectors: list[list[float]] = await asyncio.gather(
-            *(session.embedder.embed(text, task_type_key="document") for text in novels)
+            *(providers.embedder.embed(text, task_type_key="document") for text in novels)
         )
         return dict(zip(novels, vectors, strict=True))
 
