@@ -516,9 +516,9 @@ class TestWritePathOrphanRequestRowOnInterpreterFailure:
 
     This is the architecture's documented provenance contract: "storage is
     cheap, information is valuable". The orchestrator writes the request row
-    autocommit *before* the providers session opens; an Interpreter failure
+    autocommit *before* any provider call runs; an Interpreter failure
     cannot affect that row. The test locks the ordering in so future refactors
-    can't quietly move the request store inside the providers session.
+    can't quietly move the request store after the first provider call.
     """
 
     async def test_interpreter_failure_leaves_request_row_with_zero_attestations_and_propagates(
