@@ -31,57 +31,108 @@ its own target set.
 
 ---
 
-## E2E wall clock: parallelize, cheapen judging, pre-seed the archive
+## E2E: residual risks after the speedup
 
-**Found:** 2026-07-20, deploy-flow triage; the release e2e job exceeds 30 minutes.
+**Found:** 2026-07-20, deploy-flow triage; the release e2e job exceeded 30
+minutes and was removed from `release.yml` outright (2026-07-21). Rewritten
+2026-07-29: the speedup landed and the gate is restored.
 
-**What.** The e2e job (`release.yml`) runs 34 tests strictly sequentially: roughly
-100 live Gemini round-trips, the archivist at `reasoning_effort = "high"` (15-40s
-per call). Pure latency stacking. Three levers:
+**What.** The 30-minute runs were a deadlock, not latency. The composition
+root's cache sweep suspended mid-DELETE holding the pool lock on the session
+loop while each test ran on its own function loop; the first consult of any
+run hung until the job timeout. Fixed on `build/e2e-loop-topology` (one
+session loop for fixtures and tests, five-minute per-test caps). Honest
+baseline after the fix: 34 tests, 379s sequential, ~100 live LLM calls.
 
-1. **pytest-xdist.** `-n 8 --dist loadgroup`; an `xdist_group` marker pins the
-   ordered knowledge arc to one worker. Session fixtures become per-worker, each
-   with its own SQLite file: strictly less cross-test retrieval pollution than
-   today's shared archive. Add `--durations=20` so CI reports where time goes.
-   Expected: wall clock collapses toward the longest chain, ~5 minutes.
-2. **Fast model for all judging.** Judging is binary semantic checking, well below
-   the graded task's difficulty, and the fast role already pins `temperature = 0.0`.
-   The `grader` parameter and the decorrelation comment in `tests/e2e/conftest.py`
-   dissolve. Accepted cost: interpreter suites are judged by the model under test's
-   own weights.
-3. **Pre-seeded archive.** A golden SQLite fixture replaces live `_seed()` consults
-   in the aggregation and decay suites: the priciest and flakiest arrange step, since
-   a seed misresolving against another seed poisons its probe. A mise task rebuilds
-   the fixture through the real pipeline (real embeddings, real ledger math), run
-   manually when seeds, prompts, or models change. Swap-in copies the file per
-   worker and re-bases attestation timestamps to the session clock so fixture age
-   never leaks into decay math; the bootstrap embedding-model health check makes a
-   stale fixture fail loud. The knowledge arc keeps live seeding: the arc is the
-   write path under test.
+`build/e2e-speedup` then cut wall clock and call count:
 
-**Why it matters.** The e2e job sits on the release critical path; every merge to
-main pays it in wall clock, tokens, and flake exposure. Levers 2 and 3 also cut
-cost and flakiness independently of speed.
+- **xdist.** `mise run e2e` runs `-n auto --dist loadgroup`; the ordered
+  knowledge arc is pinned to one worker via `xdist_group`. Session fixtures
+  are per-worker, each with its own archive: less cross-suite retrieval
+  pollution than the old shared file.
+- **Fast-role judging.** Every `judge()` call runs on the fast model; the
+  `grader` knob is gone. Accepted cost: interpreter suites are judged by the
+  model under test's own weights.
+- **Golden archive.** `tests/e2e/fixtures/golden.db.gz` (150KB gzipped, 1MiB
+  budget enforced) replaces the 11 live seed consults in the aggregation
+  suite. Per-worker copies re-base attestation timestamps to now; the
+  bootstrap dimension check fails a stale fixture loud. `mise run
+  golden-rebuild` rebuilds through the real pipeline; triggers are corpus,
+  prompt, model, or epistemics/trust-math changes (the fixture bakes
+  write-time ledger math). The knowledge arc keeps live seeding (the write
+  path under test) and the decay test keeps its one live seed (different
+  epistemics settings).
+- **Synthetic decay clock.** The decay test constructs `t_now` values
+  instead of sleeping through half-lives.
+- **Batched embeddings.** One request per task-type group via
+  `Embedder.embed_many` (provider, orchestrator). Latency was already
+  overlapped by gather; the win is RPM headroom under xdist. Review
+  fallout: batching left the request-scoped embedding cache dead code
+  (Gemini's task types never share a key; same-type duplicates collapse
+  into one batch), so the cache is gone and `Embedder` is just
+  `embed_many`.
 
-**Options / open questions.**
+Measured: gate 1 (xdist + judging + synthetic clock) 34/34 in 79.4s on 10
+workers, no 429s. Gate 2 (golden + batching) 33/34 in 88.4s, aggregation
+without a single live seed consult; the one failure was the deixis probe, a
+known stochastic class, green on isolated retry. Wall clock against
+baseline: 379s to 88.4s. The gate is back in `release.yml`: the canonical
+mise invocation, a 15-minute job timeout as the deadlock backstop, tag
+needs e2e and smoke.
 
-- Golden fixture storage: committed binary vs CI cache keyed on seed script, prompts,
-  and model ids. Embeddings are not byte-reproducible, so rebuilds churn a committed
-  blob; a cache miss in CI needs a key with live-LLM access. Lean committed, decide
-  at build time.
-- Seed identity: recover hypothesis ids by correlation_id at session start (as
-  `_seed` does today, minus the LLM calls) or have the rebuild task emit a
-  manifest. Lean correlation_id: no second artifact to drift.
-- xdist parallelism assumes a paid-tier Gemini key; free-tier RPM would throttle
-  workers back to sequential. Verify before sizing `-n`.
-- The golden archive and the evaluation-harness fixture corpus (see that entry)
-  likely converge: one corpus, two consumers. Build lever 3 with that in mind.
-- Minor: `plan` could run parallel to `gate` in `release.yml`, starting e2e a few
-  minutes earlier.
+**Why it matters.** The suite is the only end-to-end check on the release
+path. What remains is risk at its edges: unverified vendor configs, model
+behavior that shifts under alias flips, one stochastic probe that can block
+a tag.
 
-**Status:** open; not started. Interim (2026-07-21): the e2e job is removed from
-`release.yml` entirely; it was blocking releases outright. Restoring it to the
-release gate, parallelized, is part of this fix.
+**Findings / open items.**
+
+- Release-path flake exposure: the deixis probe is a known stochastic class
+  (one failure in gate 2, green on retry); a flake blocks the tag until a
+  workflow re-run. A per-test retry annotation is the fix, but only after
+  the archivist filter below lands: until then the probe is the only
+  tripwire for grounding failures.
+- The archivist has no instruction for under-grounded atoms (prompt read,
+  2026-07-30). The interpreter passes unresolved references through by
+  design ("no guess, no caveat, no flag"), and err-toward-novel then stores
+  the vague atom as a fresh hypothesis on the append-only ledger. Wanted:
+  refuse defective atoms (an atom vaguer or broader than its composite,
+  whose anchor the envelope holds) and record them in `notes`; an honestly
+  vague composite still stores as-is, mirroring the flash compound-split
+  posture (resolution loss acceptable, corruption not). Prompt change:
+  golden-rebuild trigger. Lands before the retry annotation.
+- Vendor configs for openai and bedrock are unverified against the live
+  suite; only the gemini files have earned trust. Port direction settled
+  2026-07-30: `gpt-5.6-terra` for both roles, `us.`-profile
+  `nova-2-lite` for both roles (bare Nova IDs reject on-demand
+  invocation, so the current completion entries cannot work), embeddings
+  unchanged on both vendors. Effort split medium/high mirrors gemini.
+  Verification must include batch response ordering: the `embed_many`
+  positional unpack is verified for litellm's gemini path only, and
+  openai-style responses carry real indices precisely because order is
+  not contractual. A count mismatch fails loud; a reorder would not.
+- Pin gemini models instead of riding `-latest`? The 2026-07-21 alias flip
+  cost a detour; openai and bedrock have no rolling aliases, so the port
+  puts them on deliberate version bumps. Pinning gemini aligns all three
+  vendors on one bump protocol; riding keeps dogfooding on the vendor
+  frontier, which is itself eval signal. Undecided.
+- After any `-latest` alias flip, run e2e deliberately and re-probe tuning:
+  the 2026-07-21 flip to Gemini 3 made the inherited fast-role
+  `temperature = 0.0` pin toxic (interpreter grounding failures); vendor
+  files own temperature now.
+- flash declines to split very large compound hypotheses: resolution loss,
+  not corruption. Eval-harness material (see that entry).
+- An archivist filter for accidentally generalized (under-grounded) atoms is
+  a candidate improvement; landing it is a golden-rebuild trigger.
+- Assessed and rejected: a default narrative for the archivist and
+  interpreter prompts; both already carry consequence-level collective
+  context.
+- Minor: `plan` could run parallel to `gate` in `release.yml`, starting the
+  live jobs a few minutes earlier. `release` must then name `gate` in its
+  needs list, or the tag loses the unit gate.
+
+**Status:** speedup and restored gate on `build/e2e-loop-topology` plus
+`build/e2e-speedup`, pending review; residual items open.
 
 ---
 
@@ -101,7 +152,8 @@ hallucinated resolution is the one failure mode the math cannot digest. Both sur
 were tuned by review and live pilots; nothing measures either. The next prompt or weight
 change flies blind.
 
-**Options / open questions.** The two evals likely share a fixture corpus. The
+**Options / open questions.** The two evals likely share a fixture corpus; a
+first corpus is seeded at `tests/e2e/corpus.py` (the golden-archive seeds). The
 aged-attestation e2e probe (`800286c`) seeds the prompt side. Decide whether evals run in
 CI (live LLM calls: cost and flake) or as a manual mise task.
 
