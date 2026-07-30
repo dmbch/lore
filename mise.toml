@@ -23,6 +23,9 @@ depends = ["test", "types", "lint"]
 [tasks.e2e]
 run = "uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20"
 
+[tasks.golden-rebuild]
+run = "uv run python -m tests.e2e.fixtures.rebuild_golden"
+
 [tasks.serve]
 run = "fastmcp run"
 
