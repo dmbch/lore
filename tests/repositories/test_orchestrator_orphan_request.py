@@ -1,7 +1,7 @@
 """Real-backend test: orphan request row survives an attestation failure.
 
 The orchestrator writes the request row autocommit at the top of ``consult()``,
-**before** entering the providers session or the attestation transaction.
+**before** any provider call and the attestation transaction.
 If any downstream step fails, in particular an error raised **inside**
 ``conn.transaction()``: the request row must remain as evidence that the
 consult was attempted.
