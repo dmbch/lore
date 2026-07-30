@@ -43,6 +43,11 @@ class _FixedDimEmbedder:
     async def embed(self, text: str, *, task_type_key: TaskTypeKey | None = None) -> list[float]:
         return list(self._embedding)
 
+    async def embed_many(
+        self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
+    ) -> list[list[float]]:
+        return [await self.embed(t, task_type_key=task_type_key) for t in texts]
+
 
 class TestConcurrentConsultsAgainstPostgres:
     """Two ``asyncio.gather``'d consults on the same hypothesis both commit.

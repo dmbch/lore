@@ -20,6 +20,15 @@ def _make_embedding_response(embedding: list[float]) -> EmbeddingResponse:
     )
 
 
+def _make_batch_response(embeddings: list[list[float]]) -> EmbeddingResponse:
+    """Batch response with index=0 on every entry, as litellm's gemini path returns."""
+    return EmbeddingResponse(
+        model="test-model",
+        data=[Embedding(embedding=e, index=0, object="embedding") for e in embeddings],
+        object="list",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Happy path
 # ---------------------------------------------------------------------------
@@ -207,6 +216,84 @@ class TestEmbedErrorMapping:
                 await provider.embed("test")
 
         assert exc_info.value.__cause__ is original
+
+
+# ---------------------------------------------------------------------------
+# Batch embedding
+# ---------------------------------------------------------------------------
+
+
+class TestEmbedMany:
+    async def test_embed_many_returns_vectors_in_input_order(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+        expected = [[0.1], [0.2], [0.3]]
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response(expected),
+            )
+            result = await provider.embed_many(["alpha", "beta", "gamma"])
+
+        assert result == expected
+
+    async def test_embed_many_resolves_task_type_once_for_the_batch(self) -> None:
+        task_type = TaskTypeConfig(document="RETRIEVAL_DOCUMENT")
+        config = EmbeddingModelConfig(
+            model="gemini/gemini-embedding-001",
+            task_type=task_type,
+        )
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1], [0.2]]),
+            )
+            await provider.embed_many(["alpha", "beta"], task_type_key="document")
+
+        mock_litellm.aembedding.assert_called_once()
+        call_kwargs = mock_litellm.aembedding.call_args.kwargs
+        assert call_kwargs["input"] == ["alpha", "beta"]
+        assert call_kwargs["task_type"] == "RETRIEVAL_DOCUMENT"
+
+    async def test_embed_many_empty_input_returns_empty_without_a_call(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock()
+            result = await provider.embed_many([])
+
+        assert result == []
+        mock_litellm.aembedding.assert_not_called()
+
+    async def test_embed_many_maps_openai_error_to_inference_error(self) -> None:
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                side_effect=openai.OpenAIError("rate limited"),
+            )
+            with pytest.raises(InferenceError, match="rate limited"):
+                await provider.embed_many(["alpha"])
+
+    async def test_embed_many_rejects_a_response_with_a_mismatched_count(self) -> None:
+        """A short or long response would silently misalign vectors against texts.
+
+        The positional unpack is verified for litellm's gemini path only; a
+        vendor or litellm drift that changes the entry count must fail loud,
+        never store a wrong vector against a hypothesis.
+        """
+        config = EmbeddingModelConfig(model="text-embedding-3-small")
+        provider = EmbeddingProvider(config)
+
+        with patch("lore.providers.embedding.litellm") as mock_litellm:
+            mock_litellm.aembedding = AsyncMock(
+                return_value=_make_batch_response([[0.1]]),
+            )
+            with pytest.raises(InferenceError, match="1 entries for 3 inputs"):
+                await provider.embed_many(["alpha", "beta", "gamma"])
 
 
 # ---------------------------------------------------------------------------

@@ -63,6 +63,11 @@ class StubEmbedder:
         self.calls.append((text, task_type_key))
         return STUB_EMBEDDING
 
+    async def embed_many(
+        self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
+    ) -> list[list[float]]:
+        return [await self.embed(t, task_type_key=task_type_key) for t in texts]
+
 
 class StubCompletion:
     """Fixed-response completion stub. Satisfies Completer Protocol shape.

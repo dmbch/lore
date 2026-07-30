@@ -28,6 +28,11 @@ class _DummyEmbedding:
     async def embed(self, text: str, *, task_type_key: TaskTypeKey | None = None) -> list[float]:
         return [0.1, 0.2, 0.3]
 
+    async def embed_many(
+        self, texts: list[str], *, task_type_key: TaskTypeKey | None = None
+    ) -> list[list[float]]:
+        return [await self.embed(t, task_type_key=task_type_key) for t in texts]
+
 
 class _DummyResponse(BaseModel):
     answer: str
