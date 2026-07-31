@@ -59,10 +59,13 @@ dev = [
 ]
 
 [tool.uv]
-# The one authoritative uv pin: setup-uv reads it in CI (no version input
-# there), and any other uv (mise-installed, Docker uv stage) hard-errors on
-# mismatch. Bump together with mise.toml and the Dockerfile uv stage.
-required-version = "==0.12.0"
+# uv compatibility range, not an exact pin: Dependabot reads this field and
+# runs its own (older) bundled uv, refusing on mismatch, so the floor stays
+# below it. setup-uv reads the range in CI and installs the newest in-range
+# uv; mise.toml and the Dockerfile carry the exact pin, which
+# scripts/check_uv_pin.py verifies falls inside the range. Bump the ceiling
+# in lockstep when the exact pin crosses a minor.
+required-version = ">=0.11,<0.13"
 
 [tool.ruff]
 line-length = 100
