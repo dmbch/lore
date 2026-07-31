@@ -104,7 +104,7 @@ max-args = 8
 "tests/conftest.py"          = ["E402"]             # every import sits below the FASTMCP_LOG_ENABLED off-switch by design
 
 [tool.pyright]
-include = ["src", "tests"]
+include = ["scripts", "src", "tests"]
 stubPath = "typings"
 pythonVersion = "3.14"
 typeCheckingMode = "strict"

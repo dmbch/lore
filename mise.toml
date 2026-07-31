@@ -29,8 +29,13 @@ run = "uv run pyright"
 [tasks.lint]
 run = "uv run ruff check . && uv run ruff format --check ."
 
+# Plain python, not uv run: the check must still run when the local uv itself
+# fails required-version, which is the very drift being reported.
+[tasks."check:uv-pin"]
+run = "python scripts/check_uv_pin.py"
+
 [tasks.check]
-depends = ["test", "types", "lint"]
+depends = ["test", "types", "lint", "check:uv-pin"]
 
 # Mirrored by the e2e job in .github/workflows/release.yml; keep the flags in sync.
 [tasks.e2e]
