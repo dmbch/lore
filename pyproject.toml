@@ -133,9 +133,10 @@ allow_zero_version = true     # stay in 0.x; first release is v0.1.0, not 1.0.0
 major_on_zero      = false    # a feat on 0.x bumps the minor, not to 1.0.0
 
 # Release when the commit can change the image: feat/fix/perf/refactor/revert
-# touch src, build touches production deps or the Dockerfile. chore, ci, docs,
-# style and test cut nothing. Dependabot prefixes (.github/dependabot.yml)
-# route prod-dep bumps to build and dev-dep bumps to chore to match.
+# touch src; build approximates image-relevant (Dockerfile, toolchain), so a
+# workflow-only build commit over-releases, accepted. chore, ci, docs, style
+# and test cut nothing. Dependabot (.github/dependabot.yml) types prod-dep
+# and base-image bumps fix(deps) and dev-dep bumps chore(deps-dev) to match.
 # allowed_tags mirrors the commitizen schema_pattern below; PSR's default set
 # lacks revert, which would otherwise fail to parse and never bump.
 [tool.semantic_release.commit_parser_options]

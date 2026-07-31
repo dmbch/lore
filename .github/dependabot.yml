@@ -1,15 +1,16 @@
 version: 2
 
 # Commit types feed the release gate ([tool.semantic_release] in
-# pyproject.toml): build cuts a patch, chore and ci stay silent, so
-# prod-dep bumps release while dev-dep and actions bumps do not.
+# pyproject.toml): fix cuts a patch, chore and ci stay silent, so
+# prod-dep and base-image bumps release while dev-dep and actions
+# bumps do not.
 updates:
   - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
     commit-message:
-      prefix: build
+      prefix: fix
       prefix-development: chore
       include: scope
     groups:
@@ -45,7 +46,7 @@ updates:
     schedule:
       interval: weekly
     commit-message:
-      prefix: build
+      prefix: fix
       include: scope
     groups:
       docker:
