@@ -27,7 +27,23 @@ known; pick a threshold after the baseline. Whether the trust-scan SQL
 (window guards, exclusions) can be covered via the repository tests or needs
 its own target set.
 
-**Status:** open; not started.
+**Baseline (2026-08-02, isolated worktree run).** mutmut 3.7 on `src/lore/math`:
+461 mutants, 434 killed, 27 survived = 94%. Core algebra airtight (every
+`_acbf_pair` sign flip and conviction-calibration mutant killed); survivors are
+equivalent mutants (defensive clamps, unasserted `ValueError` messages) plus 3
+real boundary/wiring gaps (`prepare_attestation` accepting `t_oracle == 0`,
+`build_math`'s `maturity_k` passthrough, a zero-age trust row). The config
+(`[tool.mutmut]`, a `mutants/`-scoped Hypothesis harness, a `mise run mutation`
+task) is preserved on branch `chore/mutmut-baseline` (off main), not folded into
+the main line: it reproduces the baseline in an isolated worktree
+(~73 mutants/s) yet times out every mutant on the heavier dev checkout
+(~0.47/s), because mutmut runs the full ~2s property suite per mutant and hits
+its auto-timeout (no CLI override). Likely fix: cap Hypothesis `max_examples` in
+the `mutants/`-scoped profile so each run stays under the timeout; confirm the
+capped run still reproduces the survivor set before folding the mise task in.
+
+**Status:** open; baseline established 2026-08-02, mise-task fold-in deferred
+(runner times out on the dev checkout).
 
 ---
 
@@ -89,9 +105,9 @@ a tag.
 
 - Release-path flake exposure: the deixis probe is a known stochastic class
   (one failure in gate 2, green on retry); a flake blocks the tag until a
-  workflow re-run. A per-test retry annotation is the fix, but only after
-  the archivist filter below lands: until then the probe is the only
-  tripwire for grounding failures.
+  workflow re-run. A `pytest-rerunfailures` annotation was tried and dropped
+  (2026-08-02): it broke mutmut's runner and masks a genuinely degrading
+  probe. Accepted: re-run the release workflow on the rare flake.
 - The archivist has no instruction for under-grounded atoms (prompt read,
   2026-07-30). The interpreter passes unresolved references through by
   design ("no guess, no caveat, no flag"), and err-toward-novel then stores
