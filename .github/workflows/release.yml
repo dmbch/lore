@@ -22,7 +22,6 @@ jobs:
   # Is a release due? Pure calculation, no side effects: compare the next
   # computed version against the last released one (full history + tags).
   plan:
-    needs: gate
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.detect.outputs.released }}
@@ -84,10 +83,10 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-  # Gate is structural: tag only after e2e AND smoke are green. Tag-only —
+  # Gate is structural: tag only after gate, e2e AND smoke are green. Tag-only —
   # no commit to main (protected); tags are unprotected so GITHUB_TOKEN pushes.
   release:
-    needs: [plan, e2e, smoke]
+    needs: [gate, plan, e2e, smoke]
     if: needs.plan.outputs.released == 'true'
     runs-on: ubuntu-latest
     permissions:
