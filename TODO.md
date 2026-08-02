@@ -101,16 +101,10 @@ a tag.
   vague composite still stores as-is, mirroring the flash compound-split
   posture (resolution loss acceptable, corruption not). Prompt change:
   golden-rebuild trigger. Lands before the retry annotation.
-- Vendor configs for openai and bedrock are unverified against the live
-  suite; only the gemini files have earned trust. Port direction settled
-  2026-07-30: `gpt-5.6-terra` for both roles, `us.`-profile
-  `nova-2-lite` for both roles (bare Nova IDs reject on-demand
-  invocation, so the current completion entries cannot work), embeddings
-  unchanged on both vendors. Effort split medium/high mirrors gemini.
-  Verification must include batch response ordering: the `embed_many`
-  positional unpack is verified for litellm's gemini path only, and
-  openai-style responses carry real indices precisely because order is
-  not contractual. A count mismatch fails loud; a reorder would not.
+- Vendor configs for openai and bedrock: ported (`gpt-5.6-terra` and the
+  `us.`-profile `nova-2-lite`, both roles) and live-tested 2026-08-02.
+  Bedrock fails outright (Nova rejects `tool_choice`); openai still
+  unverified. Spun out to its own entry below.
 - Pin gemini models instead of riding `-latest`? The 2026-07-21 alias flip
   cost a detour; openai and bedrock have no rolling aliases, so the port
   puts them on deliberate version bumps. Pinning gemini aligns all three
@@ -132,6 +126,75 @@ a tag.
   needs list, or the tag loses the unit gate.
 
 **Status:** landed on main via PR #76 (2026-07-30); residual items open.
+
+---
+
+## Alternative-vendor support: openai and bedrock unverified live
+
+**Found:** 2026-08-02, G2 live vendor verification (real openai/bedrock keys).
+
+**What.** The vendor port landed on the build branch (`gpt-5.6-terra` both roles
+for openai; `us.amazon.nova-2-lite-v1:0` both roles for bedrock; medium/high
+effort; embeddings unchanged). Live verification then ran and split into three
+findings:
+
+- **Bedrock fails outright.** Nova rejects `tool_choice`
+  (`litellm.UnsupportedParamsError`). `CompletionProvider` builds its client
+  with `instructor.from_provider("litellm/<model>", async_client=True)`, which
+  defaults to TOOLS mode and forces the schema via `tool_choice`; Nova has no
+  such param, so every interpreter and archivist call dies (27/27 completion
+  tests). `reasoning_effort` was never reached. Pre-existing: the prior Nova
+  config used the same mode, so bedrock was never live-functional; G2 only
+  surfaced it.
+- **Bedrock can't use the golden fixture.** The aggregation suite loads
+  `golden.db.gz`, baked with gemini embeddings; the bootstrap health check
+  rejects Titan as an embedding-model mismatch (8 errors). Any non-gemini e2e
+  must skip the golden tests.
+- **OpenAI: untested.** Expected to pass (openai supports `tool_choice`), but
+  the `gpt-5.6-terra` model ID, `reasoning_effort` acceptance, and `embed_many`
+  batch ordering are all unconfirmed.
+
+**Why it matters.** The vendor tomls ship as auto-detect defaults. A deployer
+supplying only bedrock keys gets a config that cannot complete a single call,
+silent until first use. Gemini is the only proven path.
+
+**Options / open questions.**
+
+- **Bedrock fix (code, not config).** Thread a per-vendor instructor `mode`
+  from the vendor toml through `ModelConfig` into `CompletionProvider`
+  (`from_provider(..., mode=...)`); set bedrock to `instructor.Mode.JSON`
+  (JSON-schema prompting, no `tool_choice`). Open: does Nova emit reliable
+  structured output in JSON mode? `Mode.BEDROCK_JSON` exists but targets the
+  native bedrock client, not the litellm route; `Mode.JSON` is the general fit.
+- **Cross-vendor e2e harness.** The suite is gemini-coupled: `require_gemini`
+  autouse-skips without a gemini key, auto-detect ranks Bedrock > Gemini >
+  OpenAI, and the golden bakes gemini embeddings. Verifying another vendor needs
+  a way past `require_gemini` (real/dummy gemini key, or parametrize), a way to
+  force the vendor (openai needs a `./lore.toml` override to outrank a present
+  gemini key), and `-k "not aggregation"` to skip the golden. A
+  vendor-parametrized e2e path is the clean long-term answer.
+- **OpenAI verification (should pass).** Temporary `./lore.toml` forcing the
+  openai models + `OPENAI_API_KEY` + a non-empty `GEMINI_API_KEY` (unblocks
+  `require_gemini`; gemini is never called); `mise run e2e` with
+  `-k "not aggregation"`. Confirm the model ID, `reasoning_effort`, and batch
+  order.
+- **Batch-order check.** `embed_many`'s positional unpack
+  (`[d.embedding for d in response.data]`) is verified for gemini only;
+  openai/bedrock return indexed entries where order is not contractual. A count
+  mismatch fails loud; a silent reorder stores wrong vectors permanently. Needs
+  an explicit batch-vs-singles check per vendor.
+- **Priority call.** If bedrock is not a deployment target, it can stay a
+  documented non-functional default or be dropped from auto-detect. The port
+  commit is not reverted: the prior config was equally broken, and these are the
+  intended models once the JSON-mode fix lands.
+
+**Files:** `src/lore/providers/completion.py` (instructor mode),
+`src/lore/config/vendors/{openai,bedrock}.toml`, `tests/e2e/conftest.py`
+(`require_gemini`, golden).
+
+**Status:** open; deferred 2026-08-02. openai config committed, unverified;
+bedrock config committed, non-functional pending the instructor JSON-mode
+change; gemini the only proven vendor.
 
 ---
 
