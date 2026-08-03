@@ -1,0 +1,59 @@
+# Enforces lore's one-way hexagonal imports (see docs/architecture.md).
+# Edges are the real import graph, populated by `tach sync` and checked by
+# `tach check`; a new import that breaks the layer direction fails the check.
+source_roots = ["src"]
+
+[[modules]]
+path = "lore._pydantic"
+depends_on = []
+
+[[modules]]
+path = "lore.domain"
+depends_on = ["lore._pydantic"]
+
+[[modules]]
+path = "lore.telemetry"
+depends_on = []
+
+[[modules]]
+path = "lore.math"
+depends_on = ["lore._pydantic", "lore.domain"]
+
+[[modules]]
+path = "lore.prompts"
+depends_on = ["lore._pydantic"]
+
+[[modules]]
+path = "lore.repositories"
+depends_on = ["lore.domain", "lore._pydantic"]
+
+[[modules]]
+path = "lore.providers"
+depends_on = ["lore.domain", "lore._pydantic"]
+
+[[modules]]
+path = "lore.config"
+depends_on = ["lore._pydantic", "lore.math", "lore.providers", "lore.adapter.config", "lore.prompts", "lore.repositories"]
+
+[[modules]]
+path = "lore.orchestrator"
+depends_on = ["lore.prompts", "lore.math", "lore.repositories", "lore.domain", "lore.telemetry"]
+
+# The config partial is its own module so the one inverted edge (lore.config
+# reaching into the adapter layer) admits only the layer-owned partial, never
+# the adapter proper.
+[[modules]]
+path = "lore.adapter.config"
+depends_on = ["lore._pydantic"]
+
+[[modules]]
+path = "lore.adapter"
+depends_on = ["lore.adapter.config", "lore.orchestrator", "lore.domain", "lore._pydantic", "lore.prompts"]
+
+[[modules]]
+path = "lore.server"
+depends_on = ["lore.adapter", "lore.config", "lore.orchestrator", "lore.providers", "lore.domain", "lore.repositories", "lore.math", "lore.telemetry"]
+
+[[modules]]
+path = "lore.__main__"
+depends_on = ["lore.server", "lore.config"]

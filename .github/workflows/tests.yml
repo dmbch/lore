@@ -18,6 +18,7 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run python scripts/check_uv_pin.py
+      - run: uv run tach check
 
   typecheck:
     runs-on: ubuntu-latest
