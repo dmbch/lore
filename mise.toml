@@ -37,8 +37,12 @@ run = "uv run ruff check . && uv run ruff format --check ."
 [tasks."check:uv-pin"]
 run = "python scripts/check_uv_pin.py"
 
+# Layer-boundary enforcement; the graph lives in tach.toml.
+[tasks.tach]
+run = "uv run tach check"
+
 [tasks.check]
-depends = ["test", "types", "lint", "check:uv-pin"]
+depends = ["test", "types", "lint", "check:uv-pin", "tach"]
 
 # Mirrored by the e2e job in .github/workflows/release.yml; keep the flags in sync.
 [tasks.e2e]
