@@ -225,15 +225,13 @@ verification = "FACT_VERIFICATION"
 
 `task_type` (`TaskTypeConfig | None`). A sub-table mapping semantic keys (`document`, `question`, `verification`) to vendor-specific strings passed through to LiteLLM as kwargs. Sparse configs are fine; set only the task types you need, and the provider omits any that are `None`. Gemini supports granular task types; OpenAI and Bedrock Titan v2 have none. `extra="forbid"` catches typos.
 
-**Vendor defaults.** Vendor default files (`config/vendors/{vendor}.toml`) specify model strings and an `api_key` env var name for auto-detection, with no dimensions. Dimensions are always resolved at bootstrap. Gemini vendor defaults include task_type for the three execution loop stages. All vendors specify `reasoning_effort` for the reasoning model.
+**Vendor defaults.** Vendor default files (`config/vendors/{vendor}.toml`) specify model strings and an `api_key` env var name for auto-detection, with no dimensions. Dimensions are always resolved at bootstrap. A bundled default is a promise: supply the key and the system works. Gemini is the only vendor that has earned it against the live e2e suite, so it ships the only file; its defaults include task_type for the three execution loop stages and `reasoning_effort` on both completion roles. Other vendors run through explicit `lore.toml` model strings (any LiteLLM-supported string), with the vendor's API key exported for LiteLLM to read at call time.
 
 | Vendor | Embedding | Fast | Reasoning |
 |--------|-----------|------|-----------|
-| Gemini | `gemini-embedding-001` | `gemini-flash-lite-latest` | `gemini-flash-latest` |
-| OpenAI | `text-embedding-3-small` | `gpt-4.1-mini` | `o4-mini` |
-| Bedrock | `titan-embed-text-v2:0` | `nova-2-lite-v1:0` | `nova-2-pro-preview-20251202-v1:0` |
+| Gemini | `gemini-embedding-001` | `gemini-flash-latest` | `gemini-flash-latest` |
 
-No overlap: env vars do not override TOML fields. Single validated object: a bad DSN or missing models fail fast at startup, surfacing as a `ConfigurationError` that names fields and rules, never pydantic's `input_value` dump of the merged config. Vendor auto-detection fills model defaults from API keys (first lexical match wins: Bedrock > Gemini > OpenAI) when TOML is silent; TOML overrides vendor defaults per-role. TOML is discovered from conventional paths: `./lore.toml` (project-local) then `/etc/lore.toml` (system-wide). First found wins. Neither found → defaults only.
+No overlap: env vars do not override TOML fields. Single validated object: a bad DSN or missing models fail fast at startup, surfacing as a `ConfigurationError` that names fields and rules, never pydantic's `input_value` dump of the merged config. Vendor auto-detection fills model defaults from API keys when TOML is silent (first lexical match among bundled vendor files wins); TOML overrides vendor defaults per-role. TOML is discovered from conventional paths: `./lore.toml` (project-local) then `/etc/lore.toml` (system-wide). First found wins. Neither found → defaults only.
 
 `OIDC_URL` encodes the IdP's full OIDC discovery-document URL plus client credentials in one DSN-style string (`oidc://client_id:secret@host[:port]/.well-known/openid-configuration`). The path is used verbatim as the OIDCProxy `config_url`: Lore appends no discovery suffix. Bootstrap parses it, strips credentials before any telemetry is active. Credentials are never logged.
 

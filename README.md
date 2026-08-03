@@ -192,24 +192,18 @@ FastMCP's own `FASTMCP_HOST` default is `127.0.0.1` (loopback), the right shape 
 
 ### Vendor API keys
 
-Lore auto-detects the LLM vendor from API keys in the environment; first lexical match wins (Bedrock before Gemini, Gemini before OpenAI). Any model string [LiteLLM](https://docs.litellm.ai/docs/providers) supports works, and TOML overrides are per-role, so you can mix vendors.
-
-| Vendor | Required env var |
-|--------|------------------|
-| Gemini | `GEMINI_API_KEY` |
-| OpenAI | `OPENAI_API_KEY` |
-| Bedrock | `AWS_BEARER_TOKEN_BEDROCK` (long-term Bedrock API key) |
+Lore auto-detects the LLM vendor from API keys in the environment, for vendors that ship bundled defaults. Today that is Gemini alone, the only vendor verified against the live test suite: set `GEMINI_API_KEY` and the models below apply.
 
 <details>
 <summary>Vendor model defaults per role</summary>
 
 | Vendor | Embedding | Fast | Reasoning |
 |--------|-----------|------|-----------|
-| Gemini | `gemini-embedding-001` | `gemini-flash-lite-latest` | `gemini-flash-latest` |
-| OpenAI | `text-embedding-3-small` | `gpt-4.1-mini` | `o4-mini` |
-| Bedrock | `titan-embed-text-v2:0` | `nova-2-lite-v1:0` | `nova-2-pro-preview-20251202-v1:0` |
+| Gemini | `gemini-embedding-001` | `gemini-flash-latest` | `gemini-flash-latest` |
 
 </details>
+
+Any model string [LiteLLM](https://docs.litellm.ai/docs/providers) supports still works: name the models per role in `lore.toml` and export the key LiteLLM documents for that vendor (e.g. `OPENAI_API_KEY`, `AWS_BEARER_TOKEN_BEDROCK`). Overrides are per-role, so you can mix vendors.
 
 ### Behavioral config (`lore.toml`)
 

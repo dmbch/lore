@@ -81,16 +81,6 @@ def test_vendor_toml_gemini_has_reasoning_effort() -> None:
     assert defaults["reasoning"]["reasoning_effort"] == "high"
 
 
-def test_vendor_toml_openai_has_reasoning_effort() -> None:
-    defaults = _load_bundled_toml(package="lore.config.vendors", name="openai")
-    assert defaults["reasoning"]["reasoning_effort"] == "high"
-
-
-def test_vendor_toml_bedrock_has_reasoning_effort() -> None:
-    defaults = _load_bundled_toml(package="lore.config.vendors", name="bedrock")
-    assert defaults["reasoning"]["reasoning_effort"] == "high"
-
-
 def test_vendor_toml_unknown_raises() -> None:
     with pytest.raises(FileNotFoundError):
         _load_bundled_toml(package="lore.config.vendors", name="unknown")
