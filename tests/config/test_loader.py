@@ -295,39 +295,38 @@ def test_vendor_detection_gemini() -> None:
         assert "gemini/" in s.reasoning.model
 
 
-def test_vendor_detection_openai() -> None:
-    env = {**_BASE_ENV, "OPENAI_API_KEY": "fake-key"}
-    with patch.dict(os.environ, env, clear=True):
-        s = load_settings(toml_path=_NO_TOML)
-        assert s.embedding.model == "text-embedding-3-small"
-        assert s.fast.model == "gpt-4.1-mini"
-        assert s.reasoning.model == "o4-mini"
+def test_foreign_vendor_keys_are_not_auto_detected() -> None:
+    """Only gemini ships a vendor default; an unproven vendor key configures nothing."""
+    env = {
+        **_BASE_ENV,
+        "OPENAI_API_KEY": "fake-openai",
+        "AWS_BEARER_TOKEN_BEDROCK": "fake-aws",
+    }
+    with (
+        patch.dict(os.environ, env, clear=True),
+        pytest.raises(ConfigurationError, match="fast"),
+    ):
+        load_settings(toml_path=_NO_TOML)
 
 
-def test_vendor_detection_bedrock() -> None:
-    env = {**_BASE_ENV, "AWS_BEARER_TOKEN_BEDROCK": "fake-key"}
-    with patch.dict(os.environ, env, clear=True):
-        s = load_settings(toml_path=_NO_TOML)
-        assert "bedrock/" in s.embedding.model
-
-
-def test_vendor_detection_priority_lexical() -> None:
-    """Lexical order: bedrock < gemini. Bedrock wins when both keys are set."""
+def test_gemini_detected_alongside_foreign_keys() -> None:
+    """A foreign vendor key never shadows the proven vendor."""
     env = {
         **_BASE_ENV,
         "AWS_BEARER_TOKEN_BEDROCK": "fake-aws",
         "GEMINI_API_KEY": "fake-gemini",
+        "OPENAI_API_KEY": "fake-openai",
     }
     with patch.dict(os.environ, env, clear=True):
         s = load_settings(toml_path=_NO_TOML)
-        assert "bedrock/" in s.embedding.model
+        assert "gemini/" in s.embedding.model
 
 
 def test_toml_overrides_vendor_defaults() -> None:
-    env = {**_BASE_ENV, "OPENAI_API_KEY": "fake-key"}
+    env = {**_BASE_ENV, "GEMINI_API_KEY": "fake-key"}
     with patch.dict(os.environ, env, clear=True):
         s = load_settings(toml_path=_TOML_PATH)
-        # TOML says test models; OpenAI key is present but TOML wins.
+        # TOML says test models; gemini key is present but TOML wins.
         assert s.embedding.model == "test/embedding-model"
 
 
