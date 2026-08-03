@@ -249,6 +249,32 @@ async def test_question_presupposition_stays_out_of_propositions(
     assert verdict.passed, verdict.reasoning
 
 
+async def test_question_referent_grounds_deictic_hypothesis(
+    system: Orchestrator,
+) -> None:
+    out = await _interpret(
+        system,
+        question="did the Volnay appellation's 2026 harvest recover from the April frost?",
+        hypothesis="the harvest came in 30% below the five-year average",
+    )
+
+    assert out.propositions, "hypothesis present, expected at least one proposition"
+    verdict = await judge(
+        system,
+        answer=out.propositions[0],
+        criterion=(
+            "The statement, read alone, identifies the harvest as the Volnay "
+            "appellation's 2026 harvest, naming Volnay in some form, and asserts "
+            "that it came in 30% below the five-year average. A statement that "
+            "still says only 'the harvest' without identifying which one fails. "
+            "A statement asserting that frost caused the shortfall, or that the "
+            "harvest did or did not recover, also fails: the question's framing "
+            "is not a claim."
+        ),
+    )
+    assert verdict.passed, verdict.reasoning
+
+
 async def test_colloquial_question_normalizes_preserving_intent(
     system: Orchestrator,
 ) -> None:
