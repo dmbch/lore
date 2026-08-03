@@ -17,7 +17,7 @@ Process every input in this order.
 
 2. Normalize. Rewrite jargon, acronyms, and colloquialisms into plain prose: CDN becomes content delivery network, p99 becomes 99th percentile. Keep the meaning identical. Transcribe like a narrator: never correct, challenge, or soften the claim, even a false one. Proper names (products, projects, teams, standards) stay verbatim. When unsure whether a term is jargon or a proper name, keep it verbatim.
 
-3. Ground. Each proposition is stored and retrieved alone, so references like "the fix", "the change", or "it" must name what they point at. Grounding scopes over every proposition: like a fixed date in step 4, an identity that anchors the hypothesis (often supplied by `context`) is written into every atom it scopes over, not only the atoms that still mention it; no proposition may lean on the first proposition or a sibling to be understood. Grounding chains through: when "it" resolves to "the settlement", the settlement's own identity comes along; a reference is not resolved until the proposition, read alone, says which one. Before emitting, reread each proposition alone and write in the identity of any definite reference the inputs can name. Resolve each reference with words already in the inputs: the rest of the `hypothesis`, the `context`, and the `reasoning` supply content; the `question` supplies referents only, never an assertion. When unsure whether question material refers or asserts, use it for reference only. Your own knowledge never enters a proposition: grounding adds only words the inputs already hold; the jargon rewriting of step 2 and the date arithmetic of step 4 are the sole exceptions. When no input resolves a reference, keep that reference unchanged: no guess, no caveat, no flag.
+3. Ground. Each proposition is stored and retrieved alone, so references like "the fix", "the change", or "it" must name what they point at. Grounding scopes over every proposition: like a fixed date in step 4, an identity that anchors the hypothesis (often supplied by `context`, sometimes by the `question`) is written into every atom it scopes over, not only the atoms that still mention it; no proposition may lean on the first proposition or a sibling to be understood. Grounding chains through: when "it" resolves to "the settlement", the settlement's own identity comes along; a reference is not resolved until the proposition, read alone, says which one. Before emitting, reread each proposition alone and write in the identity of any definite reference the inputs can name. Resolve each reference with words already in the inputs: the rest of the `hypothesis`, the `context`, and the `reasoning` supply content; the `question` supplies referents only, never an assertion. When unsure whether question material refers or asserts, use it for reference only. Your own knowledge never enters a proposition: grounding adds only words the inputs already hold; the jargon rewriting of step 2 and the date arithmetic of step 4 are the sole exceptions. When no input resolves a reference, keep that reference unchanged: no guess, no caveat, no flag.
 
 4. Resolve dates. Claim time and speech time are different axes; the claim keeps its own time in its text.
    - A fixed calendar point (2025-03-15, Q3 2025) identifies its event: keep it in every proposition the event scopes over, atoms included.
@@ -76,14 +76,22 @@ propositions: ["Swedish parish registers survive in far greater numbers than Spa
 keywords: ["parish registers", "literacy", "Sweden", "Spain"]
 The question presupposes that literacy spread faster in Sweden; no proposition asserts it. The comparison stays whole.
 
-Example 6: a conditional stays one proposition.
+Example 6: the question's referent grounds the hypothesis; its framing still asserts nothing.
+Input: {"question": "did the Brandt viaduct retrofit finish on schedule?", "hypothesis": "the retrofit wrapped up two weeks late", "context": null, "reasoning": null, "today": "2026-07-03"}
+Output:
+question: "Did the Brandt viaduct retrofit finish on schedule?"
+propositions: ["The Brandt viaduct retrofit finished two weeks late."]
+keywords: ["Brandt viaduct retrofit"]
+The question names which retrofit, so "the retrofit" grounds to it: referent use. Nothing else crosses over: whether the retrofit had a schedule to meet is the question's framing, and the only assertion stored is the oracle's.
+
+Example 7: a conditional stays one proposition.
 Input: {"question": null, "hypothesis": "if we cool the RF cavity below 2 K, the Q factor will exceed a billion", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
 question: null
 propositions: ["If we cool the radio-frequency cavity below 2 kelvin, the quality factor will exceed a billion."]
 keywords: ["radio-frequency cavity", "quality factor"]
 
-Example 7: a mixed sentence splits at the top-level "and" only.
+Example 8: a mixed sentence splits at the top-level "and" only.
 Input: {"question": null, "hypothesis": "p99 latency doubled after the 2025-03-15 deploy because the CDN cache hit rate fell, and the WAF added 12ms on top", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
 question: null
@@ -91,7 +99,7 @@ propositions: ["99th-percentile latency doubled after the 2025-03-15 deploy beca
 keywords: ["2025-03-15 deploy", "content delivery network", "web application firewall", "cache hit rate", "99th-percentile latency"]
 The causal chain survives whole in its atom; the event's date anchors every atom it scopes over, so none becomes a timeless claim.
 
-Example 8: separate sentences split; grounding draws on the rest of the hypothesis.
+Example 9: separate sentences split; grounding draws on the rest of the hypothesis.
 Input: {"question": null, "hypothesis": "Emperor penguins breed on Antarctic sea ice through the winter. The males incubate the single egg because the females are feeding at sea.", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
 question: null
@@ -99,7 +107,7 @@ propositions: ["Emperor penguins breed on Antarctic sea ice through the winter. 
 keywords: ["emperor penguins", "Antarctic sea ice", "incubation"]
 Both sentences are asserted, so each becomes an atom; the causal "because" keeps the second whole; "the males" and "the females" ground to emperor penguins from the first sentence, since the rest of the hypothesis is a source too.
 
-Example 9: an identity from context lands in every atom; grounding chains through a pronoun.
+Example 10: an identity from context lands in every atom; grounding chains through a pronoun.
 Input: {"question": null, "hypothesis": "the recall is finished and the auditors signed off on it", "context": "closing out the Kestrel-3 pump recall", "reasoning": null, "today": "2026-07-03"}
 Output:
 question: null
