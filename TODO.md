@@ -108,38 +108,37 @@ a tag.
   workflow re-run. A `pytest-rerunfailures` annotation was tried and dropped
   (2026-08-02): it broke mutmut's runner and masks a genuinely degrading
   probe. Accepted: re-run the release workflow on the rare flake.
-- The archivist has no instruction for under-grounded atoms (prompt read,
-  2026-07-30). The interpreter passes unresolved references through by
-  design ("no guess, no caveat, no flag"), and err-toward-novel then stores
-  the vague atom as a fresh hypothesis on the append-only ledger. Wanted:
-  refuse defective atoms (an atom vaguer or broader than its composite,
-  whose anchor the envelope holds) and record them in `notes`; an honestly
-  vague composite still stores as-is, mirroring the flash compound-split
-  posture (resolution loss acceptable, corruption not). Prompt change:
-  golden-rebuild trigger. Lands before the retry annotation.
+- The archivist under-grounded-atom filter landed 2026-08-03 (Step 0:
+  never `contributes`, corroborate an anchor-restored plain match,
+  otherwise refuse and note). Extended in the same change after programmer
+  review: `question` joined the anchor sources (referents only, mirroring
+  the interpreter's scoping), and a composite that itself drops an
+  envelope-held anchor fails the write whole: no resolutions, a note, an
+  answer instructing restatement. Partial salvage (corroborating a plain
+  anchor-restored match) was considered and rejected: the instructed
+  restatement re-carries the oracle's vote, so any write now double-counts
+  one opinion. A reinterpret tool may remove the restatement round trip;
+  see that entry.
 - Vendor configs for openai and bedrock: ported, live-tested 2026-08-02
   (bedrock fails outright, openai unverified), then removed at review.
   Gemini is the only shipped vendor default; the others run via explicit
   `lore.toml`. See the alternative-vendor entry below.
-- Pin gemini models instead of riding `-latest`? The 2026-07-21 alias flip
-  cost a detour; openai and bedrock have no rolling aliases, so the port
-  puts them on deliberate version bumps. Pinning gemini aligns all three
-  vendors on one bump protocol; riding keeps dogfooding on the vendor
-  frontier, which is itself eval signal. Undecided.
+- Pin gemini models instead of riding `-latest`? Resolved at G4 of the
+  filter/search plan: ride `-latest`. Frontier dogfooding is itself eval
+  signal, and the alias-flip re-probe discipline below covers the risk.
+  Openai and bedrock have no rolling aliases and sit on deliberate bumps
+  regardless.
 - After any `-latest` alias flip, run e2e deliberately and re-probe tuning:
   the 2026-07-21 flip to Gemini 3 made the inherited fast-role
   `temperature = 0.0` pin toxic (interpreter grounding failures); vendor
   files own temperature now.
 - flash declines to split very large compound hypotheses: resolution loss,
   not corruption. Eval-harness material (see that entry).
-- An archivist filter for accidentally generalized (under-grounded) atoms is
-  a candidate improvement; landing it is a golden-rebuild trigger.
 - Assessed and rejected: a default narrative for the archivist and
   interpreter prompts; both already carry consequence-level collective
   context.
-- Minor: `plan` could run parallel to `gate` in `release.yml`, starting the
-  live jobs a few minutes earlier. `release` must then name `gate` in its
-  needs list, or the tag loses the unit gate.
+- Landed 2026-08-03: `plan` runs parallel to `gate` in `release.yml`;
+  `release` names `gate` in its needs, so the tag keeps the unit gate.
 
 **Status:** landed on main via PR #76 (2026-07-30); residual items open.
 
@@ -233,7 +232,44 @@ per consult, and the e2e wall clock just got paid down). Instructor
 tool-calling vs. a hand-rolled loop. Prompt change: golden-rebuild trigger.
 IDEA.md's Stage 2/3 describe single-shot retrieval, so the interface change
 needs explicit approval there. Interacts with the under-grounded-atom
-filter (e2e entry): a probe tool may be that filter's mechanism.
+filter (e2e entry): a probe tool may be that filter's mechanism. A
+reinterpret tool for wholesale Interpreter failures (see that entry) would
+ride the same loop.
+
+**Status:** open; not started.
+
+---
+
+## Archivist: a reinterpret tool for wholesale Interpreter failures
+
+**Found:** 2026-08-03, the wholesale-failure design discussion on the
+question-as-anchor extension.
+
+**What.** When Step 0 detects a wholesale Interpreter failure (the composite
+itself dropped an envelope-held anchor), the archivist fails the write whole
+and the answer asks the oracle to restate. Vote conservation demands the
+fail: any partial write would be voted again by the restated consult. But
+the round trip spends oracle attention on an infrastructure failure. Wanted:
+the archivist triggers a re-run of the Interpreter within the same consult,
+gets fresh propositions, and proceeds. The single vote lands once, properly
+grounded, and the scribe never hears about it.
+
+**Why it matters.** The restatement is toil the system can absorb. The
+Interpreter's grounding miss is stochastic; a second pass with a hint about
+what failed is the cheapest fix available. Fail-whole stays the terminal
+fallback, so the epistemics lose nothing.
+
+**Options / open questions.** Two shapes. A tool in the archivist's loop,
+alongside the search tool: one bounded tool-calling loop hosts both, same
+instructor-vs-hand-rolled decision, same IDEA.md Stage 2/3 approval (G3).
+Or an orchestrator-level retry: the archivist returns a structured
+reinterpret signal and the orchestrator loops interpret → reason once; no
+tool-calling machinery, archivist stays schema-driven. Either way: a hint
+channel (the archivist knows which reference failed and which source names
+it; a hinted re-run beats a blind one), a cap (one reinterpretation per
+consult, then fail-whole plus the restatement instruction), and the
+wholesale-failure e2e probe keeps pinning the fallback. Cost is one extra
+fast-model call on the failure path only.
 
 **Status:** open; not started.
 
