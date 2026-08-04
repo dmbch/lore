@@ -291,6 +291,25 @@ hallucinated resolution is the one failure mode the math cannot digest. Both sur
 were tuned by review and live pilots; nothing measures either. The next prompt or weight
 change flies blind.
 
+**Concrete cases (2026-08-04, the notes-regression incident).** Rate-measured
+prompt behaviors, each a ready fixture for the harness:
+
+- Notes emission on the hedged gRPC composite: pass rate dropped to ~75-80%
+  when Step 0's refusal imperatives landed (the near-miss coupling was
+  description-only), caught by one CI red plus k=5/k=10 rate runs on both
+  prompt versions, fixed by coupling err-toward-novel to its note at both
+  statement sites. Pin at k>=10; a single green passes at base rate and
+  proves nothing.
+- Decomposition consistency: one identical hedged consult stored 4 nodes in
+  CI and 1 locally (split vs when-unsure-don't-split). Candidate interpreter
+  tightening: a hedged clause (may, might) is not asserted outright and never
+  becomes its own atom. Needs its own measured pass; sibling of the flash
+  compound-split line in the e2e entry.
+- Fresh-context review flagged two more optional-output behaviors worth rate
+  pins: true-contradiction recall (the newest worked examples model
+  contradiction-free resolutions) and the composite-collapse rule (Example
+  9's refusal case could over-generalize).
+
 **Options / open questions.** The two evals likely share a fixture corpus; a
 first corpus is seeded at `tests/e2e/corpus.py` (the golden-archive seeds). The
 aged-attestation e2e probe (`800286c`) seeds the prompt side. Decide whether evals run in
@@ -474,3 +493,36 @@ to `frontier`, and `last_attested` retyped to a calendar date (`date | None`) ma
 findings); the component branch is verified over a real client session (prefab
 structured content on the wire). Live desktop-iframe render verified. Next: full build
 per the tiered views.
+
+---
+
+## Debug UI: provenance viewer as a gated MCP app
+
+**Found:** 2026-08-04, programmer request.
+
+**What.** Two coupled pieces. Provenance grows to capture full model I/O: the
+interpreter and archivist calls per consult (inputs and outputs), keyed by
+correlation ID alongside the verbatim consult input `requests` already stores.
+On top of it, a debug MCP app that renders the full trace per request: consult
+input, every model call, resolutions, ledger writes. Off by default; enabled
+explicitly via an env var (e.g. `LORE_DEBUG_APP`).
+
+**Why it matters.** Dogfooding debugs blind today: the oracle sees one answer
+string, and a wrong resolution (a missed paraphrase, a refused atom) is
+invisible without log spelunking. A per-consult trace turns every surprise into
+an inspectable artifact. The capture side is already IDEA.md doctrine: storage
+is cheap, information is valuable.
+
+**Options / open questions.** The MCP Apps machinery is proven by the
+observatory spike (see that entry): same FastMCPApp idiom, app-scoped backend
+tools. Separate app vs. a gated view inside the observatory; either way the
+debug entry tool registers only when the var is set, so the model-facing
+surface stays two tools in normal deployments. Capture vs. display gating:
+capture always (past consults stay debuggable when the app is enabled later) or
+only under the var? Storage shape: one consult makes several model calls, so a
+sibling table keyed by correlation ID fits better than columns on `requests`.
+Where capture hooks: the provider layer (one seam for both roles) vs. the
+orchestrator. Model I/O embeds retrieved-neighbor content; fine on-prem, but
+the security story should say so.
+
+**Status:** open; not started.
