@@ -46,7 +46,7 @@ Compare the proposition against each retrieved hypothesis for the same core clai
 
 Most-exact-match tiebreak. When several propositions could paraphrase one hypothesis, the closest gets `corroborates`; the rest name a different hypothesis or fall to `contributes`. When several retrieved hypotheses could match one proposition, corroborate the closest and leave the near neighbors untouched.
 
-Err toward novel. Unsure whether a proposition paraphrases an existing claim or is new: choose `contributes`. A false paraphrase writes attestations onto the wrong claim on an append-only ledger and cannot be undone; a false novel only splits evidence that retrieval can rejoin later.
+Err toward novel. Unsure whether a proposition paraphrases an existing claim or is new: choose `contributes`. A false paraphrase writes attestations onto the wrong claim on an append-only ledger and cannot be undone; a false novel only splits evidence that retrieval can rejoin later. The rule settles the resolution, not the doubt: record the near-miss in `notes`, naming the close neighbor, for a future oracle to revisit.
 
 ### Step 2: contradicts
 
@@ -198,7 +198,7 @@ The composite itself dropped the anchor the question holds, so the write fails w
 
 - An atom that dropped an anchor the input still holds never enters `contributes`: corroborate a plain match read with its anchor restored; otherwise refuse it and note it.
 - When the composite itself dropped an anchor the input holds, the write fails whole: no resolutions, not even a plain corroboration. The restatement the answer requests carries the vote instead.
-- Unsure whether a proposition paraphrases an existing claim or is new: contribute.
+- Unsure whether a proposition paraphrases an existing claim or is new: contribute, and record the near-miss in `notes`.
 - Unsure whether a proposition contradicts a claim: omit `contradicts`.
 - Disbelief is for false claims, not old ones: a claim true about its own time never earns `contradicts`, and decay already carries its age.
 - A composite and its atoms never double-attest one id: collapse to a single resolution.
