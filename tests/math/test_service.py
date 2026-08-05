@@ -797,6 +797,94 @@ class TestComputeOracleTrust:
         )
         assert abs(result - 0.5) < EPSILON
 
+    def test_prophet_outearns_conformist_outearns_bandwagoner(self) -> None:
+        """The identity promise holds as an ordering, not three pinned constants.
+
+        One service (infinite half-lives, K=1), three careers. The prophet
+        and conformist reuse the docs/logic.md archetype rows; the
+        bandwagoner is the deployment regime: agreement with settled but
+        non-dogmatic herds (c_herd_prior=0.9 → info=0.1), where the
+        composite gate signal = conviction·info caps agreement credit
+        near base rate even at perfect alignment.
+
+        Prophet (≈ 0.700): c=0.8 on a fresh hypothesis (info=1), herd
+        later converges to 0.6. See the prophet archetype test.
+
+        Conformist (≈ 0.6457): moderate conviction on mature-but-fluid
+        herds (info=0.6, 0.7). See the honest-conformist archetype test.
+
+        Bandwagoner (≈ 0.5408):
+        Row 1: c=0.9, prior=0.9, n_oracle_prior=5, ref=0.9:
+          align=1.0, info=0.1, signal=0.09,
+          effective = 0.09·1.0 + 0.91·0.5 = 0.545; num 0.4905, den 0.9.
+        Row 2: c=0.8, prior=0.9, n_oracle_prior=9, ref=0.9:
+          align_write = align_read = 1 - 0.5·0.1 = 0.95, signal=0.08,
+          effective = 0.08·0.95 + 0.92·0.5 = 0.536; num 0.4288, den 0.8.
+        t = 0.9193 / 1.7 ≈ 0.5408.
+
+        The ordering holds because conviction·info prices the room, not
+        the agreement: the prophet spoke where the herd was ignorant
+        (info=1), the conformist where it was still fluid, and the
+        bandwagoner's info of 0.1 collapses even perfect alignment
+        toward base rate 0.5.
+        """
+        svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
+
+        prophet_rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.8,
+                timestamp=0,
+                c_herd_prior=0.0,
+                n_oracle_prior=0,
+            )
+        ]
+        t_prophet = svc.compute_oracle_trust(
+            rows=prophet_rows, herd_evidence=_evidence(t_now=0, h1=0.6), t_now=0
+        )
+
+        conformist_rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.60,
+                timestamp=0,
+                c_herd_prior=0.40,
+                n_oracle_prior=4,
+            ),
+            TrustSignal(
+                hypothesis_id="h2",
+                c_oracle_raw=0.50,
+                timestamp=0,
+                c_herd_prior=0.30,
+                n_oracle_prior=9,
+            ),
+        ]
+        t_conformist = svc.compute_oracle_trust(
+            rows=conformist_rows, herd_evidence=_evidence(t_now=0, h1=0.55, h2=0.45), t_now=0
+        )
+
+        bandwagoner_rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.9,
+                timestamp=0,
+                c_herd_prior=0.9,
+                n_oracle_prior=5,
+            ),
+            TrustSignal(
+                hypothesis_id="h2",
+                c_oracle_raw=0.8,
+                timestamp=0,
+                c_herd_prior=0.9,
+                n_oracle_prior=9,
+            ),
+        ]
+        t_bandwagoner = svc.compute_oracle_trust(
+            rows=bandwagoner_rows, herd_evidence=_evidence(t_now=0, h1=0.9, h2=0.9), t_now=0
+        )
+
+        assert t_prophet > t_conformist > t_bandwagoner
+
     def test_all_vacuous_history_returns_base_rate(self) -> None:
         """All rows have c_oracle_raw=0.0 → conviction=0 → denominator=0 → 0.5."""
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
