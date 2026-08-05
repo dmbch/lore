@@ -131,7 +131,7 @@ async def enrich(
                     id=candidate.id,
                     content=candidate.content,
                     c_herd=c_herd,
-                    attestation_count=view.attestation_count,
+                    oracle_count=view.oracle_count,
                     last_attested=last_attested,
                     score=candidate.score,
                     # Engine cosine (pgvector, sqlite-vec) can overshoot the

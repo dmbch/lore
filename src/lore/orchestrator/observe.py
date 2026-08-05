@@ -66,7 +66,7 @@ async def frontier(
                 content=record.content,
                 c_herd=c_herd,
                 uncertainty=math.compute_uncertainty(c_herd),
-                attestation_count=view.attestation_count,
+                oracle_count=view.oracle_count,
                 last_attested=last_attested,
             )
         )

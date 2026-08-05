@@ -325,7 +325,7 @@ def _valid_search_result(**overrides: object) -> SearchResult:
         "id": "hyp-001",
         "content": "Service X switched to gRPC in Q3",
         "c_herd": 0.4,
-        "attestation_count": 3,
+        "oracle_count": 3,
         "last_attested": date(2023, 11, 14),
         "score": 0.7,
         "proximity": 0.8,
@@ -342,7 +342,7 @@ class TestSearchResult:
         assert s.id == "hyp-001"
         assert s.content == "Service X switched to gRPC in Q3"
         assert s.c_herd == 0.4
-        assert s.attestation_count == 3
+        assert s.oracle_count == 3
         assert s.last_attested == date(2023, 11, 14)
         assert s.score == 0.7
         assert s.proximity == 0.8
@@ -383,16 +383,16 @@ class TestSearchResult:
                 "id": "hyp-001",
                 "content": "x",
                 "c_herd": 0.0,
-                "attestation_count": 0,
+                "oracle_count": 0,
                 "last_attested": None,
                 "score": 0.5,
             }
         )
         assert s.proximity == 0.0
 
-    def test_attestation_count_non_negative(self) -> None:
-        with pytest.raises(ValueError, match="attestation_count"):
-            _valid_search_result(attestation_count=-1)
+    def test_oracle_count_non_negative(self) -> None:
+        with pytest.raises(ValueError, match="oracle_count"):
+            _valid_search_result(oracle_count=-1)
 
     def test_last_attested_none_means_never_attested(self) -> None:
         s = _valid_search_result(last_attested=None)
@@ -731,7 +731,7 @@ def _valid_frontier_entry(**overrides: object) -> FrontierEntry:
         "content": "Service X switched to gRPC in Q3",
         "c_herd": 0.4,
         "uncertainty": 0.6,
-        "attestation_count": 3,
+        "oracle_count": 3,
         "last_attested": date(2023, 11, 14),
     }
     defaults.update(overrides)
@@ -747,7 +747,7 @@ class TestFrontierEntry:
         assert e.content == "Service X switched to gRPC in Q3"
         assert e.c_herd == 0.4
         assert e.uncertainty == 0.6
-        assert e.attestation_count == 3
+        assert e.oracle_count == 3
         assert e.last_attested == date(2023, 11, 14)
 
     def test_frontier_entry_is_frozen(self) -> None:
@@ -763,9 +763,9 @@ class TestFrontierEntry:
         with pytest.raises(ValidationError, match="c_herd"):
             _valid_frontier_entry(c_herd=1.5)
 
-    def test_frontier_entry_rejects_negative_attestation_count(self) -> None:
-        with pytest.raises(ValidationError, match="attestation_count"):
-            _valid_frontier_entry(attestation_count=-1)
+    def test_frontier_entry_rejects_negative_oracle_count(self) -> None:
+        with pytest.raises(ValidationError, match="oracle_count"):
+            _valid_frontier_entry(oracle_count=-1)
 
     def test_frontier_entry_last_attested_none_means_never_attested(self) -> None:
         e = _valid_frontier_entry(last_attested=None)

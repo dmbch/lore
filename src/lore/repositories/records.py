@@ -67,13 +67,13 @@ class LedgerView(NamedTuple):
     """One hypothesis's ledger: the requested rows plus an exact summary.
 
     ``rows`` honors the caller's decay window when one is given.
-    ``attestation_count`` and ``last_attested`` are always full-history,
+    ``oracle_count`` and ``last_attested`` are always full-history,
     so an all-stale ledger stays distinguishable from a never-attested
     one even when the windowed rows are empty.
     """
 
     rows: list[AttestationRecord]
-    attestation_count: int
+    oracle_count: int
     last_attested: int | None
 
 
@@ -219,7 +219,7 @@ def build_ledger_views(
 ) -> dict[str, LedgerView]:
     """Assemble per-hypothesis views from fetched rows and full-history stats.
 
-    ``stats`` maps hypothesis id to ``(attestation_count, last_attested)``
+    ``stats`` maps hypothesis id to ``(oracle_count, last_attested)``
     over the whole ledger; ids absent from it were never attested. Every
     requested ID is present in the result.
     """
@@ -229,7 +229,7 @@ def build_ledger_views(
     return {
         hid: LedgerView(
             rows=grouped[hid],
-            attestation_count=stats[hid][0] if hid in stats else 0,
+            oracle_count=stats[hid][0] if hid in stats else 0,
             last_attested=stats[hid][1] if hid in stats else None,
         )
         for hid in hypothesis_ids

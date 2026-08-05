@@ -119,7 +119,7 @@ class AttestationsRepository(Protocol):
         rows carry under ~3% of their weight, so read paths skip fetching
         them. Without one, ``rows`` is full history.
 
-        ``attestation_count`` and ``last_attested`` are exact over full
+        ``oracle_count`` and ``last_attested`` are exact over full
         history in both modes, so an all-stale ledger stays
         distinguishable from a never-attested one. Every requested ID is
         present as a key; unattested hypotheses map to an empty view.
