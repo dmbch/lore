@@ -57,6 +57,7 @@ dev = [
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
     "tach>=0.35.0",
+    "mutmut>=3.7.0",
 ]
 
 [tool.uv]
@@ -108,7 +109,7 @@ max-args = 8
 "tests/conftest.py"          = ["E402"]             # every import sits below the FASTMCP_LOG_ENABLED off-switch by design
 
 [tool.pyright]
-include = ["scripts", "src", "tests"]
+include = ["conftest.py", "scripts", "src", "tests"]
 stubPath = "typings"
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
@@ -147,6 +148,21 @@ major_on_zero      = false    # a feat on 0.x bumps the minor, not to 1.0.0
 minor_tags   = ["feat"]
 patch_tags   = ["build", "fix", "perf", "refactor", "revert"]
 allowed_tags = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"]
+
+[tool.mutmut]
+# Copy the whole package so `lore` resolves as a regular package inside
+# mutants/ (source_paths = ["src/lore/math"] alone strips lore/__init__.py and
+# lore.domain stops importing); restrict actual mutation to the math subtree.
+source_paths = ["src/lore"]
+only_mutate = ["src/lore/math/*"]
+# Run ONLY the fast, self-contained math suite per mutant. Never the e2e lane.
+pytest_add_cli_args_test_selection = ["tests/math"]
+# Harness conftest silences Hypothesis's differing_executors health check, a
+# false positive from mutmut running multiple pytest sessions in one process.
+also_copy = ["conftest.py"]
+# Neutralize the repo addopts inside mutants/: --cov=lore + fail_under=100 would
+# fail every subset run (false kills, broken baseline). Clear addopts, drop cov.
+pytest_add_cli_args = ["-p", "no:cov", "-o", "addopts="]
 
 [tool.commitizen]
 name = "cz_customize"

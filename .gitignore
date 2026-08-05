@@ -47,3 +47,6 @@ references
 
 # macOS
 .DS_Store
+
+# mutmut working copy
+/mutants/
