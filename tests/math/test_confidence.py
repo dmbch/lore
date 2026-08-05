@@ -95,23 +95,23 @@ class TestToOpinionDogmaticBoundary:
 
 class TestToOpinionOutOfRange:
     def test_v_above_one_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="confidence must be in"):
             to_opinion(1.5)
 
     def test_v_below_negative_one_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="confidence must be in"):
             to_opinion(-1.5)
 
     def test_nan_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="confidence must be in"):
             to_opinion(float("nan"))
 
     def test_positive_inf_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="confidence must be in"):
             to_opinion(float("inf"))
 
     def test_negative_inf_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="confidence must be in"):
             to_opinion(float("-inf"))
 
 
@@ -203,7 +203,7 @@ class TestToUncertainty:
         assert abs(to_uncertainty(-1.0) - 0.0) < EPSILON
 
     def test_to_uncertainty_out_of_range_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="confidence must be in"):
             to_uncertainty(1.5)
 
 
