@@ -980,6 +980,43 @@ class TestComputeOracleTrust:
         )
         assert abs(result - expected) < EPSILON
 
+    def test_future_row_treated_as_zero_age(self) -> None:
+        """A row timestamped after t_now clamps to zero age, not negative.
+
+        Mirrors test_future_attestation_treated_as_undecayed on the
+        attestation side: clock skew must not mint amplified weight
+        (exp(+λ·dt)) for evidence from the future.
+        """
+        t_now = 10_000
+        svc = MathService(c_half_life=100.0, t_half_life=100.0)
+
+        def rows_with_first_timestamp(timestamp: int) -> list[TrustSignal]:
+            return [
+                TrustSignal(
+                    hypothesis_id="h1",
+                    c_oracle_raw=0.8,
+                    timestamp=timestamp,
+                    c_herd_prior=0.0,
+                    n_oracle_prior=0,
+                ),
+                TrustSignal(
+                    hypothesis_id="h2",
+                    c_oracle_raw=0.5,
+                    timestamp=t_now - 100,
+                    c_herd_prior=0.5,
+                    n_oracle_prior=0,
+                ),
+            ]
+
+        herd = _evidence(t_now=t_now, h1=0.8, h2=-0.5)
+        at_now = svc.compute_oracle_trust(
+            rows=rows_with_first_timestamp(t_now), herd_evidence=herd, t_now=t_now
+        )
+        from_future = svc.compute_oracle_trust(
+            rows=rows_with_first_timestamp(t_now + 500), herd_evidence=herd, t_now=t_now
+        )
+        assert from_future == at_now
+
     def test_compute_oracle_trust_asymmetric_prior_hand_calc(self) -> None:
         """Hand-calculated trust under an asymmetric, mid-confidence prior.
 
