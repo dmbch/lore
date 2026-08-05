@@ -179,6 +179,25 @@ class TestPrepareAttestationHandCalculated:
         assert abs(result.c_oracle_discounted - 0.2) < EPSILON
         assert abs(result.c_herd - 0.2) < EPSILON
 
+    def test_zero_trust_discounts_to_vacuous(self) -> None:
+        """t_oracle=0.0 is a valid boundary value: accepted, weightless.
+
+        The trust scan can return exactly 0.0 (all-misaligned history), so
+        prepare_attestation must admit it. P_effective = M * 0.0 = 0.0 and
+        the discount collapses the opinion to vacuous: no epistemic weight.
+        """
+        svc = MathService(c_half_life=_FAST_DECAY_HL, t_half_life=_NO_DECAY_HL)
+        result = svc.prepare_attestation(
+            confidence=0.8,
+            existing=[],
+            t_now=1000,
+            t_oracle=0.0,
+            n_oracle_prior=0,
+        )
+
+        assert abs(result.c_oracle_discounted - 0.0) < EPSILON
+        assert abs(result.c_herd - 0.0) < EPSILON
+
 
 # --- prepare_attestation: property-based ---
 class TestPrepareAttestationPropertyBased:
