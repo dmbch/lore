@@ -10,8 +10,9 @@ inputs, and assertions are unchanged. mutmut copies this file into its
 
 The suppressed check never fires in a normal single-session `pytest` run, so
 loading the profile globally is inert outside the campaign; the repo defines no
-other Hypothesis profile. If a heavier dev venv times out every mutant, cap
-Hypothesis `max_examples` in this profile (see the mutation-testing TODO).
+other Hypothesis profile. Campaign sessions must not spawn native threads:
+mutmut forks a child per mutant, and a threaded parent deadlocks the fork
+(hence `-p no:tach` in [tool.mutmut]). The symptom is every mutant timing out.
 """
 
 from hypothesis import HealthCheck, settings

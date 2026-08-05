@@ -162,7 +162,9 @@ pytest_add_cli_args_test_selection = ["tests/math"]
 also_copy = ["conftest.py"]
 # Neutralize the repo addopts inside mutants/: --cov=lore + fail_under=100 would
 # fail every subset run (false kills, broken baseline). Clear addopts, drop cov.
-pytest_add_cli_args = ["-p", "no:cov", "-o", "addopts="]
+# no:tach: the tach plugin's native thread deadlocks mutmut's forked mutant
+# children (macOS); campaign sessions must stay single-threaded before fork.
+pytest_add_cli_args = ["-p", "no:cov", "-p", "no:tach", "-o", "addopts="]
 
 [tool.commitizen]
 name = "cz_customize"
