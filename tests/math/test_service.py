@@ -945,6 +945,41 @@ class TestComputeOracleTrust:
         )
         assert abs(result - expected) < EPSILON
 
+    def test_zero_age_row_bears_full_weight(self) -> None:
+        """A row attested at t_now decays not at all: dt = 0, weight exactly 1.
+
+        A single-row ratio cancels the weight, so the boundary is only
+        observable in a blend: the second row sits exactly one half-life
+        back (weight 0.5).
+
+        Row 1 (zero age): fresh blend (M=0.5), align=0.8, signal=0.8·1 → effective=0.74
+        Row 2 (one half-life): align=0.75, signal=0.5·0.5 → effective=0.5625
+        """
+        t_now = 10_000
+        svc = MathService(c_half_life=100.0, t_half_life=100.0)
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.8,
+                timestamp=t_now,
+                c_herd_prior=0.0,
+                n_oracle_prior=0,
+            ),
+            TrustSignal(
+                hypothesis_id="h2",
+                c_oracle_raw=0.5,
+                timestamp=t_now - 100,
+                c_herd_prior=0.5,
+                n_oracle_prior=0,
+            ),
+        ]
+        expected = (0.74 * 0.8 * 1.0 + 0.5625 * 0.5 * 0.5) / (0.8 * 1.0 + 0.5 * 0.5)
+
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=t_now, h1=0.8, h2=-0.5), t_now=t_now
+        )
+        assert abs(result - expected) < EPSILON
+
     def test_compute_oracle_trust_asymmetric_prior_hand_calc(self) -> None:
         """Hand-calculated trust under an asymmetric, mid-confidence prior.
 
