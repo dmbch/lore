@@ -22,8 +22,9 @@ from lore.math.service import MathService, build_math
 from tests.math.conftest import PROP_TOL
 from tests.repositories.conftest import NO_DECAY_TRUST_HL as _NO_DECAY_HL
 
-# Complete TOML with all required sections: a valid base for build_math.
-_COMPLETE_TOML = Path(__file__).parent.parent / "fixtures" / "lore_complete.toml"
+# Fixture whose epistemics all differ from the shipped defaults, so build_math
+# wiring assertions can tell a threaded setting from a hardcoded default.
+_TRUST_TOML = Path(__file__).parent.parent / "fixtures" / "lore_trust.toml"
 _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 
 # --- Strategies ---
@@ -1192,16 +1193,18 @@ class TestComputeOracleTrust:
 def test_build_math_wires_epistemics() -> None:
     """The factory maps EpistemicsConfig half-lives and K onto the service.
 
-    MathService stores rate constants privately (λ = ln2 / half_life); the
-    test reaches them to confirm the four epistemic hyperparameters reached
-    the engine intact.
+    The fixture's epistemics (30d, 45d, K=3) all differ from the shipped
+    defaults, and the assertions are literals (half-lives in seconds), so a
+    factory that hardcodes or echoes a default cannot pass. MathService
+    stores rate constants privately (λ = ln2 / half_life); the test reaches
+    them to confirm the hyperparameters reached the engine intact.
     """
     with patch.dict(os.environ, _BASE_ENV, clear=True):
-        settings = load_settings(toml_path=_COMPLETE_TOML)
+        settings = load_settings(toml_path=_TRUST_TOML)
 
     svc = build_math(settings)
 
     assert isinstance(svc, MathService)
-    assert svc._maturity_k == settings.epistemics.maturity_k  # pyright: ignore[reportPrivateUsage]
-    assert svc._lambda == math.log(2) / settings.epistemics.attestation_half_life  # pyright: ignore[reportPrivateUsage]
-    assert svc._trust_lambda == math.log(2) / settings.epistemics.trust_half_life  # pyright: ignore[reportPrivateUsage]
+    assert svc._maturity_k == 3.0  # pyright: ignore[reportPrivateUsage]
+    assert svc._lambda == math.log(2) / 2_592_000  # pyright: ignore[reportPrivateUsage]
+    assert svc._trust_lambda == math.log(2) / 3_888_000  # pyright: ignore[reportPrivateUsage]
