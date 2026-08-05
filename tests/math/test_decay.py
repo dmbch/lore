@@ -150,42 +150,42 @@ def test_reference_single_step_erosion_equivalence() -> None:
 def test_decay_negative_time_raises() -> None:
     """Negative time is nonsensical: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="t must be finite and non-negative"):
         decay(opinion=opinion, lambda_=0.1, t=-1.0)
 
 
 def test_decay_negative_lambda_raises() -> None:
     """Negative λ would mean anti-decay (growing certainty). Not allowed."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="lambda_ must be finite and non-negative"):
         decay(opinion=opinion, lambda_=-0.1, t=1.0)
 
 
 def test_decay_rejects_nan_lambda() -> None:
     """NaN λ cannot produce a meaningful decay factor: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="lambda_ must be finite and non-negative"):
         decay(opinion=opinion, lambda_=float("nan"), t=1.0)
 
 
 def test_decay_rejects_inf_lambda() -> None:
     """Infinite λ has no finite meaning on bounded elapsed time: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="lambda_ must be finite and non-negative"):
         decay(opinion=opinion, lambda_=float("inf"), t=1.0)
 
 
 def test_decay_rejects_nan_t() -> None:
     """NaN elapsed time cannot produce a meaningful decay factor: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="t must be finite and non-negative"):
         decay(opinion=opinion, lambda_=0.1, t=float("nan"))
 
 
 def test_decay_rejects_inf_t() -> None:
     """Infinite elapsed time has no finite meaning at read time: reject it."""
     opinion = Opinion(b=0.5, d=0.3, u=0.2)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="t must be finite and non-negative"):
         decay(opinion=opinion, lambda_=0.1, t=float("inf"))
 
 
