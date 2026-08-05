@@ -51,6 +51,11 @@ run = "uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20"
 [tasks.golden-rebuild]
 run = "uv run python -m tests.e2e.fixtures.rebuild_golden"
 
+# Mutation baseline for lore.math; config in [tool.mutmut]. Inspect survivors
+# afterward with `uv run mutmut results`. Standalone: slow, not a commit gate.
+[tasks.mutation]
+run = "uv run mutmut run"
+
 [tasks.serve]
 run = "fastmcp run"
 
