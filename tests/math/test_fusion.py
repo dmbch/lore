@@ -3,7 +3,11 @@ import itertools
 from hypothesis import given
 from hypothesis import strategies as st
 
-from lore.math.fusion import _acbf_pair, fuse  # pyright: ignore[reportPrivateUsage]
+from lore.math.fusion import (
+    _acbf_pair,  # pyright: ignore[reportPrivateUsage]
+    _u_in_underflow_regime,  # pyright: ignore[reportPrivateUsage]
+    fuse,
+)
 from lore.math.maximize import maximize_uncertainty
 from lore.math.opinion import EPSILON, VACUOUS, Opinion
 from tests.math.conftest import PROP_TOL, opinion_strategy
@@ -418,3 +422,14 @@ class TestFusePropertyBased:
         assert abs(result.b - expected.b) < PROP_TOL
         assert abs(result.d - expected.d) < PROP_TOL
         assert abs(result.u - expected.u) < PROP_TOL
+
+
+def test_underflow_regime_boundary_at_exact_power_of_two() -> None:
+    """The regime predicate flips exactly where u² leaves the representable range.
+
+    At u = 2⁻⁵³⁷, u² is the smallest subnormal (2⁻¹⁰⁷⁴): representable, so not
+    yet underflow. One octave down, u² rounds to zero. Exact powers of two keep
+    the check free of last-ulp rounding fuzz.
+    """
+    assert not _u_in_underflow_regime(2.0**-537)
+    assert _u_in_underflow_regime(2.0**-538)
