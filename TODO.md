@@ -21,8 +21,7 @@ directly whether the tests would catch the next algebra regression; the trust
 fix landed security-load-bearing branches (witness rule, conviction
 calibration) worth hardening first.
 
-**Options / open questions.** Pick a survived-mutant threshold now that the
-equivalent floor is known (24/461). Widen scope beyond `src/lore/math` later.
+**Options / open questions.** Widen scope beyond `src/lore/math` later.
 Whether the trust-scan SQL (window guards, exclusions) can be covered via the
 repository tests or needs its own target set.
 
@@ -49,17 +48,37 @@ equivalent scalar boundaries in `to_opinion` (vacuous either way, or
 `-0.0` vs `0.0`); defensive IEEE clamps (`min(1.0, ...)` fires only on
 ~1-ulp noise); and fusion routing guards that are dead by architecture
 (`fuse` pre-partitions dogmatic subsets) or diverge only for operands
-unreachable through `to_opinion`. Killing any of these would take
-structural tests; 24 is the honest floor, and any delta from it in a
-future run is the regression signal.
+unreachable through `to_opinion`.
+
+**Survivor floor (2026-08-05, same branch).** Ten more survivors then died
+honestly: `match=` prefixes on the existing reject tests (the service-test
+convention) distinguish the module guard from `Opinion`'s constructor
+backstop and kill the message class, and the underflow-regime threshold got
+a contract test at the exact power-of-two boundary (2⁻⁵³⁷). Pragma
+suppression of the rest was built and reverted on principle: mutmut
+registers trailing pragmas at statement level and blocks by line range, so
+every available scope also swallowed killable mutants beside the equivalent
+one (the clamp line carries the live division, the sign branches carry the
+live sign flips, the maximize block took 36 mutants for 3 equivalents).
+That violates the suppression rule now written into CLAUDE.md: scope is
+measured in silenced signal, and a suppression that cannot isolate the
+false positive is no suppression at all. The floor stands at 14 inspected
+equivalent mutants: `compute_oracle_trust__mutmut_86` (defensive clamp),
+`to_opinion` 12/23/24 (output-identical sign boundaries),
+`maximize_uncertainty` 38/48/58 (defensive clamps), `_acbf_pair`
+1/16/19/20/21/22 and `fuse` 12 (routing unreachable via `to_opinion` or
+agreeing within noise). Campaign: 461 mutants, 447 killed, 14 survived =
+97%. Any change to that survivor set, either direction, is the signal:
+a new name is a test gap, a missing one is a suppression or a dead line.
 
 Operational note: cached verdicts stand across reruns. Source edits
 invalidate via function hashes; test-only edits do not. After changing
 tests, wipe `mutants/` (or rerun mutants by name).
 
-**Status:** landed 2026-08-05; residuals: threshold unpicked (equivalent
-floor 24/461 ≈ 5.2%), scope still math-only. Delete `chore/mutmut-baseline`
-once the fold-in reaches main.
+**Status:** landed 2026-08-05; the threshold is the named 14-survivor set,
+any delta is red. Residuals: scope still math-only; an automated manifest
+check (`mutmut results` diffed against the list above) is a candidate
+follow-up. Delete `chore/mutmut-baseline` once the fold-in reaches main.
 
 ---
 
