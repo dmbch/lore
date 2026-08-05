@@ -114,7 +114,7 @@ class SearchResult(DataModel):
     id: str
     content: str
     c_herd: SignedUnitInterval
-    attestation_count: NonNegativeInt
+    oracle_count: NonNegativeInt
     last_attested: date | None
     score: UnitInterval
     proximity: SignedUnitInterval = 0.0
@@ -136,7 +136,7 @@ class FrontierEntry(DataModel):
     content: str
     c_herd: SignedUnitInterval
     uncertainty: UnitInterval
-    attestation_count: NonNegativeInt
+    oracle_count: NonNegativeInt
     last_attested: date | None
 
 

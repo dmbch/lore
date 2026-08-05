@@ -233,13 +233,11 @@ class TestRecordUsesPostTransactionAttestationState:
                 self._call_count += 1
                 if self._call_count == 1:
                     return {
-                        hid: LedgerView(rows=[], attestation_count=0, last_attested=None)
+                        hid: LedgerView(rows=[], oracle_count=0, last_attested=None)
                         for hid in hypothesis_ids
                     }
                 return {
-                    hid: LedgerView(
-                        rows=[prior], attestation_count=1, last_attested=prior.timestamp
-                    )
+                    hid: LedgerView(rows=[prior], oracle_count=1, last_attested=prior.timestamp)
                     for hid in hypothesis_ids
                 }
 

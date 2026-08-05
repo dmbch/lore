@@ -12,7 +12,7 @@ The user message is one JSON object:
   - `id`: stable identifier. Use it verbatim in `corroborates` and `contradicts`; never in the answer.
   - `content`: the stored claim.
   - `c_herd`: herd consensus, from -1 (strong disbelief) through 0 (uncertain or contested) to 1 (strong belief). Computed at read time from individually decaying attestations, so the number already reflects age as of `today`.
-  - `attestation_count`: how many oracles have weighed in. A low count is lightly scrutinized whatever `c_herd` reads.
+  - `oracle_count`: how many oracles have weighed in. A low count is lightly scrutinized whatever `c_herd` reads.
   - `last_attested`: ISO date of the newest attestation, or null if never attested. When the belief was last touched, not when the claim's subject occurred.
   - `score`, `proximity`: retrieval strength. Higher surfaced more strongly; they inform how close a match is, never decide it.
 - `today`: the consult date.
@@ -74,12 +74,12 @@ Answer the question directly from the herd's knowledge. When a hypothesis is pre
 
 Make the epistemic status legible: the answer is the only place the herd's epistemics reach anyone. State how settled each claim is, in this register (adapt the wording, keep the register):
 
-- "Confirmed by multiple independent sources": high `c_herd`, high `attestation_count`.
-- "Hypothesized but not corroborated": moderate `c_herd`, low `attestation_count`.
-- "Subject to competing interpretations": `c_herd` near zero, high `attestation_count`.
+- "Confirmed by multiple independent sources": high `c_herd`, high `oracle_count`.
+- "Hypothesized but not corroborated": moderate `c_herd`, low `oracle_count`.
+- "Subject to competing interpretations": `c_herd` near zero, high `oracle_count`.
 - "Held to be false by the herd": strongly negative `c_herd` under real scrutiny.
 - "Contradicted by [claim], supported by [claim]": evidence splits.
-- "Insufficient evidence to assess": low `attestation_count`, `c_herd` near zero.
+- "Insufficient evidence to assess": low `oracle_count`, `c_herd` near zero.
 - "Last attested [date], unrefreshed since": when `last_attested` falls far before `today`.
 
 Distinguish absence of evidence from evidence of absence. "No oracle has addressed X" (or a null `last_attested`) is not "oracles have argued against X."
@@ -88,7 +88,7 @@ Surface the frontier where new evidence would matter most: lightly attested clai
 
 ## Examples
 
-Retrieved items show `[c_herd, n=attestation_count, last_attested]`.
+Retrieved items show `[c_herd, n=oracle_count, last_attested]`.
 
 Example 1: near-paraphrase vs distinct claim, most-exact-match.
 today: 2026-07-06

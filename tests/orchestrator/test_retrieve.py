@@ -184,9 +184,7 @@ class _NoopAttestations:
         window: DecayWindow | None = None,
     ) -> dict[str, LedgerView]:
         del window
-        return {
-            h: LedgerView(rows=[], attestation_count=0, last_attested=None) for h in hypothesis_ids
-        }
+        return {h: LedgerView(rows=[], oracle_count=0, last_attested=None) for h in hypothesis_ids}
 
     async def fetch_trust_alignments(
         self,
@@ -516,7 +514,7 @@ class TestEnrichDecayWindow:
         The stale row (10 half-lives old, c 0.9) would still contribute
         ~9e-4 after decay, so its absence pins the fetch cutoff, not the
         decay algebra. The fresh row alone gives c_herd = 0.3 exactly.
-        attestation_count and last_attested stay full-history: this
+        oracle_count and last_attested stay full-history: this
         hypothesis is stale, not unattested.
         """
         t_now = 2_000_000_000
@@ -552,5 +550,5 @@ class TestEnrichDecayWindow:
         )
 
         assert abs(enriched[0].c_herd - 0.3) < 1e-9
-        assert enriched[0].attestation_count == 2
+        assert enriched[0].oracle_count == 2
         assert enriched[0].last_attested == date(2033, 5, 18)

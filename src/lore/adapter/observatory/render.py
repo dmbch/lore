@@ -35,7 +35,7 @@ def render_frontier(entries: Sequence[FrontierEntry]) -> DataTable:
             align="right",
         ),
         DataTableColumn(
-            key="attestations", header="Attestations", sortable=True, format="number", align="right"
+            key="oracles", header="Oracles", sortable=True, format="number", align="right"
         ),
         DataTableColumn(key="last_attested", header="Last attested", sortable=True, align="right"),
     ]
@@ -47,7 +47,7 @@ def render_frontier(entries: Sequence[FrontierEntry]) -> DataTable:
             "content": e.content,
             "c_herd": e.c_herd,
             "uncertainty": e.uncertainty,
-            "attestations": e.attestation_count,
+            "oracles": e.oracle_count,
             "last_attested": _format_last_attested(e.last_attested),
         }
         for e in entries

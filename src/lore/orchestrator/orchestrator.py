@@ -143,7 +143,7 @@ class Orchestrator:
                         {
                             "id": e.id,
                             "c_herd": e.c_herd,
-                            "attestation_count": e.attestation_count,
+                            "oracle_count": e.oracle_count,
                             "score": e.score,
                         }
                         for e in enriched

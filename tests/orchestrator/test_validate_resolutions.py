@@ -144,9 +144,7 @@ class _NoopAttestations:
         window: DecayWindow | None = None,
     ) -> dict[str, LedgerView]:
         del window
-        return {
-            h: LedgerView(rows=[], attestation_count=0, last_attested=None) for h in hypothesis_ids
-        }
+        return {h: LedgerView(rows=[], oracle_count=0, last_attested=None) for h in hypothesis_ids}
 
     async def fetch_trust_alignments(
         self,

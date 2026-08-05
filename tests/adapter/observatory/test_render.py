@@ -16,7 +16,7 @@ def _entry(
     *,
     c_herd: float = 0.0,
     uncertainty: float = 1.0,
-    attestation_count: int = 0,
+    oracle_count: int = 0,
     last_attested: date | None = None,
 ) -> FrontierEntry:
     return FrontierEntry(
@@ -24,7 +24,7 @@ def _entry(
         content=content,
         c_herd=c_herd,
         uncertainty=uncertainty,
-        attestation_count=attestation_count,
+        oracle_count=oracle_count,
         last_attested=last_attested,
     )
 
@@ -39,7 +39,7 @@ def test_render_frontier_builds_datatable_with_a_row_per_entry() -> None:
         "content",
         "c_herd",
         "uncertainty",
-        "attestations",
+        "oracles",
         "last_attested",
     ]
     assert isinstance(table.rows, list)

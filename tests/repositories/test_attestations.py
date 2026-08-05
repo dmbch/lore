@@ -283,7 +283,7 @@ class TestFindByHypotheses:
         assert result[h1].rows[0].hypothesis_id == h1
         assert result[h2].rows[0].hypothesis_id == h2
         # Unwindowed: aggregates match the returned rows.
-        assert result[h1].attestation_count == 1
+        assert result[h1].oracle_count == 1
         assert result[h1].last_attested == 1000
 
     async def test_find_by_hypotheses_missing_ids_have_empty_lists(
@@ -312,7 +312,7 @@ class TestFindByHypotheses:
         result = await attestations_repo.find_by_hypotheses([h1, missing])
         assert len(result[h1].rows) == 1
         assert result[missing].rows == []
-        assert result[missing].attestation_count == 0
+        assert result[missing].oracle_count == 0
         assert result[missing].last_attested is None
 
     async def test_find_by_hypotheses_empty_input_returns_empty_dict(
@@ -357,7 +357,7 @@ class TestFindByHypotheses:
         """Stale rows leave the fused view; the summary stays full-history.
 
         Window = [t_now - 5*half_life, t_now] = [5000, 10000]: the ts=100
-        row is out, the ts=9000 row is in. attestation_count and
+        row is out, the ts=9000 row is in. oracle_count and
         last_attested still see the whole ledger.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
@@ -382,7 +382,7 @@ class TestFindByHypotheses:
         )
         view = result[h_id]
         assert [r.timestamp for r in view.rows] == [9000]
-        assert view.attestation_count == 2
+        assert view.oracle_count == 2
         assert view.last_attested == 9000
 
     async def test_find_by_hypotheses_all_stale_view_still_reports_history(
@@ -393,7 +393,7 @@ class TestFindByHypotheses:
     ) -> None:
         """A hypothesis whose whole ledger aged out is stale, not unattested.
 
-        Empty windowed rows with attestation_count = 1 and a real
+        Empty windowed rows with oracle_count = 1 and a real
         last_attested is the "stale since" signal; a never-attested
         hypothesis reports count 0 and last_attested None.
         """
@@ -418,10 +418,10 @@ class TestFindByHypotheses:
             [h_id, never], window=DecayWindow(t_now=10_000, half_life=1000.0)
         )
         assert result[h_id].rows == []
-        assert result[h_id].attestation_count == 1
+        assert result[h_id].oracle_count == 1
         assert result[h_id].last_attested == 100
         assert result[never].rows == []
-        assert result[never].attestation_count == 0
+        assert result[never].oracle_count == 0
         assert result[never].last_attested is None
 
     async def test_find_by_hypotheses_infinite_window_includes_ancient_rows(

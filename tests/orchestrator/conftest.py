@@ -170,7 +170,7 @@ class StubAttestations:
                 rows = [r for r in records if window.start <= r.timestamp <= window.t_now]
             return LedgerView(
                 rows=rows,
-                attestation_count=len(records),
+                oracle_count=len(records),
                 last_attested=max((r.timestamp for r in records), default=None),
             )
 

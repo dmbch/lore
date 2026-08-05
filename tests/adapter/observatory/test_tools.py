@@ -35,7 +35,7 @@ def _entry(content: str = "a claim") -> FrontierEntry:
         content=content,
         c_herd=0.0,
         uncertainty=1.0,
-        attestation_count=0,
+        oracle_count=0,
         last_attested=None,
     )
 

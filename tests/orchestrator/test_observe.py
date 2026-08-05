@@ -81,7 +81,7 @@ async def test_frontier_unattested_hypothesis_is_fully_uncertain() -> None:
     entry = entries[0]
     assert entry.c_herd == 0.0
     assert entry.uncertainty == 1.0
-    assert entry.attestation_count == 0
+    assert entry.oracle_count == 0
     assert entry.last_attested is None
 
 
@@ -110,7 +110,7 @@ async def test_frontier_sorts_most_uncertain_first() -> None:
     # Single attestation at t_now: c_herd collapses to c_oracle_discounted.
     assert entries[0].c_herd == pytest.approx(0.2)
     assert entries[2].c_herd == pytest.approx(0.9)
-    assert entries[0].attestation_count == 1
+    assert entries[0].oracle_count == 1
     # _T = 2_000_000_000 epoch seconds is 2033-05-18 UTC: the newest
     # attestation surfaces as a calendar date, same idiom as SearchResult.
     assert entries[0].last_attested == date(2033, 5, 18)
@@ -142,7 +142,7 @@ async def test_frontier_ignores_rows_beyond_decay_window() -> None:
     The stale row (10 half-lives old, c 0.9) would still contribute ~9e-4
     after decay, so its absence pins the fetch cutoff, not the decay
     algebra. The fresh row alone gives c_herd = 0.3 exactly.
-    attestation_count and last_attested stay full-history: this hypothesis
+    oracle_count and last_attested stay full-history: this hypothesis
     is stale, not unattested.
     """
     record = _record("aaa00001-e29b-41d4-a716-446655440000")
@@ -161,7 +161,7 @@ async def test_frontier_ignores_rows_beyond_decay_window() -> None:
     )
 
     assert abs(entries[0].c_herd - 0.3) < 1e-9
-    assert entries[0].attestation_count == 2
+    assert entries[0].oracle_count == 2
     assert entries[0].last_attested == date(2033, 5, 18)
 
 

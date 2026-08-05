@@ -170,7 +170,7 @@ class TestReadPathEnrichesWithEpistemicState:
         _system, user_text = fixture.archivist.calls[0]
         payload = json.loads(user_text)
         retrieved = payload["retrieved"][0]
-        assert retrieved["attestation_count"] == 1
+        assert retrieved["oracle_count"] == 1
         assert retrieved["c_herd"] != 0.0  # attested, not vacuous
 
 
