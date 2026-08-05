@@ -21,29 +21,45 @@ directly whether the tests would catch the next algebra regression; the trust
 fix landed security-load-bearing branches (witness rule, conviction
 calibration) worth hardening first.
 
-**Options / open questions.** Scope to `src/lore/math` initially; run as a
-manual mise task rather than CI-blocking until baseline score and runtime are
-known; pick a threshold after the baseline. Whether the trust-scan SQL
-(window guards, exclusions) can be covered via the repository tests or needs
-its own target set.
+**Options / open questions.** Pick a survived-mutant threshold now that the
+equivalent floor is known (24/461). Widen scope beyond `src/lore/math` later.
+Whether the trust-scan SQL (window guards, exclusions) can be covered via the
+repository tests or needs its own target set.
 
-**Baseline (2026-08-02, isolated worktree run).** mutmut 3.7 on `src/lore/math`:
-461 mutants, 434 killed, 27 survived = 94%. Core algebra airtight (every
-`_acbf_pair` sign flip and conviction-calibration mutant killed); survivors are
-equivalent mutants (defensive clamps, unasserted `ValueError` messages) plus 3
-real boundary/wiring gaps (`prepare_attestation` accepting `t_oracle == 0`,
-`build_math`'s `maturity_k` passthrough, a zero-age trust row). The config
-(`[tool.mutmut]`, a `mutants/`-scoped Hypothesis harness, a `mise run mutation`
-task) is preserved on branch `chore/mutmut-baseline` (off main), not folded into
-the main line: it reproduces the baseline in an isolated worktree
-(~73 mutants/s) yet times out every mutant on the heavier dev checkout
-(~0.47/s), because mutmut runs the full ~2s property suite per mutant and hits
-its auto-timeout (no CLI override). Likely fix: cap Hypothesis `max_examples` in
-the `mutants/`-scoped profile so each run stays under the timeout; confirm the
-capped run still reproduces the survivor set before folding the mise task in.
+**Landed (2026-08-05, `build/mutmut-fold-in`).** The 2026-08-02 baseline
+config is ported from `chore/mutmut-baseline` and `mise run mutation` runs on
+the dev checkout (~78 mutants/s). The old "dev checkout times out every
+mutant" diagnosis was wrong: mutmut forks a child per mutant, the tach pytest
+plugin's native thread deadlocks every forked child (macOS), and the watchdog
+files each kill as a timeout; tach landed one day after the clean worktree
+baseline. Fix: `-p no:tach` in `[tool.mutmut]` `pytest_add_cli_args`. (mutmut
+also reads `timeout_constant` / `timeout_multiplier` from `[tool.mutmut]`,
+contra the earlier "no override" note.)
 
-**Status:** open; baseline established 2026-08-02, mise-task fold-in deferred
-(runner times out on the dev checkout).
+Score: 461 mutants, 437 killed, 24 survived = 94.8%. The three real gaps are
+closed by pinning tests: `t_oracle == 0` admitted and fully discounted,
+`build_math` wiring asserted as literals against the all-non-default
+`lore_trust.toml` fixture (the complete fixture's epistemics equal the
+defaults, which is what hid the gap), zero-age trust rows at full weight,
+plus a future-dated-row clamp pin alongside. The 24 survivors were each
+inspected (`mutmut show`) and are equivalent mutants in four classes:
+unasserted `ValueError` messages (some because `Opinion`'s constructor
+backstops a widened guard, changing only the raise site); strictly
+equivalent scalar boundaries in `to_opinion` (vacuous either way, or
+`-0.0` vs `0.0`); defensive IEEE clamps (`min(1.0, ...)` fires only on
+~1-ulp noise); and fusion routing guards that are dead by architecture
+(`fuse` pre-partitions dogmatic subsets) or diverge only for operands
+unreachable through `to_opinion`. Killing any of these would take
+structural tests; 24 is the honest floor, and any delta from it in a
+future run is the regression signal.
+
+Operational note: cached verdicts stand across reruns. Source edits
+invalidate via function hashes; test-only edits do not. After changing
+tests, wipe `mutants/` (or rerun mutants by name).
+
+**Status:** landed 2026-08-05; residuals: threshold unpicked (equivalent
+floor 24/461 ≈ 5.2%), scope still math-only. Delete `chore/mutmut-baseline`
+once the fold-in reaches main.
 
 ---
 
