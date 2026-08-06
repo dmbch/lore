@@ -483,20 +483,19 @@ class TestFindByHypotheses:
         result = await attestations_repo.find_by_hypotheses([h_id])
         assert result[h_id].oracle_count == 1
 
-    async def test_oracle_count_excludes_transfer_rows(
+    async def test_oracle_count_counts_transfer_carrier_once(
         self,
         hypothesis_repo: HypothesisRepository,
         attestations_repo: AttestationsRepository,
         request_repo: RequestRepository,
     ) -> None:
-        """The synthetic transfer carrier is evidence, not an examiner.
+        """The synthetic transfer carrier counts as one distinct voice.
 
-        ``oracle_count`` skips it; ``last_attested`` does not:
-        MAX(timestamp) stays full-history because a transfer touches the
-        belief. The converse state (``oracle_count`` 0 with a set
-        ``last_attested``) is representable by the SQL but unreachable: a
-        transfer row only ever lands in the same transaction as the
-        oracle attestation it dampens.
+        One counting policy everywhere: maturity's ``n_oracle_prior``
+        and the witness rule already admit the carrier (docs/logic.md:
+        formally another oracle), and its evidence on the belief is
+        real, so the read model admits it too. One oracle row plus one
+        transfer row is two; DISTINCT would still collapse repeats.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
@@ -516,7 +515,7 @@ class TestFindByHypotheses:
                 )
             )
         result = await attestations_repo.find_by_hypotheses([h_id])
-        assert result[h_id].oracle_count == 1
+        assert result[h_id].oracle_count == 2
         assert result[h_id].last_attested == 2000
 
     async def test_oracle_count_counts_distinct_oracles(

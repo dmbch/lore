@@ -182,7 +182,7 @@ def _ledger_view(records: list[AttestationRecord]) -> LedgerView:
     """Wrap seeded rows in the view shape find_by_hypotheses returns."""
     return LedgerView(
         rows=records,
-        oracle_count=len({r.oracle_id for r in records if r.oracle_id != TRANSFER_ORACLE}),
+        oracle_count=len({r.oracle_id for r in records}),
         last_attested=max((r.timestamp for r in records), default=None),
     )
 
