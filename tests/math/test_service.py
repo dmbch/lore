@@ -885,6 +885,72 @@ class TestComputeOracleTrust:
 
         assert t_prophet > t_conformist > t_bandwagoner
 
+    def test_trust_spent_on_bad_claim_drops_at_next_scan(self) -> None:
+        """The build-then-spend arc: a committed wrong call lowers trust.
+
+        IDEA.md's trust-exploitation bound as a scenario, not prose: an
+        oracle who builds high trust and then spends it on a bad claim
+        gets one high-trust attestation before the herd corrects the
+        hypothesis and the next trust scan prices the wrong call in.
+        One service (infinite half-lives, K=1); the arc is purely
+        evidential, timing plays no role.
+
+        Build (t_before = 0.700): two prophet-style rows, c=0.8 on fresh
+        hypotheses (prior=0.0, n_oracle_prior=0), herd converges to 0.6.
+        Per row: align = 0.5·0.6 + 0.5·0.9 = 0.75, info=1, signal=0.8,
+          effective = 0.8·0.75 + 0.2·0.5 = 0.700; num 0.560, den 0.8.
+        t_before = 1.12 / 1.6 = 0.700, well above base rate 0.5.
+
+        Spend (t_after ≈ 0.5794): one row, c=0.9 on a fresh hypothesis,
+        herd corrects to -0.8 (the committed wrong call, witnessed):
+          align_write = 1 - 0.5·0.9 = 0.55,
+          align_read  = 1 - 0.5·|0.9 - (-0.8)| = 0.15,
+          align = 0.5·0.55 + 0.5·0.15 = 0.35, info=1, signal=0.9,
+          effective = 0.9·0.35 + 0.1·0.5 = 0.365; num 0.3285, den 0.9.
+        t_after = 1.4485 / 2.5 = 0.5794 < t_before.
+
+        One bad call dents trust, it does not zero it: the vindicated
+        career still holds t_after above base rate. Both are asserted:
+        the drop and the floor.
+        """
+        svc = MathService(c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=1.0)
+
+        build_rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=0.8,
+                timestamp=0,
+                c_herd_prior=0.0,
+                n_oracle_prior=0,
+            ),
+            TrustSignal(
+                hypothesis_id="h2",
+                c_oracle_raw=0.8,
+                timestamp=0,
+                c_herd_prior=0.0,
+                n_oracle_prior=0,
+            ),
+        ]
+        t_before = svc.compute_oracle_trust(
+            rows=build_rows, herd_evidence=_evidence(t_now=0, h1=0.6, h2=0.6), t_now=0
+        )
+
+        spend_row = TrustSignal(
+            hypothesis_id="h3",
+            c_oracle_raw=0.9,
+            timestamp=0,
+            c_herd_prior=0.0,
+            n_oracle_prior=0,
+        )
+        t_after = svc.compute_oracle_trust(
+            rows=[*build_rows, spend_row],
+            herd_evidence=_evidence(t_now=0, h1=0.6, h2=0.6, h3=-0.8),
+            t_now=0,
+        )
+
+        assert t_before > 0.5
+        assert 0.5 < t_after < t_before
+
     def test_all_vacuous_history_returns_base_rate(self) -> None:
         """All rows have c_oracle_raw=0.0 → conviction=0 → denominator=0 → 0.5."""
         svc = MathService(c_half_life=100.0, t_half_life=_NO_DECAY_HL)
