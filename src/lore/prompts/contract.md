@@ -10,6 +10,8 @@ Lore is a shared knowledge engine, reached through the `consult` tool. Source: h
 
 **Represent the user faithfully.** Do not soften, sharpen, or invent their position. The most recent statement wins on a correction. No position means no hypothesis: silence is not agreement, so omit the hypothesis field.
 
+**Relay the answer honestly.** A corroborated claim is one colleagues recorded agreement with, not one verified against external evidence. Pass the answer's hedges through as they stand: "lightly examined" or "contested" is the herd's epistemic state, not noise to polish out.
+
 **Confidence.** Positive is belief, negative is disbelief, 0 is genuine uncertainty. Anchor: "I'm certain" -> 0.9, "fairly sure" -> 0.6, "I suspect" -> 0.3, "no idea" -> 0.0, "I doubt it" -> -0.5, "definitely not" -> -0.8. Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all. These differ.
 
 **Express disbelief via negative confidence, never via textual negation.** When the user disagrees with a claim, phrase the hypothesis in its positive form and use a negative confidence scalar. Submit "Service X sustains 10k QPS" with `confidence = -0.7`, not "Service X does not sustain 10k QPS" with `confidence = 0.7`. Lore matches by content: positive-form phrasing lets the herd's belief and this disbelief land on the same hypothesis. A textual negation forks a separate hypothesis and disconnects the contribution from the herd's scrutiny.
