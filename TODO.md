@@ -336,7 +336,9 @@ prompt behaviors, each a ready fixture for the harness:
   statement sites. Pin at k>=10; a single green passes at base rate and
   proves nothing.
 - Decomposition consistency: one identical hedged consult stored 4 nodes in
-  CI and 1 locally (split vs when-unsure-don't-split). Candidate interpreter
+  CI and 1 locally (split vs when-unsure-don't-split); the same composite
+  flapped 2 vs 1 across same-day local golden rebuilds (2026-08-10), both
+  passing e2e. Candidate interpreter
   tightening: a hedged clause (may, might) is not asserted outright and never
   becomes its own atom. Needs its own measured pass; sibling of the flash
   compound-split line in the e2e entry.
@@ -345,12 +347,239 @@ prompt behaviors, each a ready fixture for the harness:
   contradiction-free resolutions) and the composite-collapse rule (Example
   9's refusal case could over-generalize).
 
+**Audit fold-in (2026-08-06, the 2026-08-01 panel; see the triage entry).**
+
+- Entailment fixture (F-2): the old Example 1 shape (a bound corroborated
+  onto a point value) as a Step 1 classification case; rate-pin that a
+  strictly weaker or stronger proposition contributes with the near-miss
+  noted. The prompt now carries the rule; the fixture keeps it.
+- Corpus gaps (SCR-12): no e2e consult submits a negative confidence, a
+  deixis-dependent consult, or a mixed-certainty compound; the doctrine
+  the Scribe is drilled hardest on is the client behavior no e2e
+  performs. Grow the corpus with these shapes first.
+- Acknowledged limit (ENG-6): the Scribe representation rules (no-soften,
+  no-sharpen, most-recent-wins) execute client-side and are structurally
+  unattestable in-repo; the harness covers Interpreter and Archivist
+  only, and that boundary is accepted rather than unstated.
+
 **Options / open questions.** The two evals likely share a fixture corpus; a
 first corpus is seeded at `tests/e2e/corpus.py` (the golden-archive seeds). The
 aged-attestation e2e probe (`800286c`) seeds the prompt side. Decide whether evals run in
 CI (live LLM calls: cost and flake) or as a manual mise task.
 
 **Status:** open; not started.
+
+---
+
+## Audit triage (2026-08-01 panel)
+
+**Found:** 2026-08-01, six-chair panel audit with critic cross-examination
+(AUDIT.md, untracked). Verdict: releasable with the six S2 findings fixed;
+zero S1 findings survived. This entry is self-contained; AUDIT.md can be
+discarded at leisure.
+
+**Landed (2026-08-06, `build/audit-s2-pass`).** The S2 set plus siblings:
+
+- F-1: `attestation_count` renamed `oracle_count` end to end; the
+  aggregate counts distinct oracles excluding the `_transfer` carrier
+  (both backends); the register phrase demoted to "Corroborated by
+  multiple oracles"; the gloss says what the number is. Known residual: a
+  fresh novel carrying a contrary transfer can show `oracle_count = 1`
+  with a `c_herd` the sole oracle's stance cannot explain; the register
+  reads it honestly as lightly examined.
+- F-2: Example 1 models a genuine rounding variant; Step 1 gained the
+  entailment bullet (strictly weaker or stronger falls to `contributes`
+  with the near-miss noted).
+- F-3: logic.md stops crediting uncertainty maximization with correlation
+  mitigation (Eq. 3.27 preserves P); Known Residuals names the mechanism
+  and the real bounds.
+- F-4: `test_contributes_stays_within_the_consult_inputs` probes the
+  Archivist's minting channel, symmetric with the Interpreter's.
+- F-5: the confidence ladders anchor "genuinely torn" to 0.0; the no-view
+  idiom no longer maps to an attestation.
+- F-6 plus LOG-2: `test_prophet_outearns_conformist_outearns_bandwagoner`
+  (deployment-regime bandwagoner, previously untested) and
+  `test_trust_spent_on_bad_claim_drops_at_next_scan`.
+- Gate outcome: goldens rebuilt under the final prompt bytes, e2e green
+  twice (39/39 both runs, the new probe included).
+
+**The wording family** (word-level substitutions; location, then fix):
+
+- SCI-2 residue (IDEA.md:106, logic.md slogan sites): "settled hypotheses
+  earns nothing: the information factor collapses to zero" conflates
+  settled (info small, ~0.53 trust) with dogmatic (info = 0 exactly); fix
+  the gloss, plus one logic.md clause noting the exact limit is
+  unreachable in herds the system itself builds (K >= 1 keeps
+  |c_herd| < 1). IDEA.md half approval-gated, proposal below.
+- CON-2/LIN-9 (archivist.md:43,:161): "asserting that claim is false"
+  overstates a graded, attributed disbelief row; if rewording to
+  "recording the oracle's disbelief", keep the vividness: it is the
+  deterrent behind omit-when-unsure.
+- SCI-1 (IDEA.md Stage 3; archivist.md:43; architecture.md): "positive
+  attestation" / "disbelief attestation" glosses are true only for c > 0
+  and contradicted by Stage 4's sign rule; reword sign-neutral.
+- CON-4 (logic.md:951,:953,:989): "false opinion" in attack prose imports
+  a truth standard the algebra cannot observe; "bad claim" or "insincere
+  attestation", as IDEA.md already says.
+- CON-5/LIN-8 (contract.md:5,:23; archivist.md:1; scribe.md:1): all three
+  LLM-facing prompts self-describe as "knowledge engine" vs the canonical
+  "shared archive"; align on archive or record the split as intentional.
+- SCI-7 (README.md:278; IDEA.md:211): "how fast knowledge ages" is a
+  world-frame slip; "how fast unrefreshed attestations fade". IDEA.md
+  half approval-gated.
+- SCI-9/ENG-7 (contract.md:64): "how little the archive knows", the sole
+  hit of the full voice sweep; "how little the herd has established".
+- LIN-7 (contract.md:65): the one "oracle" in the user-register document;
+  "when the user asks".
+- SCR-10 (contract.md:13): the negative ladder is coarser than the
+  positive and "I doubt it" -> -0.5 overshoots mild skepticism; add
+  "I'm skeptical" -> -0.3.
+- LIN-10 (archivist.md:41): mutual exclusivity presupposes coreference of
+  bare definites, never named as a precondition; one clause: if the
+  subjects could denote different things, omit.
+- LIN-4 (scribe.md:46; contract.md:15): surviving sliver is standalone
+  negative existentials; one clarifying clause, only if evals show
+  divergence.
+- LIN-5 (scribe.md:40-46): presupposition rejection vs assertion denial;
+  watch-item; the right artifact is an eval fixture, not prompt bytes.
+- SCR-2 (scribe.md:5-9): one line assigning the correcting consult when
+  an already-contributed position is later reversed.
+- SCR-5 (contract.md:45): no Scribe-facing surface says a compound's
+  single scalar is inherited whole by every atom; one interface line:
+  claims held at different confidence go in separate calls.
+- SCR-9 (scribe.md; contract.md:64): `observe` is invisible to the
+  persona and possibly UI-shaped in text-only clients; one clause in the
+  moments list, one warning in the description.
+- SCR-11 (README `[prompts]` table): the archive's language is never
+  named as an operator knob for non-English herds; one sentence.
+- CON-1 nit (archivist.md:109): "Both are true of the world" reads truth
+  where the Archivist judges compatibility; "can both be true" (line 58
+  already carries the modal). Prompt bytes: rides the next prompt pass,
+  not worth a golden gate alone.
+
+**The ownership-sentence family** (each fix one sentence owning an
+instrument choice; the IDEA.md items are proposals, wording below):
+
+- ENG-1 (scribe.md:44,:53; IDEA.md Ingestion): the ladder's center-pull
+  and 0.9 cap are a soft-knee limiter on the input chain, owned in the
+  prompt, unowned in the spec.
+- ENG-4/CON-8 (IDEA.md Stage 3): frontier surfacing is the instrument
+  steering herd attention, the strongest instrument-to-herd feedback
+  loop; owned in TODO.md, not the spec.
+- CON-6 (IDEA.md:35): "mechanical pre-processing step" claims a
+  neutrality the same paragraph's lens figure denies; drop "mechanical",
+  leave README.md:256 (operational, justifies temperature 0.0).
+- SCI-6 (IDEA.md Stage 3, contradicts bullet): a contradicts row records
+  an Archivist inference under the oracle's identity; one sentence owns
+  the delegation; skip certainty-discount machinery (YAGNI).
+- SCR-7 (scribe.md:31; provenance docs): provenance's "verbatim" is
+  verbatim-of-the-Scribe, one hop from the oracle; own that, plus the
+  cheap norm: quote the oracle's operative words in `reasoning`.
+- CON-7 (docs/logic.md:154): `c_herd` alone cannot distinguish contested
+  from unexamined; name `oracle_count` and the conflict metrics as the
+  recovery channel at the ECBF section.
+- ENG-2 (archivist.md:61): the ledger path has airtight input-only
+  guards, the answer has none; extend the guard one clause: the answer
+  states only what the retrieved set supports.
+
+**The test/theory family:**
+
+- LOG-3: the service-level future-timestamp clamp is an undocumented
+  epistemic commitment, in tension with the operator-level rejection of
+  negative time; one sentence in logic.md's boundary cases.
+- LOG-4: tests/math/test_decay.py:8-10 calls the decay formula "custom"
+  where logic.md correctly identifies Def. 14.6 with time-varying
+  discount; align the header.
+- LOG-5: the loudest degenerate, (1,0,0) fused with (0,1,0) cancels to
+  vacuous, is never stated as a test; one test.
+- LOG-6: the full-penalty extreme of the informative-commitment table
+  (signal 1, align 0) is unattested, punishment asymmetry half-tested;
+  one test.
+- LOG-11: "surfaces uncertainty clusters" (IDEA.md Stage 3, read path)
+  has no test or judge criterion; one e2e case: settled plus contested
+  hypothesis, judge asserts the contested one is flagged.
+- SCI-8/LOG-10: the Monte-Carlo archetype bands in logic.md's Trust
+  Dynamics Clusters rest on an uncommitted, unrerunnable artifact; commit
+  the simulator as a manual mise task, or annotate the table as a dated
+  one-off.
+- ENG-5: archivist `notes` are addressed "to a future oracle" but land
+  only in structlog at DEBUG; reword the address, or persist notes on
+  provenance (programmer's call).
+- LOG-7/8/9 (S4, one sentence each): the opinion constructor's clamp is
+  undocumented; `maturity_k = inf` serves analytically in a
+  promise-bearing math test while config rejects it (own the analytical
+  device where it is used, do not teach config to accept inf);
+  "conviction" is overloaded in decay prose.
+- Read-after-write (promise table, PARTIAL): rollback is attested, but
+  no test writes through consult and reads the same state back through
+  the read path. One integration test; pin time (inf half-life, or read
+  at the write timestamp), else decay makes the comparison legitimately
+  unequal.
+
+**The indexical-present residual** (SCI-4 + LIN-3, merged by the critic).
+One Known Residuals entry for docs/logic.md, proposed text:
+
+> **The indexical present.** Two tacit conventions govern reference time:
+> self-dated claims are temporal, undated present-tense claims are
+> indexically about now. Examples and tests pin both directions; no prose
+> states either. The indexical reading is load-bearing (supersession
+> works by contradiction because standing claims stay about now), and its
+> cost is real: genuine supersession of a standing claim fuses toward
+> zero, and the register reads change as controversy. Accepted; no
+> supersession machinery (tried and rejected).
+
+**IDEA.md proposals** (approval-gated per CLAUDE.md; this entry proposes,
+the programmer disposes):
+
+- LIN-6 (Interface, "One MCP tool"): stale against the shipped contract.
+  Proposed: "Two MCP tools: `consult`, the epistemic interface, and
+  `observe`, a read-only view of the uncertainty frontier. The epistemic
+  write interface is still exactly one tool."
+- ENG-1 (Ingestion): proposed sentence: "The ladder's pull toward center
+  and its 0.9 cap are deliberate input compression: a soft-knee limiter
+  the instrument applies to stated certainty, owned as character rather
+  than claimed as neutrality."
+- ENG-4/CON-8 (Stage 3, read path): proposed sentence: "Surfacing the
+  frontier is the instrument steering herd attention; the steering is
+  designed, not incidental."
+- CON-6 (IDEA.md:35): drop the word "mechanical".
+- SCI-6 (Stage 3, contradicts bullet): proposed sentence: "A contradicts
+  attestation records the Archivist's mutual-exclusivity inference under
+  the oracle's identity; `correlation_id` and verbatim provenance keep
+  the delegation auditable."
+- SCI-2 gloss (IDEA.md:106): proposed: "An oracle rubber-stamping settled
+  hypotheses earns almost nothing: the information factor shrinks toward
+  zero as the herd settles, and the exact zero is the dogmatic limit the
+  system itself never builds."
+- SCI-7 (IDEA.md:211 config cell): "how fast unrefreshed attestations
+  fade."
+
+**Open questions** (carried from the Scribe chair, for the programmer):
+
+1. Whose words survive? Provenance stores the Scribe's rendering; the
+   oracle's utterance exists nowhere, and Lore cannot audit the
+   difference even in principle. Is a verbatim-quote norm in `reasoning`
+   enough, or does provenance want an optional utterance column someday?
+2. Is "I'm certain" -> 0.9 doctrine-mandated softening? The schema
+   accepts 1.0 and the pipeline digests dogmatic input by design; no doc
+   owns the tension with no-soften. What does the Scribe do with "log it
+   at full certainty, that's an order"?
+3. Should vacuous attestations count as scrutiny? A 0.0 row raises
+   maturity and witnesses trust scans while carrying zero evidence:
+   genuine examined inconclusiveness, or a hole?
+4. Can the Scribe calibrate "multiple"? In a herd of two, "multiple" is
+   one colleague, once. Should herd cardinality reach the answer
+   register?
+5. Whose confidence is reported confidence? "Berghaus was so sure" admits
+   two honest transcriptions at different levels, a world-claim or a
+   literature-claim; the level choice changes what the herd later
+   retrieves, and no doc decides it.
+
+**Status:** S2 set landed 2026-08-06 on `build/audit-s2-pass`; review
+follow-ups through 2026-08-10 (the F-1 reversal, goldens rebuilt, e2e
+39/39 twice on the final bytes); the families are open, none started;
+IDEA.md items are proposals until approved. Eval-harness material folded
+into that entry.
 
 ---
 
