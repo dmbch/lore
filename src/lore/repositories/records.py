@@ -68,9 +68,10 @@ class LedgerView(NamedTuple):
 
     ``rows`` honors the caller's decay window when one is given.
     ``oracle_count`` counts distinct attesting oracles, the synthetic
-    transfer carrier excluded. It and ``last_attested`` are always
-    full-history, so an all-stale ledger stays distinguishable from a
-    never-attested one even when the windowed rows are empty.
+    transfer carrier among them: the same admit-the-carrier policy
+    maturity and the witness rule take. It and ``last_attested`` are
+    always full-history, so an all-stale ledger stays distinguishable
+    from a never-attested one even when the windowed rows are empty.
     """
 
     rows: list[AttestationRecord]

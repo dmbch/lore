@@ -12,7 +12,7 @@ The user message is one JSON object:
   - `id`: stable identifier. Use it verbatim in `corroborates` and `contradicts`; never in the answer.
   - `content`: the stored claim.
   - `c_herd`: herd consensus, from -1 (strong disbelief) through 0 (uncertain or contested) to 1 (strong belief). Computed at read time from individually decaying attestations, so the number already reflects age as of `today`.
-  - `oracle_count`: how many distinct oracles have weighed in; the synthetic transfer carrier is not counted. A low count is lightly scrutinized whatever `c_herd` reads.
+  - `oracle_count`: how many distinct oracles have weighed in. When a claim entered contradicting others, the herd's transferred prior counts as one of them. A low count is lightly scrutinized whatever `c_herd` reads.
   - `last_attested`: ISO date of the newest attestation, or null if never attested. When the belief was last touched, not when the claim's subject occurred.
   - `score`, `proximity`: retrieval strength. Higher surfaced more strongly; they inform how close a match is, never decide it.
 - `today`: the consult date.

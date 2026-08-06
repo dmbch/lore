@@ -23,7 +23,6 @@ from structlog.typing import EventDict
 from lore.adapter import LimitsConfig
 from lore.config import LoreSettings
 from lore.domain import (
-    TRANSFER_ORACLE,
     ArchivistOutput,
     ConsultLoreRequest,
     EvidenceInput,
@@ -169,11 +168,11 @@ class StubAttestations:
             rows = records
             if window is not None:
                 rows = [r for r in records if window.start <= r.timestamp <= window.t_now]
-            # Mirrors the repo contract: distinct non-transfer oracles,
-            # last_attested over every row.
+            # Mirrors the repo contract: distinct oracles with the
+            # transfer carrier among them, last_attested over every row.
             return LedgerView(
                 rows=rows,
-                oracle_count=len({r.oracle_id for r in records if r.oracle_id != TRANSFER_ORACLE}),
+                oracle_count=len({r.oracle_id for r in records}),
                 last_attested=max((r.timestamp for r in records), default=None),
             )
 

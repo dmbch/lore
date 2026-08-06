@@ -381,12 +381,14 @@ discarded at leisure.
 **Landed (2026-08-06, `build/audit-s2-pass`).** The S2 set plus siblings:
 
 - F-1: `attestation_count` renamed `oracle_count` end to end; the
-  aggregate counts distinct oracles excluding the `_transfer` carrier
-  (both backends); the register phrase demoted to "Corroborated by
-  multiple oracles"; the gloss says what the number is. Known residual: a
-  fresh novel carrying a contrary transfer can show `oracle_count = 1`
-  with a `c_herd` the sole oracle's stance cannot explain; the register
-  reads it honestly as lightly examined.
+  aggregate counts distinct oracles (both backends), the `_transfer`
+  carrier among them: one counting policy across the read model,
+  maturity, and the witness rule. (The pass first excluded the carrier;
+  reversed on review to match maturity's read.) The register phrase
+  demoted to "Corroborated by multiple oracles"; the gloss says what
+  the number is, transferred prior included. Known residual: on a claim
+  born contradicting others, one voice in the count is the herd's
+  prior, not a person; the gloss names it.
 - F-2: Example 1 models a genuine rounding variant; Step 1 gained the
   entailment bullet (strictly weaker or stronger falls to `contributes`
   with the near-miss noted).
