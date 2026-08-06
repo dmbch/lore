@@ -7,7 +7,7 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import ValidationError
 
-from lore.domain import EvidenceInput, StorageError, TrustSignal
+from lore.domain import TRANSFER_ORACLE, EvidenceInput, StorageError, TrustSignal
 from lore.repositories.postgres._errors import translate
 from lore.repositories.records import (
     AttestationRecord,
@@ -94,13 +94,18 @@ class PostgresAttestationsRepository:
             rows = await cur.fetchall()
             # Aggregates are always full-history: "stale since" must stay
             # distinguishable from "never attested" even when the windowed
-            # rows above are empty.
+            # rows above are empty. The count is distinct non-transfer
+            # oracles (the CASE nulls out the synthetic carrier; COUNT
+            # DISTINCT skips NULLs); MAX(timestamp) spans every row,
+            # because a transfer touches the belief.
             await cur.execute(
-                """SELECT hypothesis_id, COUNT(*) AS n, MAX(timestamp) AS last
+                """SELECT hypothesis_id,
+                       COUNT(DISTINCT CASE WHEN oracle_id <> %s THEN oracle_id END) AS n,
+                       MAX(timestamp) AS last
                 FROM attestations
                 WHERE hypothesis_id = ANY(%s)
                 GROUP BY hypothesis_id""",
-                (list(hypothesis_ids),),
+                (TRANSFER_ORACLE, list(hypothesis_ids)),
             )
             stats = {
                 str(r["hypothesis_id"]): (int(r["n"]), int(r["last"])) for r in await cur.fetchall()

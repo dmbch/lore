@@ -514,8 +514,9 @@ class TestEnrichDecayWindow:
         The stale row (10 half-lives old, c 0.9) would still contribute
         ~9e-4 after decay, so its absence pins the fetch cutoff, not the
         decay algebra. The fresh row alone gives c_herd = 0.3 exactly.
-        oracle_count and last_attested stay full-history: this
-        hypothesis is stale, not unattested.
+        oracle_count and last_attested stay full-history: the oracle
+        whose only row aged out still counts, so this hypothesis is
+        stale, not unattested.
         """
         t_now = 2_000_000_000
         half_life = 86_400  # matches _make_settings' attestation_half_life
@@ -535,7 +536,10 @@ class TestEnrichDecayWindow:
                         timestamp=t_now - 10 * half_life,
                     ),
                     make_attestation(
-                        hypothesis_id=candidate.id, c_oracle_discounted=0.3, timestamp=t_now
+                        hypothesis_id=candidate.id,
+                        c_oracle_discounted=0.3,
+                        timestamp=t_now,
+                        oracle_id="oracle-2",
                     ),
                 ]
             }
