@@ -1,7 +1,7 @@
 # pyright: reportPrivateUsage=false
-"""Archivist fitness: the under-grounded-atom filter, probed at the reason stage.
+"""Archivist fitness: resolution promises, probed at the reason stage.
 
-Two product claims. First: an atom that decomposition made broader or vaguer
+Three product claims. First: an atom that decomposition made broader or vaguer
 than its composite (an anchor the composite still holds) must not enter the
 archive as a free-floating novel. The Archivist never lets it `contributes`; it
 corroborates a retrieved claim its anchor-restored reading plainly matches, and
@@ -12,16 +12,19 @@ when the composite itself dropped an anchor the envelope holds (here in
 resolutions at all, a note, and an answer instructing the oracle to restate.
 Even a plain anchor-restored corroboration is refused, because the restated
 consult carries the oracle's vote through the full pipeline; a salvage now
-would land one opinion on the ledger twice.
+would land one opinion on the ledger twice. Third: a `contributes` string
+stays within the consult inputs; the Archivist's only minting channel adds
+no detail from its own knowledge (the reason-stage twin of the Interpreter's
+no-invention probe).
 
 Stage-only probe: `reason()` is called directly with a synthetic
 `InterpreterOutput`, mirroring how `test_interpreter_decomposition.py` calls
 `interpret()`. Feeding the degraded atom in by hand keeps the Interpreter's
 stochastic decomposition out of the loop, so a red isolates the Archivist.
 
-The reservoir-inspection scenario is held out: it appears in no few-shot
-example of either prompt (the prompts teach the rule on a product recall), so a
-green measures transfer, not example recall.
+The reservoir-inspection and apiary scenarios are held out: neither appears in
+a few-shot example of either prompt (the prompts teach the anchoring rule on a
+product recall), so a green measures transfer, not example recall.
 
 Measurement protocol: judge a prompt change by pass rate over repeated manual
 runs (k=5), never a single green; the stage is stochastic (Gemini 3 runs at
@@ -251,3 +254,68 @@ async def test_ungrounded_composite_fails_the_write_whole(
         ),
     )
     assert instructed.passed, instructed.reasoning
+
+
+async def test_contributes_stays_within_the_consult_inputs(
+    system: Orchestrator,
+) -> None:
+    """The `contributes` channel mints nothing: every concrete detail in the
+    stored string comes from the consult inputs, never from the Archivist's
+    own knowledge. Reason-stage twin of the Interpreter probe
+    `test_vague_hypothesis_without_context_stays_uninvented`: the same
+    no-invention promise, pinned at the other minting channel. A regression
+    probe: green on write, its value is catching future prompt drift."""
+    novel = (
+        "Hive seven at the Marrow Lane apiary swarmed on 2026-05-19 "
+        "after the colony raised nine queen cells."
+    )
+    unrelated = SearchResult(
+        id="H9",
+        content="The Grover Street tram depot switched its night shift to LED lighting in 2024.",
+        c_herd=0.4,
+        oracle_count=2,
+        last_attested=date(2026, 1, 12),
+        score=0.31,
+        proximity=0.12,
+    )
+    out = await _reason(
+        system,
+        hypothesis=novel,
+        propositions=[novel],
+        retrieved=[unrelated],
+    )
+
+    corroborated = [r.corroborates for r in out.resolutions if r.corroborates is not None]
+    assert not corroborated, (
+        f"Expected no corroboration against an unrelated neighborhood. "
+        f"resolutions: {out.resolutions!r}\nreasoning:\n{out.reasoning}"
+    )
+    contradicted = [r.contradicts for r in out.resolutions if r.contradicts]
+    assert not contradicted, (
+        f"Expected no disbelief onto the unrelated neighborhood. "
+        f"resolutions: {out.resolutions!r}\nreasoning:\n{out.reasoning}"
+    )
+    contributed = [r.contributes for r in out.resolutions if r.contributes is not None]
+    assert len(contributed) == 1, (
+        f"Expected the novel hypothesis to contribute exactly once. "
+        f"resolutions: {out.resolutions!r}\nreasoning:\n{out.reasoning}"
+    )
+
+    grounded = await judge(
+        system,
+        answer=contributed[0],
+        criterion=(
+            "The statement reports at minimum that hive seven swarmed, and "
+            "every concrete detail it carries appears in this source "
+            "material: hive seven, the Marrow Lane apiary, a swarm on "
+            "May 19 2026 in any date format, and the colony raising nine "
+            "queen cells beforehand (a causal phrasing of that sequence "
+            "passes). Rewording passes; beyond that minimum, omitting "
+            "listed details passes. Any concrete detail from outside the "
+            "source material "
+            "fails: an added cause such as overcrowding, a bee species or "
+            "breed, weather or season, an outcome of the swarm, or any name, "
+            "number, date, or place not in the list."
+        ),
+    )
+    assert grounded.passed, grounded.reasoning
