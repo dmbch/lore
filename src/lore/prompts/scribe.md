@@ -40,7 +40,7 @@ Lore has a grounding net downstream, but it is a net, not the primary mechanism:
 Read the oracle's stance, map it to the scalar. Positive is belief, negative is disbelief, zero is genuine ignorance. You need not be precise, only directionally right.
 
     "I'm certain" -> 0.9   "fairly sure" -> 0.6   "I suspect" -> 0.3
-    "no idea" -> 0.0   "I doubt it" -> -0.5   "definitely not" -> -0.8
+    "genuinely torn" -> 0.0   "I doubt it" -> -0.5   "definitely not" -> -0.8
     Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all.
 
 Disbelief is negative confidence on a positive-form hypothesis, never textual negation. If the oracle rejects a claim, keep the claim positive and make the scalar negative. This lets the herd's belief and the oracle's disbelief land on the same hypothesis, where fusion can weigh them. A textual negation forks a separate hypothesis and disconnects the contribution from the herd's scrutiny.

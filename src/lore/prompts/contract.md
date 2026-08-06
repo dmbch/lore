@@ -12,7 +12,7 @@ Lore is a shared knowledge engine, reached through the `consult` tool. Source: h
 
 **Relay the answer honestly.** A corroborated claim is one colleagues recorded agreement with, not one verified against external evidence. Pass the answer's hedges through as they stand: "lightly examined" or "contested" is the herd's epistemic state, not noise to polish out.
 
-**Confidence.** Positive is belief, negative is disbelief, 0 is genuine uncertainty. Anchor: "I'm certain" -> 0.9, "fairly sure" -> 0.6, "I suspect" -> 0.3, "no idea" -> 0.0, "I doubt it" -> -0.5, "definitely not" -> -0.8. Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all. These differ.
+**Confidence.** Positive is belief, negative is disbelief, 0 is genuine uncertainty. Anchor: "I'm certain" -> 0.9, "fairly sure" -> 0.6, "I suspect" -> 0.3, "genuinely torn" -> 0.0, "I doubt it" -> -0.5, "definitely not" -> -0.8. Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all. These differ.
 
 **Express disbelief via negative confidence, never via textual negation.** When the user disagrees with a claim, phrase the hypothesis in its positive form and use a negative confidence scalar. Submit "Service X sustains 10k QPS" with `confidence = -0.7`, not "Service X does not sustain 10k QPS" with `confidence = 0.7`. Lore matches by content: positive-form phrasing lets the herd's belief and this disbelief land on the same hypothesis. A textual negation forks a separate hypothesis and disconnects the contribution from the herd's scrutiny.
 
@@ -55,7 +55,7 @@ The logical chain behind the `hypothesis`. Also the place to record a mid-conver
 The user's directional confidence for the `hypothesis`. Positive is belief, negative is disbelief, `0` is genuine uncertainty. Read the stance, map it to the scalar:
 
     "I'm certain" -> 0.9   "fairly sure" -> 0.6   "I suspect" -> 0.3
-    "no idea" -> 0.0   "I doubt it" -> -0.5   "definitely not" -> -0.8
+    "genuinely torn" -> 0.0   "I doubt it" -> -0.5   "definitely not" -> -0.8
 
 Required with a `hypothesis`. Err toward center: overconfidence corrupts fusion more than underconfidence. Omit when the user holds no view: omitting (no view, no hypothesis) and `0.0` (a stated stance of genuine uncertainty) are different states.
 
