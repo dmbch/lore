@@ -67,9 +67,10 @@ class LedgerView(NamedTuple):
     """One hypothesis's ledger: the requested rows plus an exact summary.
 
     ``rows`` honors the caller's decay window when one is given.
-    ``oracle_count`` and ``last_attested`` are always full-history,
-    so an all-stale ledger stays distinguishable from a never-attested
-    one even when the windowed rows are empty.
+    ``oracle_count`` counts distinct attesting oracles, the synthetic
+    transfer carrier excluded. It and ``last_attested`` are always
+    full-history, so an all-stale ledger stays distinguishable from a
+    never-attested one even when the windowed rows are empty.
     """
 
     rows: list[AttestationRecord]

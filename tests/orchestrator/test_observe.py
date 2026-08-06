@@ -142,8 +142,9 @@ async def test_frontier_ignores_rows_beyond_decay_window() -> None:
     The stale row (10 half-lives old, c 0.9) would still contribute ~9e-4
     after decay, so its absence pins the fetch cutoff, not the decay
     algebra. The fresh row alone gives c_herd = 0.3 exactly.
-    oracle_count and last_attested stay full-history: this hypothesis
-    is stale, not unattested.
+    oracle_count and last_attested stay full-history: the oracle whose
+    only row aged out still counts, so this hypothesis is stale, not
+    unattested.
     """
     record = _record("aaa00001-e29b-41d4-a716-446655440000")
     by_hypotheses = {
@@ -151,7 +152,12 @@ async def test_frontier_ignores_rows_beyond_decay_window() -> None:
             make_attestation(
                 hypothesis_id=record.id, c_oracle_discounted=0.9, timestamp=_T - 10 * _HALF_LIFE
             ),
-            make_attestation(hypothesis_id=record.id, c_oracle_discounted=0.3, timestamp=_T),
+            make_attestation(
+                hypothesis_id=record.id,
+                c_oracle_discounted=0.3,
+                timestamp=_T,
+                oracle_id="oracle-2",
+            ),
         ]
     }
     repos = _repos([record], by_hypotheses=by_hypotheses)

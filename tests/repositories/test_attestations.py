@@ -357,17 +357,18 @@ class TestFindByHypotheses:
         """Stale rows leave the fused view; the summary stays full-history.
 
         Window = [t_now - 5*half_life, t_now] = [5000, 10000]: the ts=100
-        row is out, the ts=9000 row is in. oracle_count and
-        last_attested still see the whole ledger.
+        row is out, the ts=9000 row is in. oracle_count still counts the
+        oracle whose only row aged out; last_attested sees the whole
+        ledger.
         """
         h_id = await seed_hypothesis(hypothesis_repo)
         await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
-        for ts in (100, 9000):
+        for ts, oracle_id in ((100, "sub:oracle-1"), (9000, "sub:oracle-2")):
             await attestations_repo.append(
                 AttestationRecord(
                     id=generate_id(),
                     hypothesis_id=h_id,
-                    oracle_id="sub:oracle-1",
+                    oracle_id=oracle_id,
                     correlation_id="00000000-0000-0000-0000-000000000c01",
                     timestamp=ts,
                     t_oracle=0.5,
@@ -451,6 +452,103 @@ class TestFindByHypotheses:
             [h_id], window=DecayWindow(t_now=10_000, half_life=math.inf)
         )
         assert [r.timestamp for r in result[h_id].rows] == [1]
+
+    async def test_oracle_count_collapses_repeat_attestations(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """One oracle attesting twice is one examiner, not two.
+
+        Repetition is fusion's business; the count reports scrutiny.
+        """
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        for ts in (1000, 2000):
+            await attestations_repo.append(
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id="sub:oracle-1",
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=ts,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
+            )
+        result = await attestations_repo.find_by_hypotheses([h_id])
+        assert result[h_id].oracle_count == 1
+
+    async def test_oracle_count_excludes_transfer_rows(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """The synthetic transfer carrier is evidence, not an examiner.
+
+        ``oracle_count`` skips it; ``last_attested`` does not:
+        MAX(timestamp) stays full-history because a transfer touches the
+        belief. The converse state (``oracle_count`` 0 with a set
+        ``last_attested``) is representable by the SQL but unreachable: a
+        transfer row only ever lands in the same transaction as the
+        oracle attestation it dampens.
+        """
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        for ts, oracle_id in ((1000, "sub:oracle-1"), (2000, TRANSFER_ORACLE)):
+            await attestations_repo.append(
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id=oracle_id,
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=ts,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
+            )
+        result = await attestations_repo.find_by_hypotheses([h_id])
+        assert result[h_id].oracle_count == 1
+        assert result[h_id].last_attested == 2000
+
+    async def test_oracle_count_counts_distinct_oracles(
+        self,
+        hypothesis_repo: HypothesisRepository,
+        attestations_repo: AttestationsRepository,
+        request_repo: RequestRepository,
+    ) -> None:
+        """Two oracles across three rows: two examiners.
+
+        The repeat row keeps this discriminating against a raw row count.
+        """
+        h_id = await seed_hypothesis(hypothesis_repo)
+        await seed_request(request_repo, correlation_id="00000000-0000-0000-0000-000000000c01")
+        rows = ((1000, "sub:oracle-1"), (2000, "sub:oracle-2"), (3000, "sub:oracle-1"))
+        for ts, oracle_id in rows:
+            await attestations_repo.append(
+                AttestationRecord(
+                    id=generate_id(),
+                    hypothesis_id=h_id,
+                    oracle_id=oracle_id,
+                    correlation_id="00000000-0000-0000-0000-000000000c01",
+                    timestamp=ts,
+                    t_oracle=0.5,
+                    c_oracle_raw=0.5,
+                    c_oracle_discounted=0.25,
+                    c_herd=0.4,
+                    n_oracle_prior=0,
+                )
+            )
+        result = await attestations_repo.find_by_hypotheses([h_id])
+        assert result[h_id].oracle_count == 2
 
 
 async def _append_evidence_row(

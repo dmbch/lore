@@ -6,7 +6,7 @@ from collections.abc import Sequence
 import aiosqlite
 from pydantic import ValidationError
 
-from lore.domain import EvidenceInput, StorageError, TrustSignal
+from lore.domain import TRANSFER_ORACLE, EvidenceInput, StorageError, TrustSignal
 from lore.repositories.records import (
     AttestationRecord,
     DecayWindow,
@@ -94,13 +94,18 @@ class SqliteAttestationsRepository:
             rows = [dict(row) for row in await cursor.fetchall()]
             # Aggregates are always full-history: "stale since" must stay
             # distinguishable from "never attested" even when the windowed
-            # rows above are empty.
+            # rows above are empty. The count is distinct non-transfer
+            # oracles (the CASE nulls out the synthetic carrier; COUNT
+            # DISTINCT skips NULLs); MAX(timestamp) spans every row,
+            # because a transfer touches the belief.
             cursor = await self._conn.execute(
-                f"""SELECT hypothesis_id, COUNT(*) AS n, MAX(timestamp) AS last
+                f"""SELECT hypothesis_id,
+                       COUNT(DISTINCT CASE WHEN oracle_id <> ? THEN oracle_id END) AS n,
+                       MAX(timestamp) AS last
                 FROM attestations
                 WHERE hypothesis_id IN ({placeholders})
                 GROUP BY hypothesis_id""",
-                tuple(hypothesis_ids),
+                (TRANSFER_ORACLE, *hypothesis_ids),
             )
             stats = {
                 str(r["hypothesis_id"]): (int(r["n"]), int(r["last"]))
