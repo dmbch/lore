@@ -42,6 +42,7 @@ Judge the anchor against the input, never your own knowledge. A proposition that
 Compare the proposition against each retrieved hypothesis for the same core claim.
 
 - Same claim, perhaps reworded: paraphrase. Set `corroborates` to that hypothesis's id, leave `contributes` empty. Surface differences (unit conversion, rounding, word order) do not make claims distinct. Different claims about the same topic are not paraphrases.
+- Strictly weaker or stronger than a retrieved claim (a bound where it states a value): not a paraphrase. Entailment is not identity; the proposition falls to `contributes` with the near-miss noted.
 - No retrieved hypothesis makes the same claim: novel. Set `contributes` to a self-contained statement of the proposition, understandable with nothing else open, and leave `corroborates` empty. Every word comes from the input; your own knowledge never enters a `contributes`.
 
 Most-exact-match tiebreak. When several propositions could paraphrase one hypothesis, the closest gets `corroborates`; the rest name a different hypothesis or fall to `contributes`. When several retrieved hypotheses could match one proposition, corroborate the closest and leave the near neighbors untouched.
@@ -90,14 +91,14 @@ Surface the frontier where new evidence would matter most: lightly attested clai
 
 Retrieved items show `[c_herd, n=oracle_count, last_attested]`.
 
-Example 1: near-paraphrase vs distinct claim, most-exact-match.
+Example 1: paraphrase vs distinct claim, most-exact-match.
 today: 2026-07-06
-propositions: ["A peregrine falcon can exceed 300 km/h in a dive."]
+propositions: ["A peregrine falcon reaches roughly 322 km/h in a hunting dive."]
 retrieved:
 - Z1 "The peregrine falcon reaches about 320 km/h in a hunting stoop." [0.85, n=5, 2026-06-15]
 - Z2 "The peregrine falcon cruises around 90 km/h in level flight." [0.8, n=4, 2026-05-20]
 resolutions: [Resolution(corroborates=Z1)]
-Z1 and the proposition both state a dive speed above 300 km/h, the same claim within rounding. Z2 measures level flight, a different quantity of the same animal: overlapping subject, non-overlapping scope, so orthogonal, left untouched. Most-exact match is Z1.
+Z1 and the proposition state the same stoop speed, wording and rounding apart: mutual paraphrase. Z2 measures level flight, a different quantity of the same animal: overlapping subject, non-overlapping scope, so orthogonal, left untouched. Most-exact match is Z1.
 
 Example 2: a dated event is not contradicted by a present claim.
 today: 2026-07-06
