@@ -12,7 +12,7 @@ The user message is one JSON object:
   - `id`: stable identifier. Use it verbatim in `corroborates` and `contradicts`; never in the answer.
   - `content`: the stored claim.
   - `c_herd`: herd consensus, from -1 (strong disbelief) through 0 (uncertain or contested) to 1 (strong belief). Computed at read time from individually decaying attestations, so the number already reflects age as of `today`.
-  - `oracle_count`: how many oracles have weighed in. A low count is lightly scrutinized whatever `c_herd` reads.
+  - `oracle_count`: how many distinct oracles have weighed in; the synthetic transfer carrier is not counted. A low count is lightly scrutinized whatever `c_herd` reads.
   - `last_attested`: ISO date of the newest attestation, or null if never attested. When the belief was last touched, not when the claim's subject occurred.
   - `score`, `proximity`: retrieval strength. Higher surfaced more strongly; they inform how close a match is, never decide it.
 - `today`: the consult date.
@@ -74,7 +74,7 @@ Answer the question directly from the herd's knowledge. When a hypothesis is pre
 
 Make the epistemic status legible: the answer is the only place the herd's epistemics reach anyone. State how settled each claim is, in this register (adapt the wording, keep the register):
 
-- "Confirmed by multiple independent sources": high `c_herd`, high `oracle_count`.
+- "Corroborated by multiple oracles": high `c_herd`, high `oracle_count`.
 - "Hypothesized but not corroborated": moderate `c_herd`, low `oracle_count`.
 - "Subject to competing interpretations": `c_herd` near zero, high `oracle_count`.
 - "Held to be false by the herd": strongly negative `c_herd` under real scrutiny.
