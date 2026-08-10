@@ -29,7 +29,9 @@ dependencies = [
     "httpx[socks]>=0.28.1",
     # No [litellm] extra: litellm is a direct dependency above, and the extra
     # only adds instructor's litellm cap (<=1.83.7 as of 1.15.4), which pinned
-    # the whole stack behind seven proxy-only security advisories.
+    # the whole stack behind seven proxy-only security advisories. Those stay
+    # unreachable only while Lore consumes litellm as an SDK client; starting
+    # the litellm proxy re-exposes all seven.
     "instructor>=1.15.4",
     "aiosqlite>=0.22.1",
     "pydantic>=2.13.4,<3",

@@ -13,7 +13,7 @@ Heinz von Foerster's two principles govern this project:
 
 @IDEA.md is the canonical spec. Edits require explicit programmer approval.
 
-@docs/architecture.md: layers, bootstrap, concurrency. `docs/logic.md`: the math (loaded on demand when touching `src/lore/math/`).
+@docs/architecture.md: layers, bootstrap, concurrency. `docs/logic.md`: the math (loaded on demand when touching `src/lore/math/`). `docs/testing.md`: the lanes outside `check` (loaded on demand when touching the math, e2e, or prompt suites).
 
 @.claude/rules/math.md
 
@@ -41,7 +41,7 @@ uv run pyright                                       # strict type checking, zer
 uv run ruff check . && uv run ruff format --check .  # lint + format, read-only
 ```
 
-`mise run check` runs all three in parallel.
+`mise run check` runs all three in parallel. Mutation, e2e, and the golden archive run outside the commit gate; `docs/testing.md` owns their standing constraints.
 
 Conventional Commits, scope optional. Types: the canonical set (`build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`), enforced by `cz check` (see `[tool.commitizen]`). Enable the local hook once: `git config core.hooksPath .githooks`.
 
