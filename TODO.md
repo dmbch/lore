@@ -1,247 +1,202 @@
 # TODO
 
-Technical debt and findings discovered during work. Each entry: what, why it matters, options, status.
+Work we intend to do. Each entry: what, why it matters, options, status.
+
+Standing constraints (the mutation floor, the golden gate, flake posture, alias
+re-probes) live in [docs/testing.md](docs/testing.md). Landed work lives in git.
 
 ---
 
-## Mutation testing for the math suite
+## Evaluation harness: retrieval recall and prompt regression
 
-**Found:** 2026-07-25, trust-fix planning.
+**Found:** 2026-07-19, TODO sweep; carried from the prompt-audit (2026-06-21)
+and authority-lane (2026-07-03) entries, both otherwise landed.
 
-**What.** Add mutation testing for `lore.math` first, wider later (mutmut is
-the boring choice; cosmic-ray the alternative). The suite pins exact values
-(archetype trust scores, fusion triples) behind 100% line coverage, but
-coverage proves execution, not detection: a flipped sign in `_acbf_pair`, a
-dropped factor in the conviction calibration, or a `>=`/`>` swap in a window
-guard could survive any assertion looser than it looks.
+**What.** Two measurements the pipeline lacks. A retrieval-recall eval: a
+fixture corpus and query set scoring the two-lane search, so lane weights and
+`max_keywords` are tuned against numbers. Prompt regression coverage: golden
+input to expected resolution, pinning Interpreter and Archivist behavior, so a
+prompt edit cannot silently degrade decomposition or paraphrase detection.
 
-**Why it matters.** The math module is the product, and the trust-farming
-vector was caught by simulation, not by the suite. Mutation score measures
-directly whether the tests would catch the next algebra regression; the trust
-fix landed security-load-bearing branches (witness rule, conviction
-calibration) worth hardening first.
+**Why it matters.** Retrieval recall bounds paraphrase detection, and a
+mislabeled or hallucinated resolution is the one failure mode the math cannot
+digest. Both surfaces were tuned by review and live pilots; nothing measures
+either. The next prompt or weight change flies blind.
 
-**Options / open questions.** Widen scope beyond `src/lore/math` later.
-Whether the trust-scan SQL (window guards, exclusions) can be covered via the
-repository tests or needs its own target set.
+**Fixture candidates**, each a behavior already observed and worth pinning:
 
-**Landed (2026-08-05, `build/mutmut-fold-in`).** The 2026-08-02 baseline
-config is ported from `chore/mutmut-baseline` and `mise run mutation` runs on
-the dev checkout (~78 mutants/s). The old "dev checkout times out every
-mutant" diagnosis was wrong: mutmut forks a child per mutant, the tach pytest
-plugin's native thread deadlocks every forked child (macOS), and the watchdog
-files each kill as a timeout; tach landed one day after the clean worktree
-baseline. Fix: `-p no:tach` in `[tool.mutmut]` `pytest_add_cli_args`. (mutmut
-also reads `timeout_constant` / `timeout_multiplier` from `[tool.mutmut]`,
-contra the earlier "no override" note.)
+- Notes emission on the hedged gRPC composite. Pass rate dropped to ~75-80%
+  when Step 0's refusal imperatives landed, caught by one CI red plus rate runs
+  on both prompt versions, fixed by coupling err-toward-novel to its note at
+  both statement sites.
+- Decomposition consistency. One identical hedged consult stored 4 nodes in CI
+  and 1 locally; the same composite flapped 2 vs 1 across same-day golden
+  rebuilds (2026-08-10), both passing e2e. Candidate interpreter tightening: a
+  hedged clause (may, might) is not asserted outright and never becomes its own
+  atom.
+- True-contradiction recall. The newest worked examples model
+  contradiction-free resolutions.
+- The composite-collapse rule. Example 9's refusal case could over-generalize.
+- Entailment (audit F-2). The old Example 1 shape, a bound corroborated onto a
+  point value, as a Step 1 classification case: assert that a strictly weaker
+  or stronger proposition contributes with the near-miss noted. The prompt now
+  carries the rule; the fixture keeps it.
+- Corpus gaps (audit SCR-12). No e2e consult submits a negative confidence, a
+  deixis-dependent consult, or a mixed-certainty compound. The doctrine the
+  Scribe is drilled hardest on is the client behavior no e2e performs. Grow the
+  corpus with these shapes first.
 
-Score: 461 mutants, 437 killed, 24 survived = 94.8%. The three real gaps are
-closed by pinning tests: `t_oracle == 0` admitted and fully discounted,
-`build_math` wiring asserted as literals against the all-non-default
-`lore_trust.toml` fixture (the complete fixture's epistemics equal the
-defaults, which is what hid the gap), zero-age trust rows at full weight,
-plus a future-dated-row clamp pin alongside. The 24 survivors were each
-inspected (`mutmut show`) and are equivalent mutants in four classes:
-unasserted `ValueError` messages (some because `Opinion`'s constructor
-backstops a widened guard, changing only the raise site); strictly
-equivalent scalar boundaries in `to_opinion` (vacuous either way, or
-`-0.0` vs `0.0`); defensive IEEE clamps (`min(1.0, ...)` fires only on
-~1-ulp noise); and fusion routing guards that are dead by architecture
-(`fuse` pre-partitions dogmatic subsets) or diverge only for operands
-unreachable through `to_opinion`.
+**Options / open questions.** The two evals likely share a fixture corpus;
+`tests/e2e/corpus.py` seeds one from the golden archive and already names the
+role in its docstring. Decide whether evals run in CI (live LLM calls: cost and
+flake) or as a manual mise task.
 
-**Survivor floor (2026-08-05, same branch).** Ten more survivors then died
-honestly: `match=` prefixes on the existing reject tests (the service-test
-convention) distinguish the module guard from `Opinion`'s constructor
-backstop and kill the message class, and the underflow-regime threshold got
-a contract test at the exact power-of-two boundary (2⁻⁵³⁷). Pragma
-suppression of the rest was built and reverted on principle: mutmut
-registers trailing pragmas at statement level and blocks by line range, so
-every available scope also swallowed killable mutants beside the equivalent
-one (the clamp line carries the live division, the sign branches carry the
-live sign flips, the maximize block took 36 mutants for 3 equivalents).
-That violates the suppression rule now written into CLAUDE.md: scope is
-measured in silenced signal, and a suppression that cannot isolate the
-false positive is no suppression at all. The floor stands at 14 inspected
-equivalent mutants: `compute_oracle_trust__mutmut_86` (defensive clamp),
-`to_opinion` 12/23/24 (output-identical sign boundaries),
-`maximize_uncertainty` 38/48/58 (defensive clamps), `_acbf_pair`
-1/16/19/20/21/22 and `fuse` 12 (routing unreachable via `to_opinion` or
-agreeing within noise). Campaign: 461 mutants, 447 killed, 14 survived =
-97%. Any change to that survivor set, either direction, is the signal:
-a new name is a test gap, a missing one is a suppression or a dead line.
+**Scope boundary.** The Scribe representation rules (no-soften, no-sharpen,
+most-recent-wins) execute client-side and are structurally unattestable
+in-repo. The harness covers Interpreter and Archivist only; that limit is
+accepted rather than unstated.
 
-Operational note: cached verdicts stand across reruns. Source edits
-invalidate via function hashes; test-only edits do not. After changing
-tests, wipe `mutants/` (or rerun mutants by name).
-
-**Status:** landed 2026-08-05; the threshold is the named 14-survivor set,
-any delta is red. Residuals: scope still math-only; an automated manifest
-check (`mutmut results` diffed against the list above) is a candidate
-follow-up. Delete `chore/mutmut-baseline` once the fold-in reaches main.
-
----
-
-## E2E: residual risks after the speedup
-
-**Found:** 2026-07-20, deploy-flow triage; the release e2e job exceeded 30
-minutes and was removed from `release.yml` outright (2026-07-21). Rewritten
-2026-07-29: the speedup landed and the gate is restored.
-
-**What.** The 30-minute runs were a deadlock, not latency. The composition
-root's cache sweep suspended mid-DELETE holding the pool lock on the session
-loop while each test ran on its own function loop; the first consult of any
-run hung until the job timeout. Fixed on `build/e2e-loop-topology` (one
-session loop for fixtures and tests, five-minute per-test caps). Honest
-baseline after the fix: 34 tests, 379s sequential, ~100 live LLM calls.
-
-`build/e2e-speedup` then cut wall clock and call count:
-
-- **xdist.** `mise run e2e` runs `-n auto --dist loadgroup`; the ordered
-  knowledge arc is pinned to one worker via `xdist_group`. Session fixtures
-  are per-worker, each with its own archive: less cross-suite retrieval
-  pollution than the old shared file.
-- **Fast-role judging.** Every `judge()` call runs on the fast model; the
-  `grader` knob is gone. Accepted cost: interpreter suites are judged by the
-  model under test's own weights.
-- **Golden archive.** `tests/e2e/fixtures/golden.db.gz` (150KB gzipped, 1MiB
-  budget enforced) replaces the 11 live seed consults in the aggregation
-  suite. Per-worker copies re-base attestation timestamps to now; the
-  bootstrap dimension check fails a stale fixture loud. `mise run
-  golden-rebuild` rebuilds through the real pipeline; triggers are corpus,
-  prompt, model, or epistemics/trust-math changes (the fixture bakes
-  write-time ledger math). The knowledge arc keeps live seeding (the write
-  path under test) and the decay test keeps its one live seed (different
-  epistemics settings).
-- **Synthetic decay clock.** The decay test constructs `t_now` values
-  instead of sleeping through half-lives.
-- **Batched embeddings.** One request per task-type group via
-  `Embedder.embed_many` (provider, orchestrator). Latency was already
-  overlapped by gather; the win is RPM headroom under xdist. Review
-  fallout: batching left the request-scoped embedding cache dead code
-  (Gemini's task types never share a key; same-type duplicates collapse
-  into one batch), so the cache is gone and `Embedder` is just
-  `embed_many`.
-
-Measured: gate 1 (xdist + judging + synthetic clock) 34/34 in 79.4s on 10
-workers, no 429s. Gate 2 (golden + batching) 33/34 in 88.4s, aggregation
-without a single live seed consult; the one failure was the deixis probe, a
-known stochastic class, green on isolated retry. Wall clock against
-baseline: 379s to 88.4s. The gate is back in `release.yml`: the canonical
-mise invocation, a 15-minute job timeout as the deadlock backstop, tag
-needs e2e and smoke.
-
-**Why it matters.** The suite is the only end-to-end check on the release
-path. What remains is risk at its edges: unverified vendor configs, model
-behavior that shifts under alias flips, one stochastic probe that can block
-a tag.
-
-**Findings / open items.**
-
-- Release-path flake exposure: the deixis probe is a known stochastic class
-  (one failure in gate 2, green on retry); a flake blocks the tag until a
-  workflow re-run. A `pytest-rerunfailures` annotation was tried and dropped
-  (2026-08-02): it broke mutmut's runner and masks a genuinely degrading
-  probe. Accepted: re-run the release workflow on the rare flake.
-- The archivist under-grounded-atom filter landed 2026-08-03 (Step 0:
-  never `contributes`, corroborate an anchor-restored plain match,
-  otherwise refuse and note). Extended in the same change after programmer
-  review: `question` joined the anchor sources (referents only, mirroring
-  the interpreter's scoping), and a composite that itself drops an
-  envelope-held anchor fails the write whole: no resolutions, a note, an
-  answer instructing restatement. Partial salvage (corroborating a plain
-  anchor-restored match) was considered and rejected: the instructed
-  restatement re-carries the oracle's vote, so any write now double-counts
-  one opinion. A reinterpret tool may remove the restatement round trip;
-  see that entry.
-- Vendor configs for openai and bedrock: ported, live-tested 2026-08-02
-  (bedrock fails outright, openai unverified), then removed at review.
-  Gemini is the only shipped vendor default; the others run via explicit
-  `lore.toml`. See the alternative-vendor entry below.
-- Pin gemini models instead of riding `-latest`? Resolved at G4 of the
-  filter/search plan: ride `-latest`. Frontier dogfooding is itself eval
-  signal, and the alias-flip re-probe discipline below covers the risk.
-  Openai and bedrock have no rolling aliases and sit on deliberate bumps
-  regardless.
-- After any `-latest` alias flip, run e2e deliberately and re-probe tuning:
-  the 2026-07-21 flip to Gemini 3 made the inherited fast-role
-  `temperature = 0.0` pin toxic (interpreter grounding failures); vendor
-  files own temperature now.
-- flash declines to split very large compound hypotheses: resolution loss,
-  not corruption. Eval-harness material (see that entry).
-- Assessed and rejected: a default narrative for the archivist and
-  interpreter prompts; both already carry consequence-level collective
-  context.
-- Landed 2026-08-03: `plan` runs parallel to `gate` in `release.yml`;
-  `release` names `gate` in its needs, so the tag keeps the unit gate.
-
-**Status:** landed on main via PR #76 (2026-07-30); residual items open.
+**Status:** open; not started.
 
 ---
 
 ## Alternative-vendor support: gemini is the only shipped vendor
 
-**Found:** 2026-08-02, G2 live vendor verification (real openai/bedrock keys).
+**Found:** 2026-08-02, live vendor verification with real openai and bedrock
+keys.
 
-**What.** The vendor port (`gpt-5.6-terra` both roles for openai;
-`us.amazon.nova-2-lite-v1:0` both roles for bedrock) went to live verification
-and split into three findings:
+**What.** Both vendor default files were ported, live-tested, and removed. A
+bundled default is a promise (supply a key, get a working system) that neither
+vendor had earned, and lexical auto-detect ranked bedrock above gemini, so a
+deployment holding both keys silently selected the vendor that cannot complete
+a call. A foreign key now configures nothing (fail-fast `ConfigurationError`),
+and both vendors stay reachable through explicit `lore.toml` model strings.
+Restoring a default file means working the checklist below.
 
-- **Bedrock fails outright.** Nova rejects `tool_choice`
-  (`litellm.UnsupportedParamsError`). `CompletionProvider` builds its client
-  with `instructor.from_provider("litellm/<model>", async_client=True)`, which
-  defaults to TOOLS mode and forces the schema via `tool_choice`; Nova has no
-  such param, so every interpreter and archivist call dies (27/27 completion
-  tests). `reasoning_effort` was never reached. Pre-existing: the prior Nova
-  config used the same mode, so bedrock was never live-functional; G2 only
-  surfaced it.
-- **Bedrock can't use the golden fixture.** The aggregation suite loads
-  `golden.db.gz`, baked with gemini embeddings; the bootstrap health check
-  rejects Titan as an embedding-model mismatch (8 errors). Any non-gemini e2e
-  must skip the golden tests.
-- **OpenAI: untested.** Expected to pass (openai supports `tool_choice`), but
-  the `gpt-5.6-terra` model ID, `reasoning_effort` acceptance, and `embed_many`
-  batch ordering are all unconfirmed.
+**Why it matters.** Gemini is the only proven vendor, which makes the model
+layer single-sourced in practice while the config layer advertises choice.
 
-**Decision (2026-08-02, review).** Both vendor default files removed. A bundled
-default is a promise (supply a key, get a working system) neither vendor has
-earned; worse, lexical auto-detect ranked bedrock above gemini, so a deployment
-holding both keys silently selected the vendor that cannot complete a call.
-A foreign key now configures nothing (fail-fast `ConfigurationError`), and both
-vendors stay reachable through explicit `lore.toml` model strings.
-
-**Add-back checklist** (per vendor, before its default file returns):
+**Add-back checklist**, per vendor:
 
 - **Instructor mode threading (code).** Per-vendor instructor `mode` from the
   vendor toml through `ModelConfig` into `CompletionProvider`
-  (`from_provider(..., mode=...)`); `instructor.Mode.JSON` for vendors whose
-  forced-tool-choice path fails. Nova has no `tool_choice` at all. Claude on
-  Bedrock accepts it, but forced tool use excludes extended thinking, so
-  `reasoning_effort` cannot ride TOOLS mode there either: JSON mode is the
-  enabler for both bedrock targets. Open: does Nova emit reliable structured
-  output in JSON mode? (`Mode.BEDROCK_JSON` targets the native bedrock client,
-  not the litellm route; `Mode.JSON` is the general fit.)
+  (`from_provider(..., mode=...)`). Today the call passes no mode, so every
+  vendor inherits TOOLS and its forced `tool_choice`. Nova has no `tool_choice`
+  at all and dies on every interpreter and archivist call. Claude on Bedrock
+  accepts it, but forced tool use excludes extended thinking, so
+  `reasoning_effort` cannot ride TOOLS mode there either: `instructor.Mode.JSON`
+  is the enabler for both bedrock targets (`Mode.BEDROCK_JSON` targets the
+  native bedrock client, not the litellm route). Open: does Nova emit reliable
+  structured output in JSON mode?
 - **Cross-vendor e2e harness.** The suite is gemini-coupled: `require_gemini`
-  autouse-skips without a gemini key, and the golden bakes gemini embeddings.
-  Verifying another vendor needs a way past `require_gemini`, a `./lore.toml`
-  forcing the vendor, and `-k "not aggregation"` to skip the golden. A
-  vendor-parametrized e2e path is the clean long-term answer.
-- **Batch-order check.** `embed_many`'s positional unpack
-  (`[d.embedding for d in response.data]`) is verified for gemini only;
-  openai/bedrock return indexed entries where order is not contractual. A count
-  mismatch fails loud; a silent reorder stores wrong vectors permanently. Needs
-  an explicit batch-vs-singles check per vendor.
-- **Live G2 rerun** on the candidate config; only a green run restores the
-  vendor file. Candidates: openai `gpt-5.6-terra` both roles; bedrock either
-  Claude (haiku fast, sonnet reasoning) or `nova-2-lite` both roles, whichever
-  JSON mode proves out.
+  autouse-skips without a gemini key, and the golden bakes gemini embeddings,
+  so the bootstrap health check rejects any other embedding model. Verifying a
+  vendor needs a way past `require_gemini`, a `./lore.toml` forcing the vendor,
+  and a skip for the golden tests. A vendor-parametrized e2e path is the clean
+  long-term answer.
+- **Batch-order check.** `embed_many`'s positional unpack is verified for
+  gemini only; openai and bedrock return indexed entries where order is not
+  contractual. A count mismatch fails loud; a silent reorder stores wrong
+  vectors permanently. Needs an explicit batch-vs-singles check per vendor.
+- **Live rerun** on the candidate config; only a green run restores the vendor
+  file. Candidates: openai `gpt-5.6-terra` both roles; bedrock either Claude
+  (haiku fast, sonnet reasoning) or `nova-2-lite` both roles, whichever JSON
+  mode proves out.
 
 **Files:** `src/lore/providers/completion.py` (instructor mode),
 `src/lore/config/vendors/` (removed tomls in git history),
 `tests/e2e/conftest.py` (`require_gemini`, golden).
 
-**Status:** open; defaults removed 2026-08-02, add-back gated on the checklist;
-gemini the only proven vendor.
+**Status:** open; add-back gated on the checklist.
+
+---
+
+## Observatory: the full build
+
+**Found:** 2026-07-03, design discussion; revised 2026-07-04 after brainstorm.
+Spike landed 2026-07-05 via PR #44.
+
+**What.** The spike ships one model-visible entry tool (`observe`), one
+app-scoped backend tool (`frontier`), and one Prefab DataTable. The build is
+the tiered views behind it.
+
+**Why it matters.** The epistemics are invisible today: the oracle sees one
+answer string. The observatory is an attention-allocation instrument, and a
+view earns its place by changing what an oracle does next. Direct lever on
+adoption, the binding constraint.
+
+**Refactor first.** The epistemic-snapshot loop (attestation map to
+`EvidenceInput` to fused scalar to vacuous default to `last_attested`) is
+duplicated in `retrieve.enrich` and `observe.frontier`. The tiered views make
+it three or more copies that change together; extract the shared concept before
+adding the third.
+
+**Views, tiered.**
+
+- **Tier 1, attention.** Decompose the frontier by cause: unexplored (low
+  maturity, needs more eyes), stale (decay winning, needs re-attestation or a
+  dignified death), contested (ECBF cancellation, needs adjudication). Same
+  high uncertainty, three different oracle actions; all derivable today. Plus
+  the open-questions queue once `answer_confidence` lands: low-confidence
+  answers clustered by question embedding, ranked by frequency and recency, the
+  demand-side frontier.
+- **Tier 2, legibility.** Hypothesis detail with belief trajectory (every
+  attestation row snapshots `c_herd`, so the series is already stored and needs
+  no new math). Controversies on conflict metrics PD/CC/DC from
+  `lore.math.conflict`, which no read path or renderer currently references;
+  the ledger stores no resolution labels, so "contradicts activity" is not
+  derivable and the conflict signal is the better definition anyway. Hybrid
+  search, the navigation primitive every view links through.
+- **Tier 3, ambient.** Novelty feed: recent hypotheses with current rather than
+  initial `c_herd`, so newcomers already corroborated or under attack are
+  visible.
+- **Self-view (the mirror).** Own trust trajectory, recent work with outcomes
+  (own stance vs the herd then vs the herd now: the prophet mechanism made
+  personally visible), own low-confidence questions. Frame as
+  trajectory-with-context including unresolved dissents rather than
+  headline-number-first, so bold calls are not chilled before vindication.
+  Meaningless under merged `_local` identity; an OIDC-topology feature.
+- **Deferred.** FAQ and topical clusters (embedding clustering plus labeling;
+  noise at current archive size).
+- **Out.** Public oracle-trust views. A leaderboard turns an epistemic
+  instrument into a performance metric.
+
+**Also in scope.** `answer_confidence` in [0, 1] emitted by the Archivist
+alongside `answer` (one field on the existing instructor schema),
+prompt-anchored to mechanical signals it already sees: sparse retrieval, high
+fused uncertainty across the retrieved set, neighborhood orthogonal to the
+question. Stored as a nullable REAL on `requests`, never the ledger: request
+metadata, not an opinion about a hypothesis. NULL means "no question, or the
+pipeline never got there"; orphan detection stays the documented join. Answer
+text stays unstored. Plus an `[observatory]` config section, the `/observe` MCP
+prompt, and architecture.md coverage.
+
+**Constraints that scope the build.** App-scoped tools are the API, no REST
+from the iframe; they inherit the authenticated MCP connection. No app tool
+takes an `oracle_id`: identity flows from the token, so cross-oracle queries
+are unrepresentable rather than forbidden. Queries land as orchestrator read
+paths with app tools as thin adapters, same layering as `consult`. Prefab for
+v1, presentation only, swappable for hand-authored `ui://` HTML without
+touching a tool. The surface is read-only; manual assertions are parked, not
+vetoed, because contribution is a byproduct of working and read-only keeps the
+security story at one sentence. `observe` returns the Component
+unconditionally, which is the only idiom fastmcp supports.
+
+**Open questions / risks.**
+
+- The frontier is bounded by recency (`find_recent`, `FRONTIER_LIMIT = 25`),
+  the spike's honest answer to the O(archive) read-time fusion cost. A true
+  archive-wide frontier still needs a bound.
+- Conversation-bound: no ambient or shareable view. Residual case for a minimal
+  server-rendered observatory page; the orchestrator read paths feed either
+  surface.
+- Two fastmcp gaps are worth upstream issues: the dev harness's browser client
+  declares no capabilities at initialize, and reload mode runs stateless HTTP
+  that drops initialize params server-side, so `client_supports_extension` is
+  unreachable under fastmcp's own tooling. Also worth reporting: Ctrl-C on
+  `fastmcp dev apps` dies in a cyclopts asyncio traceback.
+
+**Status:** spike landed; full build not started.
 
 ---
 
@@ -252,23 +207,22 @@ gemini the only proven vendor.
 **What.** The archivist reasons over a fixed neighborhood: the orchestrator
 runs two-lane retrieval once, enriches, and hands over the results. A search
 tool would let it query the archive mid-reasoning through a bounded
-tool-calling loop: probe a suspected paraphrase, chase a contradicted
-claim's neighbors, widen a thin neighborhood before declaring novelty.
+tool-calling loop: probe a suspected paraphrase, chase a contradicted claim's
+neighbors, widen a thin neighborhood before declaring novelty.
 
 **Why it matters.** Retrieval bounds paraphrase detection, and a missed
 paraphrase becomes a false orthogonal-novel on the append-only ledger: the
-failure mode the math cannot digest. Today the archivist cannot ask for
-more; the fan-out constant is the only knob.
+failure mode the math cannot digest. Today the archivist cannot ask for more;
+the fan-out constant is the only knob.
 
-**Options / open questions.** Expose `search_candidates` + `enrich` as the
+**Options / open questions.** Expose `search_candidates` plus `enrich` as the
 tool (read-only, pre-transaction: the write path is untouched); embed tool
-queries via `embed_many`; cap calls per consult (cost and latency multiply
-per consult, and the e2e wall clock just got paid down). Instructor
-tool-calling vs. a hand-rolled loop. Prompt change: golden-rebuild trigger.
-IDEA.md's Stage 2/3 describe single-shot retrieval, so the interface change
-needs explicit approval there. Interacts with the under-grounded-atom
-filter (e2e entry): a probe tool may be that filter's mechanism. A
-reinterpret tool for wholesale Interpreter failures (see that entry) would
+queries via `embed_many`; cap calls per consult, since cost and latency
+multiply per consult and the e2e wall clock was just paid down. Instructor
+tool-calling vs a hand-rolled loop. Prompt change: golden-rebuild trigger.
+IDEA.md's Stage 2 and 3 describe single-shot retrieval, so the interface change
+needs explicit approval there. Interacts with the under-grounded-atom filter: a
+probe tool may be that filter's mechanism. The reinterpret tool below would
 ride the same loop.
 
 **Status:** open; not started.
@@ -282,11 +236,11 @@ question-as-anchor extension.
 
 **What.** When Step 0 detects a wholesale Interpreter failure (the composite
 itself dropped an envelope-held anchor), the archivist fails the write whole
-and the answer asks the oracle to restate. Vote conservation demands the
-fail: any partial write would be voted again by the restated consult. But
-the round trip spends oracle attention on an infrastructure failure. Wanted:
-the archivist triggers a re-run of the Interpreter within the same consult,
-gets fresh propositions, and proceeds. The single vote lands once, properly
+and the answer asks the oracle to restate. Vote conservation demands the fail:
+any partial write would be voted again by the restated consult. But the round
+trip spends oracle attention on an infrastructure failure. Wanted: the
+archivist triggers a re-run of the Interpreter within the same consult, gets
+fresh propositions, and proceeds. The single vote lands once, properly
 grounded, and the scribe never hears about it.
 
 **Why it matters.** The restatement is toil the system can absorb. The
@@ -296,469 +250,17 @@ fallback, so the epistemics lose nothing.
 
 **Options / open questions.** Two shapes. A tool in the archivist's loop,
 alongside the search tool: one bounded tool-calling loop hosts both, same
-instructor-vs-hand-rolled decision, same IDEA.md Stage 2/3 approval (G3).
-Or an orchestrator-level retry: the archivist returns a structured
-reinterpret signal and the orchestrator loops interpret → reason once; no
-tool-calling machinery, archivist stays schema-driven. Either way: a hint
-channel (the archivist knows which reference failed and which source names
-it; a hinted re-run beats a blind one), a cap (one reinterpretation per
-consult, then fail-whole plus the restatement instruction), and the
-wholesale-failure e2e probe keeps pinning the fallback. Cost is one extra
-fast-model call on the failure path only.
+instructor-vs-hand-rolled decision, same IDEA.md Stage 2 and 3 approval. Or an
+orchestrator-level retry: the archivist returns a structured reinterpret signal
+and the orchestrator loops interpret to reason once, with no tool-calling
+machinery and the archivist staying schema-driven. Either way: a hint channel
+(the archivist knows which reference failed and which source names it, and a
+hinted re-run beats a blind one), a cap (one reinterpretation per consult, then
+fail-whole plus the restatement instruction), and the wholesale-failure e2e
+probe keeps pinning the fallback. Cost is one extra fast-model call on the
+failure path only.
 
 **Status:** open; not started.
-
----
-
-## Evaluation harness: retrieval recall and prompt regression
-
-**Found:** 2026-07-19, TODO sweep; carried from the prompt-audit (2026-06-21) and
-authority-lane (2026-07-03) entries, both otherwise landed.
-
-**What.** Two measurements the pipeline lacks. A retrieval-recall eval: a fixture corpus
-and query set scoring the two-lane search, so lane weights and `max_keywords` are tuned
-against numbers. Prompt regression coverage: golden input → expected resolution cases
-pinning Interpreter and Archivist behavior, so a prompt edit cannot silently degrade
-decomposition or paraphrase detection.
-
-**Why it matters.** Retrieval recall bounds paraphrase detection, and a mislabeled or
-hallucinated resolution is the one failure mode the math cannot digest. Both surfaces
-were tuned by review and live pilots; nothing measures either. The next prompt or weight
-change flies blind.
-
-**Concrete cases (2026-08-04, the notes-regression incident).** Rate-measured
-prompt behaviors, each a ready fixture for the harness:
-
-- Notes emission on the hedged gRPC composite: pass rate dropped to ~75-80%
-  when Step 0's refusal imperatives landed (the near-miss coupling was
-  description-only), caught by one CI red plus k=5/k=10 rate runs on both
-  prompt versions, fixed by coupling err-toward-novel to its note at both
-  statement sites. Pin at k>=10; a single green passes at base rate and
-  proves nothing.
-- Decomposition consistency: one identical hedged consult stored 4 nodes in
-  CI and 1 locally (split vs when-unsure-don't-split); the same composite
-  flapped 2 vs 1 across same-day local golden rebuilds (2026-08-10), both
-  passing e2e. Candidate interpreter
-  tightening: a hedged clause (may, might) is not asserted outright and never
-  becomes its own atom. Needs its own measured pass; sibling of the flash
-  compound-split line in the e2e entry.
-- Fresh-context review flagged two more optional-output behaviors worth rate
-  pins: true-contradiction recall (the newest worked examples model
-  contradiction-free resolutions) and the composite-collapse rule (Example
-  9's refusal case could over-generalize).
-
-**Audit fold-in (2026-08-06, the 2026-08-01 panel; see the triage entry).**
-
-- Entailment fixture (F-2): the old Example 1 shape (a bound corroborated
-  onto a point value) as a Step 1 classification case; rate-pin that a
-  strictly weaker or stronger proposition contributes with the near-miss
-  noted. The prompt now carries the rule; the fixture keeps it.
-- Corpus gaps (SCR-12): no e2e consult submits a negative confidence, a
-  deixis-dependent consult, or a mixed-certainty compound; the doctrine
-  the Scribe is drilled hardest on is the client behavior no e2e
-  performs. Grow the corpus with these shapes first.
-- Acknowledged limit (ENG-6): the Scribe representation rules (no-soften,
-  no-sharpen, most-recent-wins) execute client-side and are structurally
-  unattestable in-repo; the harness covers Interpreter and Archivist
-  only, and that boundary is accepted rather than unstated.
-
-**Options / open questions.** The two evals likely share a fixture corpus; a
-first corpus is seeded at `tests/e2e/corpus.py` (the golden-archive seeds). The
-aged-attestation e2e probe (`800286c`) seeds the prompt side. Decide whether evals run in
-CI (live LLM calls: cost and flake) or as a manual mise task.
-
-**Status:** open; not started.
-
----
-
-## Audit triage (2026-08-01 panel)
-
-**Found:** 2026-08-01, six-chair panel audit with critic cross-examination
-(AUDIT.md, untracked). Verdict: releasable with the six S2 findings fixed;
-zero S1 findings survived. This entry is self-contained; AUDIT.md can be
-discarded at leisure.
-
-**Landed (2026-08-06, `build/audit-s2-pass`).** The S2 set plus siblings:
-
-- F-1: `attestation_count` renamed `oracle_count` end to end; the
-  aggregate counts distinct oracles (both backends), the `_transfer`
-  carrier among them: one counting policy across the read model,
-  maturity, and the witness rule. (The pass first excluded the carrier;
-  reversed on review to match maturity's read.) The register phrase
-  demoted to "Corroborated by multiple oracles"; the gloss says what
-  the number is, transferred prior included. Known residual: on a claim
-  born contradicting others, one voice in the count is the herd's
-  prior, not a person; the gloss names it.
-- F-2: Example 1 models a genuine rounding variant; Step 1 gained the
-  entailment bullet (strictly weaker or stronger falls to `contributes`
-  with the near-miss noted).
-- F-3: logic.md stops crediting uncertainty maximization with correlation
-  mitigation (Eq. 3.27 preserves P); Known Residuals names the mechanism
-  and the real bounds.
-- F-4: `test_contributes_stays_within_the_consult_inputs` probes the
-  Archivist's minting channel, symmetric with the Interpreter's.
-- F-5: the confidence ladders anchor "genuinely torn" to 0.0; the no-view
-  idiom no longer maps to an attestation.
-- F-6 plus LOG-2: `test_prophet_outearns_conformist_outearns_bandwagoner`
-  (deployment-regime bandwagoner, previously untested) and
-  `test_trust_spent_on_bad_claim_drops_at_next_scan`.
-- Gate outcome: goldens rebuilt under the final prompt bytes, e2e green
-  twice (39/39 both runs, the new probe included).
-
-**The wording family** (word-level substitutions; location, then fix):
-
-- SCI-2 residue (IDEA.md:106, logic.md slogan sites): "settled hypotheses
-  earns nothing: the information factor collapses to zero" conflates
-  settled (info small, ~0.53 trust) with dogmatic (info = 0 exactly); fix
-  the gloss, plus one logic.md clause noting the exact limit is
-  unreachable in herds the system itself builds (K >= 1 keeps
-  |c_herd| < 1). IDEA.md half approval-gated, proposal below.
-- CON-2/LIN-9 (archivist.md:43,:161): "asserting that claim is false"
-  overstates a graded, attributed disbelief row; if rewording to
-  "recording the oracle's disbelief", keep the vividness: it is the
-  deterrent behind omit-when-unsure.
-- SCI-1 (IDEA.md Stage 3; archivist.md:43; architecture.md): "positive
-  attestation" / "disbelief attestation" glosses are true only for c > 0
-  and contradicted by Stage 4's sign rule; reword sign-neutral.
-- CON-4 (logic.md:951,:953,:989): "false opinion" in attack prose imports
-  a truth standard the algebra cannot observe; "bad claim" or "insincere
-  attestation", as IDEA.md already says.
-- CON-5/LIN-8 (contract.md:5,:23; archivist.md:1; scribe.md:1): all three
-  LLM-facing prompts self-describe as "knowledge engine" vs the canonical
-  "shared archive"; align on archive or record the split as intentional.
-- SCI-7 (README.md:278; IDEA.md:211): "how fast knowledge ages" is a
-  world-frame slip; "how fast unrefreshed attestations fade". IDEA.md
-  half approval-gated.
-- SCI-9/ENG-7 (contract.md:64): "how little the archive knows", the sole
-  hit of the full voice sweep; "how little the herd has established".
-- LIN-7 (contract.md:65): the one "oracle" in the user-register document;
-  "when the user asks".
-- SCR-10 (contract.md:13): the negative ladder is coarser than the
-  positive and "I doubt it" -> -0.5 overshoots mild skepticism; add
-  "I'm skeptical" -> -0.3.
-- LIN-10 (archivist.md:41): mutual exclusivity presupposes coreference of
-  bare definites, never named as a precondition; one clause: if the
-  subjects could denote different things, omit.
-- LIN-4 (scribe.md:46; contract.md:15): surviving sliver is standalone
-  negative existentials; one clarifying clause, only if evals show
-  divergence.
-- LIN-5 (scribe.md:40-46): presupposition rejection vs assertion denial;
-  watch-item; the right artifact is an eval fixture, not prompt bytes.
-- SCR-2 (scribe.md:5-9): one line assigning the correcting consult when
-  an already-contributed position is later reversed.
-- SCR-5 (contract.md:45): no Scribe-facing surface says a compound's
-  single scalar is inherited whole by every atom; one interface line:
-  claims held at different confidence go in separate calls.
-- SCR-9 (scribe.md; contract.md:64): `observe` is invisible to the
-  persona and possibly UI-shaped in text-only clients; one clause in the
-  moments list, one warning in the description.
-- SCR-11 (README `[prompts]` table): the archive's language is never
-  named as an operator knob for non-English herds; one sentence.
-- CON-1 nit (archivist.md:109): "Both are true of the world" reads truth
-  where the Archivist judges compatibility; "can both be true" (line 58
-  already carries the modal). Prompt bytes: rides the next prompt pass,
-  not worth a golden gate alone.
-
-**The ownership-sentence family** (each fix one sentence owning an
-instrument choice; the IDEA.md items are proposals, wording below):
-
-- ENG-1 (scribe.md:44,:53; IDEA.md Ingestion): the ladder's center-pull
-  and 0.9 cap are a soft-knee limiter on the input chain, owned in the
-  prompt, unowned in the spec.
-- ENG-4/CON-8 (IDEA.md Stage 3): frontier surfacing is the instrument
-  steering herd attention, the strongest instrument-to-herd feedback
-  loop; owned in TODO.md, not the spec.
-- CON-6 (IDEA.md:35): "mechanical pre-processing step" claims a
-  neutrality the same paragraph's lens figure denies; drop "mechanical",
-  leave README.md:256 (operational, justifies temperature 0.0).
-- SCI-6 (IDEA.md Stage 3, contradicts bullet): a contradicts row records
-  an Archivist inference under the oracle's identity; one sentence owns
-  the delegation; skip certainty-discount machinery (YAGNI).
-- SCR-7 (scribe.md:31; provenance docs): provenance's "verbatim" is
-  verbatim-of-the-Scribe, one hop from the oracle; own that, plus the
-  cheap norm: quote the oracle's operative words in `reasoning`.
-- CON-7 (docs/logic.md:154): `c_herd` alone cannot distinguish contested
-  from unexamined; name `oracle_count` and the conflict metrics as the
-  recovery channel at the ECBF section.
-- ENG-2 (archivist.md:61): the ledger path has airtight input-only
-  guards, the answer has none; extend the guard one clause: the answer
-  states only what the retrieved set supports.
-
-**The test/theory family:**
-
-- LOG-3: the service-level future-timestamp clamp is an undocumented
-  epistemic commitment, in tension with the operator-level rejection of
-  negative time; one sentence in logic.md's boundary cases.
-- LOG-4: tests/math/test_decay.py:8-10 calls the decay formula "custom"
-  where logic.md correctly identifies Def. 14.6 with time-varying
-  discount; align the header.
-- LOG-5: the loudest degenerate, (1,0,0) fused with (0,1,0) cancels to
-  vacuous, is never stated as a test; one test.
-- LOG-6: the full-penalty extreme of the informative-commitment table
-  (signal 1, align 0) is unattested, punishment asymmetry half-tested;
-  one test.
-- LOG-11: "surfaces uncertainty clusters" (IDEA.md Stage 3, read path)
-  has no test or judge criterion; one e2e case: settled plus contested
-  hypothesis, judge asserts the contested one is flagged.
-- SCI-8/LOG-10: the Monte-Carlo archetype bands in logic.md's Trust
-  Dynamics Clusters rest on an uncommitted, unrerunnable artifact; commit
-  the simulator as a manual mise task, or annotate the table as a dated
-  one-off.
-- ENG-5: archivist `notes` are addressed "to a future oracle" but land
-  only in structlog at DEBUG; reword the address, or persist notes on
-  provenance (programmer's call).
-- LOG-7/8/9 (S4, one sentence each): the opinion constructor's clamp is
-  undocumented; `maturity_k = inf` serves analytically in a
-  promise-bearing math test while config rejects it (own the analytical
-  device where it is used, do not teach config to accept inf);
-  "conviction" is overloaded in decay prose.
-- Read-after-write (promise table, PARTIAL): rollback is attested, but
-  no test writes through consult and reads the same state back through
-  the read path. One integration test; pin time (inf half-life, or read
-  at the write timestamp), else decay makes the comparison legitimately
-  unequal.
-
-**The indexical-present residual** (SCI-4 + LIN-3, merged by the critic).
-One Known Residuals entry for docs/logic.md, proposed text:
-
-> **The indexical present.** Two tacit conventions govern reference time:
-> self-dated claims are temporal, undated present-tense claims are
-> indexically about now. Examples and tests pin both directions; no prose
-> states either. The indexical reading is load-bearing (supersession
-> works by contradiction because standing claims stay about now), and its
-> cost is real: genuine supersession of a standing claim fuses toward
-> zero, and the register reads change as controversy. Accepted; no
-> supersession machinery (tried and rejected).
-
-**IDEA.md proposals** (approval-gated per CLAUDE.md; this entry proposes,
-the programmer disposes):
-
-- LIN-6 (Interface, "One MCP tool"): stale against the shipped contract.
-  Proposed: "Two MCP tools: `consult`, the epistemic interface, and
-  `observe`, a read-only view of the uncertainty frontier. The epistemic
-  write interface is still exactly one tool."
-- ENG-1 (Ingestion): proposed sentence: "The ladder's pull toward center
-  and its 0.9 cap are deliberate input compression: a soft-knee limiter
-  the instrument applies to stated certainty, owned as character rather
-  than claimed as neutrality."
-- ENG-4/CON-8 (Stage 3, read path): proposed sentence: "Surfacing the
-  frontier is the instrument steering herd attention; the steering is
-  designed, not incidental."
-- CON-6 (IDEA.md:35): drop the word "mechanical".
-- SCI-6 (Stage 3, contradicts bullet): proposed sentence: "A contradicts
-  attestation records the Archivist's mutual-exclusivity inference under
-  the oracle's identity; `correlation_id` and verbatim provenance keep
-  the delegation auditable."
-- SCI-2 gloss (IDEA.md:106): proposed: "An oracle rubber-stamping settled
-  hypotheses earns almost nothing: the information factor shrinks toward
-  zero as the herd settles, and the exact zero is the dogmatic limit the
-  system itself never builds."
-- SCI-7 (IDEA.md:211 config cell): "how fast unrefreshed attestations
-  fade."
-
-**Open questions** (carried from the Scribe chair, for the programmer):
-
-1. Whose words survive? Provenance stores the Scribe's rendering; the
-   oracle's utterance exists nowhere, and Lore cannot audit the
-   difference even in principle. Is a verbatim-quote norm in `reasoning`
-   enough, or does provenance want an optional utterance column someday?
-2. Is "I'm certain" -> 0.9 doctrine-mandated softening? The schema
-   accepts 1.0 and the pipeline digests dogmatic input by design; no doc
-   owns the tension with no-soften. What does the Scribe do with "log it
-   at full certainty, that's an order"?
-3. Should vacuous attestations count as scrutiny? A 0.0 row raises
-   maturity and witnesses trust scans while carrying zero evidence:
-   genuine examined inconclusiveness, or a hole?
-4. Can the Scribe calibrate "multiple"? In a herd of two, "multiple" is
-   one colleague, once. Should herd cardinality reach the answer
-   register?
-5. Whose confidence is reported confidence? "Berghaus was so sure" admits
-   two honest transcriptions at different levels, a world-claim or a
-   literature-claim; the level choice changes what the herd later
-   retrieves, and no doc decides it.
-
-**Status:** S2 set landed 2026-08-06 on `build/audit-s2-pass`; review
-follow-ups through 2026-08-10 (the F-1 reversal, goldens rebuilt, e2e
-39/39 twice on the final bytes); the families are open, none started;
-IDEA.md items are proposals until approved. Eval-harness material folded
-into that entry.
-
----
-
-## litellm security bumps blocked by the instructor + pydantic pin chain
-
-**Found:** 2026-07-03, dependency security triage.
-
-**What.** Seven open Dependabot advisories target litellm (2 critical, 5 high), all in
-the litellm proxy server: auth bypass, SQL injection, SSTI, MCP stdio RCE, guardrail
-sandbox escape, API-key and role endpoints. Lore uses litellm as an SDK client only
-(`litellm.aembedding`, instructor-wrapped completions, `get_model_info`, the `otel`
-callback) and never starts the proxy, so none are reachable. They also cannot be cleared
-by upgrading: `instructor==1.15.4` (latest) caps `litellm<=1.83.7`, and `litellm==1.83.7`
-hard-pins `pydantic==2.12.5`, which conflicts with our `pydantic>=2.13.4`. Every fix
-version (1.83.7 / 1.83.10 / 1.83.14 / 1.84.0) is out of reach without downgrading pydantic
-or dropping instructor.
-
-**Why it matters.** The security dashboard shows standing criticals that are not
-exploitable here. That trains the reflex to ignore it and can mask a future reachable
-alert. The reflex remedy, bumping litellm, silently fails to resolve or forces a pydantic
-downgrade.
-
-**Options / open questions.**
-
-- Watch instructor releases. The moment one lifts the `litellm<=1.83.7` cap (and pulls a
-  litellm that drops the `pydantic==2.12.5` pin), the whole litellm stack jumps to current
-  in one grouped PR under the new dependabot config.
-- The seven alerts are dismissed on GitHub as `not_used`. Reopen and re-triage once the
-  upgrade path opens.
-- Reachability holds only while Lore stays an SDK consumer. Adopting the litellm proxy
-  re-exposes all seven.
-
-**Status:** resolved 2026-07-31 on `build/dependabot-uv-sync`. The `[litellm]`
-extra is dropped: litellm is a direct dependency, and the extra only contributed
-instructor's cap. litellm sits at 1.94.0 with the whole stack bumped, and the
-filterwarnings entry is gone with it. macOS builds litellm's sdist with a
-mise-provisioned Rust toolchain until upstream ships macOS wheels
-(BerriAI/litellm#31261). The seven dismissed alerts clear once main carries the
-new lock; instructor's litellm compatibility now rests on the e2e gate (34/34
-against 1.94.0) instead of instructor's own cap.
-
----
-
-## Observatory: MCP-native exploration app (MCP Apps)
-
-**Found:** 2026-07-03, design discussion; revised 2026-07-04 after brainstorm.
-
-**What.** A read-only exploration UI (the observatory) served through the MCP Apps
-extension (SEP-1865; host-side spec finalizes 2026-07-28). One model-visible entry tool,
-`observe`, returns UI rendered in the client's sandboxed iframe; everything behind it is
-app-scoped backend tools the model never sees and the context window never carries.
-`/observe` ships as an MCP prompt (client slash command) that nudges the model to call
-the entry tool. `consult` and `observe` are the entire model-facing surface.
-
-FastMCP 3.4.2 (the current floor) ships the machinery: `fastmcp.apps.FastMCPApp`,
-`AppConfig`, `ResourceCSP`, prefab synthesis, `fastmcp apps dev`. Idiom (verified by the
-spike, 2026-07-04): build a `FastMCPApp(name)` provider, register the entry tool with
-`@app.ui()` and backend tools with `@app.tool()`, then `server.add_provider(app)`. Not
-`server.tool(app=...)`. `@app.tool()` defaults to `visibility=["app"]` (the model never
-sees it); `@app.ui()` to `visibility=["model"]` and auto-wires the prefab renderer
-resource. `visibility` is the `AppConfig` spelling under the decorator, chosen via the
-`model=` flag, not a `server.tool` kwarg. The decorators return the wrapped function
-unchanged, so tool bodies can live at module scope and be unit-tested directly.
-
-**Why it matters.** The epistemics are invisible today: the oracle sees one answer
-string. The observatory is an attention-allocation instrument; a view earns its place by
-changing what an oracle does next. Direct lever on adoption, the binding constraint.
-
-**Decisions locked.**
-
-- `consult` and `observe` are the only model-facing tools. The one-tool discipline
-  survives as a two-tool discipline.
-- No REST from the iframe. App-scoped tools are the API; they inherit the authenticated
-  MCP connection. No app tool ever takes an `oracle_id` parameter: identity flows from
-  the token, so cross-oracle queries are unrepresentable rather than forbidden.
-- Queries land as orchestrator read paths; app tools are thin adapters, same layering as
-  `consult`. The read paths are the real work (new read use cases, repo Protocol
-  extensions on both backends under the drift guard) and survive any later change of
-  surface; only search touches an LLM provider (query embedding).
-- Prefab (prefab-ui, pinned) for v1. Presentation only, swappable for hand-authored
-  `ui://` HTML without touching a tool.
-- The surface is read-only. Manual assertions parked, not vetoed: a validated form could
-  capture reasoning and confidence adequately, but contribution is a byproduct of
-  working, never a separate task, and read-only keeps the app's security story at one
-  sentence.
-- Answer confidence, not answer text, lands in provenance. The Archivist emits
-  `answer_confidence` in [0, 1] alongside `answer` (one field on the existing instructor
-  schema), prompt-anchored to mechanical signals it already sees: sparse retrieval, high
-  fused uncertainty across the retrieved set, neighborhood orthogonal to the question.
-  Stored as a nullable REAL on `requests`, never the ledger: request metadata, not an
-  opinion about a hypothesis. NULL means "no question, or the pipeline never got there";
-  orphan detection stays the documented join. Answer text stays unstored (display
-  material, not queryable; revisit if a FAQ view needs payload).
-- Public oracle-trust views are out. A trust leaderboard turns an epistemic instrument
-  into a performance metric. Self-view is in (see views below).
-
-**Views, tiered.**
-
-- Tier 1, attention: the frontier decomposed by cause: unexplored (low maturity, needs
-  more eyes), stale (decay winning, needs re-attestation or a dignified death),
-  contested (ECBF cancellation, needs adjudication). Same high u, three different oracle
-  actions. All derivable today. Plus the open-questions queue once `answer_confidence`
-  lands: low-confidence answers clustered by question embedding, ranked by frequency and
-  recency: demand-side frontier.
-- Tier 2, legibility: hypothesis detail with belief trajectory (every attestation row
-  snapshots `c_herd`; the time series is already stored, zero new math); controversies
-  on conflict metrics PD/CC/DC from `lore.math.conflict` (the ledger stores no
-  resolution labels, so "contradicts activity" is not derivable; the conflict signal is
-  the better definition anyway); hybrid search (two-lane retrieval as-is, the navigation
-  primitive every view links through).
-- Tier 3, ambient: novelty feed: recent hypotheses with current (not initial) `c_herd`,
-  so newcomers already corroborated or under attack are visible.
-- Self-view (the mirror): own trust trajectory (`t_oracle` series from own rows, current
-  score via the existing trust scan), recent work with outcomes (own stance vs. herd
-  then vs. herd now: the prophet mechanism made personally visible), own low-confidence
-  questions. Frame as trajectory-with-context including unresolved dissents, not
-  headline-number-first, to avoid chilling bold calls before vindication. Meaningless
-  under merged `_local` identity; an OIDC-topology feature.
-- Deferred: FAQ and topical clusters (embedding clustering plus labeling; noise at
-  current archive size).
-
-**Open questions / risks.**
-
-- The frontier query is O(archive) read-time fusions. Trivial at dogfooding size; bound
-  it (recent-activity window or LIMIT) before it matters.
-- Client split (decided 2026-07-16): Claude Desktop is the primary observatory client;
-  Claude Code consults but is not an observatory target. `observe` returns the Component
-  unconditionally (the idiomatic `@app.ui` shape); text-only clients see fastmcp's
-  `[Rendered Prefab UI]` placeholder, accepted.
-- Host-side spec is pre-final until 2026-07-28; FastMCP absorbs the churn, Prefab is
-  pinned. Marginal risk.
-- Conversation-bound: no ambient or shareable view. Residual case for a minimal
-  server-rendered observatory page (adoption metrics, a PLAN.md follow-up); the
-  orchestrator read paths feed either surface.
-
-**Spike (landed 2026-07-04, branch `build/observatory-spike`).** One `observe` entry
-tool, one app-scoped `frontier` backend tool, one Prefab DataTable with uncertainty
-rendering. Findings:
-
-- Prefab expresses the frontier: `prefab_ui.components.DataTable(columns=[DataTableColumn(
-  key, header, sortable, format, align)], rows=[dict], search, paginated)`; `DataTable` is
-  a `Component`. Cells are plain dicts keyed by column `key`; per-column `format`
-  (`number:2`, `date`, ...) drives display. An `@app.ui` returning `Component`
-  builds with no output-schema trouble.
-- Idiom corrected (see above): `FastMCPApp` decorators plus `add_provider`, not
-  `server.tool(app=...)`.
-- Text fallback reversed (2026-07-16, live `fastmcp dev apps` acceptance). The spike
-  gated on `ctx.client_supports_extension(UI_EXTENSION_ID)` with a plain-text table for
-  non-UI clients, per the `client_supports_extension` docstring. Two fastmcp findings
-  killed it: the dev harness's browser client declares no capabilities at initialize, so
-  the gate is unreachable under fastmcp's own tooling (iframe waits forever), and reload
-  mode (`--reload`, the default) runs stateless HTTP, which drops initialize params
-  server-side, false-ing the gate for every client. None of fastmcp's shipped app
-  providers gate; the supported idiom is Component, always. Both fastmcp gaps are worth
-  an upstream issue (also: Ctrl-C on `fastmcp dev apps` dies in a cyclopts asyncio
-  traceback).
-- Frontier bounded by recency (`find_recent` + `FRONTIER_LIMIT=25`), the honest spike
-  answer to the O(archive) open question above. A full-archive frontier still to revisit.
-- Uncertainty surfaced as `1 - |c_herd|` via `MathService.compute_uncertainty` (projection
-  composition, no new formula); `FrontierEntry` is the frozen row type.
-- The epistemic-snapshot loop (attestation map → `EvidenceInput` → fused scalar →
-  vacuous default → `last_attested`) now has two occurrences: `retrieve.enrich` and
-  `observe.frontier`. The tiered views make it three-plus that change together: extract
-  the shared concept during the full build.
-
-Non-goals, deferred to the full build: the other tiered views, the `answer_confidence`
-provenance column, self-view, the `/observe` MCP prompt, an `[observatory]` config
-section, architecture.md updates.
-
-**Status:** spike reviewed 2026-07-05, landed on main via PR #44; rebased onto the
-fastmcp-flow main 2026-07-13. The rebase aligned the spike with the landed error posture: tool-side scrubs
-deleted in favor of fastmcp's native masking, the `DomainInvariantError` wrap extended
-to `frontier`, and `last_attested` retyped to a calendar date (`date | None`) matching
-`SearchResult`. 2026-07-16: text fallback dropped for the unconditional Component (see
-findings); the component branch is verified over a real client session (prefab
-structured content on the wire). Live desktop-iframe render verified. Next: full build
-per the tiered views.
 
 ---
 
@@ -780,15 +282,212 @@ an inspectable artifact. The capture side is already IDEA.md doctrine: storage
 is cheap, information is valuable.
 
 **Options / open questions.** The MCP Apps machinery is proven by the
-observatory spike (see that entry): same FastMCPApp idiom, app-scoped backend
-tools. Separate app vs. a gated view inside the observatory; either way the
-debug entry tool registers only when the var is set, so the model-facing
-surface stays two tools in normal deployments. Capture vs. display gating:
-capture always (past consults stay debuggable when the app is enabled later) or
-only under the var? Storage shape: one consult makes several model calls, so a
-sibling table keyed by correlation ID fits better than columns on `requests`.
-Where capture hooks: the provider layer (one seam for both roles) vs. the
-orchestrator. Model I/O embeds retrieved-neighbor content; fine on-prem, but
-the security story should say so.
+observatory spike: same FastMCPApp idiom, app-scoped backend tools. Separate
+app vs a gated view inside the observatory; either way the debug entry tool
+registers only when the var is set, so the model-facing surface stays two tools
+in normal deployments. Capture vs display gating: capture always (past consults
+stay debuggable when the app is enabled later) or only under the var? Storage
+shape: one consult makes several model calls, so a sibling table keyed by
+correlation ID fits better than columns on `requests`. Where capture hooks: the
+provider layer (one seam for both roles) vs the orchestrator. Model I/O embeds
+retrieved-neighbor content; fine on-prem, but the security story should say so.
 
 **Status:** open; not started.
+
+---
+
+## Audit residual (2026-08-01 panel)
+
+**Found:** 2026-08-01, six-chair panel audit with critic cross-examination.
+Verdict: releasable with the six S2 findings fixed; zero S1 findings survived.
+The S2 set landed via PR #92. AUDIT.md is gone, so this entry is the only
+record of what remains.
+
+Items carry a quoted anchor rather than a line number: the original line
+references rotted within days of being written. Grep the anchor.
+
+**Wording fixes.** Each is a word-level substitution.
+
+- **SCI-2 residue.** IDEA.md, "earns nothing: the information factor collapses
+  to zero", and the sibling slogan "Rubber-stamping a settled answer earns
+  nothing." Both conflate settled (info small, trust ~0.53) with dogmatic (info
+  exactly 0). Fix the gloss; add one logic.md clause at the "zero informational
+  contribution" site noting the exact limit is unreachable in herds the system
+  itself builds, since K >= 1 keeps |c_herd| < 1. IDEA.md half is
+  approval-gated; proposal below.
+- **CON-2/LIN-9.** archivist.md, "asserting that claim is false, not merely
+  old", overstates a graded, attributed disbelief row. If rewording to
+  "recording the oracle's disbelief", keep the vividness: it is the deterrent
+  behind omit-when-unsure.
+- **SCI-1.** IDEA.md Stage 3 ("positive attestation", "disbelief
+  attestation"), archivist.md at the CON-2 site, and architecture.md
+  ("positive attestation" twice, plus "negative attestation"). The glosses are
+  true only for c > 0 and are contradicted by Stage 4's sign rule. Reword
+  sign-neutral.
+- **CON-4.** docs/logic.md, "push a false opinion", "the false opinion diverges
+  from the herd that corrected it", "submitting false opinions when older
+  honest attestations have decayed". "False" imports a truth standard the
+  algebra cannot observe; use "bad claim" or "insincere attestation", as
+  IDEA.md already does.
+- **CON-5/LIN-8.** All three LLM-facing prompts open on "shared knowledge
+  engine" (contract.md twice, archivist.md, scribe.md) against the canonical
+  "shared archive" in IDEA.md and README.md. contract.md contradicts itself
+  internally, since it also says "Searches the shared archive". Align on
+  archive, or record the split as intentional.
+- **SCI-7.** README.md and IDEA.md config tables, "How fast knowledge ages", is
+  a world-frame slip; "how fast unrefreshed attestations fade". IDEA.md half is
+  approval-gated.
+- **SCI-9/ENG-7.** contract.md, "ranked by how little the archive knows about
+  each"; "how little the herd has established".
+- **LIN-7.** contract.md, "when the oracle asks what to explore", the sole
+  "oracle" in the user-register document; "when the user asks".
+- **SCR-10.** The negative confidence ladder is coarser than the positive, and
+  "I doubt it" at -0.5 overshoots mild skepticism. Add "I'm skeptical" at -0.3.
+  Three copies need the same insert: contract.md instructions, contract.md
+  field description, scribe.md.
+- **LIN-10.** archivist.md, "both cannot be true of the world". Mutual
+  exclusivity presupposes coreference of bare definites, never named as a
+  precondition. One clause: if the subjects could denote different things, omit.
+- **SCR-2.** scribe.md moments list. Correction handling exists only within a
+  conversation ("the most recent statement wins"). Add one line assigning the
+  correcting consult when an already-contributed position is later reversed.
+- **SCR-5.** contract.md `hypothesis` field description. No Scribe-facing
+  surface says a compound's single scalar is inherited whole by every atom. One
+  interface line: claims held at different confidence go in separate calls.
+- **SCR-9.** `observe` appears in the prompts only as a contract.md heading and
+  is invisible to the persona; it may also be UI-shaped in text-only clients.
+  One clause in scribe.md's moments list, one warning in the description.
+- **SCR-11.** README's `[prompts]` table never names the archive's language as
+  an operator knob for non-English herds. One sentence. (The only adjacent
+  mention is `fulltext_config` in the sqlite section.)
+- **CON-1 nit.** archivist.md Example, "Both are true of the world", reads
+  truth where the Archivist judges compatibility; "can both be true". The modal
+  is already carried earlier by "Claims about different times can both be true".
+
+**Ownership sentences.** Each fix is one sentence owning an instrument choice.
+
+- **ENG-1.** scribe.md carries the ladder's 0.9 cap and its center-pull
+  ("Overconfidence corrupts the herd's fusion more than underconfidence"). Both
+  are a soft-knee limiter on the input chain, owned in the prompt and unowned
+  in IDEA.md's Ingestion section.
+- **ENG-4/CON-8.** IDEA.md Stage 3, read path. Frontier surfacing is the
+  instrument steering herd attention, the strongest instrument-to-herd feedback
+  loop in the system, owned here and not in the spec.
+- **CON-6.** IDEA.md, "The mechanical pre-processing step before the
+  Archivist", claims a neutrality the same paragraph's lens figure denies. Drop
+  "mechanical". Leave the README occurrence, which is operational and justifies
+  temperature 0.0. Two further sites the panel did not name carry the same
+  word: architecture.md and interpreter.md.
+- **SCI-6.** IDEA.md Stage 3, contradicts bullet. A contradicts row records an
+  Archivist inference under the oracle's identity; one sentence owns the
+  delegation. Skip certainty-discount machinery (YAGNI).
+- **SCR-7.** scribe.md and the provenance docs. Provenance's "verbatim" is
+  verbatim-of-the-Scribe, one hop from the oracle. Own that, plus the cheap
+  norm: quote the oracle's operative words in `reasoning`.
+- **CON-7.** docs/logic.md at the ECBF "Contradiction cancels" bullet. `c_herd`
+  alone cannot distinguish contested from unexamined; name the oracle count and
+  the conflict metrics as the recovery channel. The fix has to bridge naming
+  too, since logic.md says `N_O` and never `oracle_count`.
+- **ENG-2.** archivist.md's synthesis section. The ledger path has airtight
+  input-only guards ("Proposition content comes only from the input"); the
+  answer has none. Extend the guard one clause: the answer states only what the
+  retrieved set supports.
+
+**Tests and theory.**
+
+- **LOG-3.** The future-timestamp clamp is an undocumented epistemic
+  commitment, in tension with the operator-level rejection of negative time.
+  One sentence in logic.md's decay boundary cases. Note there are two clamp
+  sites, `math/hypothesis.py` and `math/service.py`, not one.
+- **LOG-4.** tests/math/test_decay.py's header calls the decay formula
+  "Custom formula" where logic.md correctly identifies Def. 14.6 with
+  time-varying discount. Align the header.
+- **LOG-5.** The loudest degenerate case, (1,0,0) fused with (0,1,0) cancelling
+  to vacuous, is never stated as a test. The existing
+  `test_two_contradictory_cancel` uses non-dogmatic operands; the dogmatic pair
+  reaches `compute_degree_of_conflict` but never `fuse`. One test.
+- **LOG-6.** The full-penalty extreme of the informative-commitment table
+  (signal 1, align 0) is unattested; punishment asymmetry is half-tested. The
+  nearest existing test lands at align ~0.35. One test.
+- **LOG-11.** "Surfaces uncertainty clusters" (IDEA.md Stage 3, read path) has
+  no test or judge criterion, and no e2e test mentions the frontier at all. One
+  e2e case: a settled plus a contested hypothesis, judge asserts the contested
+  one is flagged.
+- **SCI-8/LOG-10.** The Monte-Carlo archetype bands in logic.md's Trust
+  Dynamics Clusters rest on an uncommitted, unrerunnable artifact. Commit the
+  simulator as a manual mise task, or annotate the table as a dated one-off.
+- **ENG-5.** Archivist `notes` are addressed "to a future oracle" but only the
+  count reaches structlog at INFO and the contents at DEBUG. Reword the
+  address, or persist notes on provenance. Programmer's call.
+- **LOG-7/8/9** (one sentence each). The Opinion constructor's clamp is
+  undocumented in logic.md, which documents only the `t_oracle` clamp and
+  elsewhere states "No clamping". `maturity_k = inf` serves analytically in a
+  promise-bearing math test while config rejects it as non-finite; own the
+  analytical device where it is used rather than teaching config to accept inf.
+  "Conviction" is overloaded between the decay prose (magnitude eroding) and
+  the trust formalism (`|c_oracle_raw|`).
+- **Read-after-write.** Rollback is attested, but no test writes through
+  consult and reads the same state back through the read path. The nearest is
+  `test_write_path_read_then_write`, which is the inverse and fully mocked. One
+  integration test; pin time (infinite half-life, or read at the write
+  timestamp), else decay makes the comparison legitimately unequal.
+
+**The indexical-present residual** (SCI-4 plus LIN-3, merged by the critic).
+One entry for docs/logic.md's Known Residuals section, proposed text:
+
+> **The indexical present.** Two tacit conventions govern reference time:
+> self-dated claims are temporal, undated present-tense claims are indexically
+> about now. Examples and tests pin both directions; no prose states either.
+> The indexical reading is load-bearing (supersession works by contradiction
+> because standing claims stay about now), and its cost is real: genuine
+> supersession of a standing claim fuses toward zero, and the register reads
+> change as controversy. Accepted; no supersession machinery (tried and
+> rejected).
+
+**IDEA.md proposals**, approval-gated per CLAUDE.md. This entry proposes; the
+programmer disposes.
+
+- **LIN-6** (Interface). "One MCP tool." is stale against the shipped contract,
+  which carries an `observe` block IDEA.md never mentions. Proposed: "Two MCP
+  tools: `consult`, the epistemic interface, and `observe`, a read-only view of
+  the uncertainty frontier. The epistemic write interface is still exactly one
+  tool."
+- **ENG-1** (Ingestion). Proposed: "The ladder's pull toward center and its 0.9
+  cap are deliberate input compression: a soft-knee limiter the instrument
+  applies to stated certainty, owned as character rather than claimed as
+  neutrality."
+- **ENG-4/CON-8** (Stage 3, read path). Proposed: "Surfacing the frontier is
+  the instrument steering herd attention; the steering is designed, not
+  incidental."
+- **CON-6.** Drop the word "mechanical".
+- **SCI-6** (Stage 3, contradicts bullet). Proposed: "A contradicts attestation
+  records the Archivist's mutual-exclusivity inference under the oracle's
+  identity; `correlation_id` and verbatim provenance keep the delegation
+  auditable."
+- **SCI-2 gloss.** Proposed: "An oracle rubber-stamping settled hypotheses
+  earns almost nothing: the information factor shrinks toward zero as the herd
+  settles, and the exact zero is the dogmatic limit the system itself never
+  builds."
+- **SCI-7** (config cell). "How fast unrefreshed attestations fade."
+
+**Open questions**, carried from the Scribe chair, for the programmer:
+
+1. Whose words survive? Provenance stores the Scribe's rendering; the oracle's
+   utterance exists nowhere, and Lore cannot audit the difference even in
+   principle. Is a verbatim-quote norm in `reasoning` enough, or does
+   provenance want an optional utterance column someday?
+2. Is "I'm certain" at 0.9 doctrine-mandated softening? The schema accepts 1.0
+   and the pipeline digests dogmatic input by design; no doc owns the tension
+   with no-soften. What does the Scribe do with "log it at full certainty,
+   that's an order"?
+3. Should vacuous attestations count as scrutiny? A 0.0 row raises maturity and
+   witnesses trust scans while carrying zero evidence: genuine examined
+   inconclusiveness, or a hole?
+4. Can the Scribe calibrate "multiple"? In a herd of two, "multiple" is one
+   colleague, once. Should herd cardinality reach the answer register?
+5. Whose confidence is reported confidence? "Berghaus was so sure" admits two
+   honest transcriptions at different levels, a world-claim or a
+   literature-claim; the level choice changes what the herd later retrieves,
+   and no doc decides it.
+
+**Status:** open; none of the families started.
