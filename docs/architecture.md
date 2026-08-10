@@ -145,7 +145,7 @@ await pool.close()
 
 **Single Protocol for relational and vector operations.** Each repository Protocol exposes both relational methods (`store`, `find_by_id`) and vector methods (`search`) through a single interface. Whether embeddings live in a virtual table or a column is an implementation detail hidden behind the Protocol. Extension initialization (sqlite-vec, pgvector) belongs in the factory, not the repository.
 
-**Drift guard.** A deterministic test asserts structural equivalence between the SQLite and PostgreSQL schemas: same tables, same columns, same logical types, same indexes, same foreign key constraints. This is the hard guarantee that the backends don't diverge. A Claude rule provides dev-time awareness: check both migration sets when editing either one.
+**Drift guard.** A deterministic test asserts structural equivalence between the SQLite and PostgreSQL schemas: same tables, same columns, same logical types, same indexes, same foreign key constraints. This is the hard guarantee that the backends don't diverge. `.claude/rules/migrations.md` provides dev-time awareness: check both migration sets when editing either one, and check vector storage by hand, since the guard excludes it as an implementation difference.
 
 **Embedding precision: float32 everywhere.** SQLite uses `sqlite_vec.serialize_float32` (32-bit floats). pgvector's `VECTOR` type stores float32. No `HALFVEC`, no float16; precision loss in the vector space means silent retrieval degradation with no error signal. This is a hard constraint, not a performance trade-off.
 
