@@ -64,8 +64,14 @@ dropped (2026-08-02); it broke mutmut's runner and masks a genuinely degrading
 probe. Re-running the workflow is the accepted remedy.
 
 Rate runs: one green pass on an optional-output behavior proves nothing, since
-it passes at base rate. Pin prompt-behavior claims at k >= 10, and measure the
-delta by running the old prompt against the same fixtures.
+it passes at base rate. Pin prompt-behavior claims at k >= 5 with `mise run
+rate -- <selection>`: k fresh pytest processes, per-test pass rates printed
+worst first. Every run is metered live spend, so k = 5 is the default floor;
+raise it per claim (`--runs 10`) only when a rate is ambiguous. Runs are
+sequential by default; concurrency changes API pressure, so opt in explicitly
+with `mise run rate -- -n auto` when that pressure is the point. A candidate
+rate alone proves nothing either: measure the delta by running the old prompt
+against the same fixtures.
 
 ## Model aliases
 

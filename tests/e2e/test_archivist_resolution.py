@@ -26,10 +26,10 @@ The reservoir-inspection and apiary scenarios are held out: neither appears in
 a few-shot example of either prompt (the prompts teach the anchoring rule on a
 product recall), so a green measures transfer, not example recall.
 
-Measurement protocol: judge a prompt change by pass rate over repeated manual
-runs (k=5), never a single green; the stage is stochastic (Gemini 3 runs at
-default temperature; LiteLLM warns against setting it lower). Nothing reruns
-automatically.
+Measurement protocol: judge a prompt change by pass rate at k >= 5 via
+`mise run rate -- tests/e2e/test_archivist_resolution.py`, never a
+single green; the stage is stochastic (Gemini 3 runs at default temperature;
+LiteLLM warns against setting it lower).
 
 Marked @pytest.mark.e2e, skipped without GEMINI_API_KEY (autouse fixture in
 tests/e2e/conftest.py).
