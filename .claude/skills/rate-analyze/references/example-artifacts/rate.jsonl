@@ -1,0 +1,6 @@
+{"id": "tests/e2e/test_consult_shapes.py::test_atomic_hypothesis_passes_through", "outcome": "passed"}
+{"id": "tests/e2e/test_consult_shapes.py::test_compound_hypothesis_splits_into_atoms", "outcome": "passed"}
+{"id": "tests/e2e/test_consult_shapes.py::test_paraphrase_targets_the_seeded_claim", "outcome": "passed"}
+{"id": "tests/e2e/test_consult_shapes.py::test_atomic_hypothesis_passes_through", "outcome": "passed"}
+{"id": "tests/e2e/test_consult_shapes.py::test_compound_hypothesis_splits_into_atoms", "outcome": "passed"}
+{"id": "tests/e2e/test_consult_shapes.py::test_paraphrase_targets_the_seeded_claim", "outcome": "failed"}
