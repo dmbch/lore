@@ -17,6 +17,16 @@ from lore.domain import ConsultLoreRequest, ConsultLoreResponse
 from lore.math import EpistemicsConfig
 from lore.orchestrator import Orchestrator
 from lore.repositories.sqlite.pool import SqlitePool
+from tests.conftest import configure_trace_sink
+
+# Wired at import, not via fixture: same-scope autouse fixtures do not
+# instantiate in definition order, so a fixture could lose the race against
+# require_gemini's session skip and a keyless run would leave no trace file.
+# Import happens at collection, before any fixture. scripts/rate.py sets the
+# env var per run; unset means no reconfiguration.
+_TRACE_LOG = os.environ.get("LORE_TRACE_LOG")
+if _TRACE_LOG is not None:
+    configure_trace_sink(Path(_TRACE_LOG))
 
 
 @pytest.fixture(autouse=True, scope="session")
