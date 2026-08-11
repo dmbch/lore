@@ -73,6 +73,16 @@ with `mise run rate -- -n auto` when that pressure is the point. A candidate
 rate alone proves nothing either: measure the delta by running the old prompt
 against the same fixtures.
 
+Every rate run is paid; its artifacts are the receipts and always persist:
+the rate log at `rate.jsonl` and one stage trace per run at
+`trace-run<n>.jsonl`, the consult debug events (`consult.interpret.result`,
+`consult.reason.result`, note contents) joined per consult by
+`correlation_id`. They land in a fresh `lore-rate-*` tempdir whose path the
+runner prints; `--artifacts DIR` places them deliberately instead. Trace
+files carry hypothesis texts, so mind which machine that tempdir is on. The
+`/rate-analyze` skill is the consumer: the offline sniff test over atom
+counts, classification kinds, and divergent outputs across runs.
+
 ## Model aliases
 
 Both gemini roles ride `-latest`. Frontier dogfooding is itself eval signal, and

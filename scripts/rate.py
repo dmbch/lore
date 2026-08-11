@@ -5,6 +5,10 @@ measurement protocol is a rate at k >= 5 (docs/testing.md).
 Each run gets a fresh process, so the session-scoped system fixtures cannot
 leak one run's writes into the next. The runs feed one shared log via the
 LORE_RATE_LOG hook in tests/conftest.py.
+
+Artifacts persist every run: the rate log at rate.jsonl and one stage trace
+per run at trace-run<n>.jsonl, in a fresh lore-rate-* tempdir (path printed)
+unless --artifacts DIR places them deliberately.
 """
 
 import argparse
@@ -24,6 +28,18 @@ class Outcome(NamedTuple):
     passed: int
     failed: int
     skipped: int
+
+
+class ArtifactLayout(NamedTuple):
+    rate_log: Path
+    traces: list[Path]
+
+
+def artifact_layout(root: Path, *, runs: int) -> ArtifactLayout:
+    return ArtifactLayout(
+        rate_log=root / "rate.jsonl",
+        traces=[root / f"trace-run{run}.jsonl" for run in range(1, runs + 1)],
+    )
 
 
 def tally(log: Path) -> list[Outcome]:
@@ -74,29 +90,40 @@ def main() -> None:
     # No short -k: the runner's contract is "everything else is pytest argv",
     # and pytest's own -k is the selection flag people reach for first.
     parser.add_argument("--runs", type=_positive_int, default=5, help="pytest processes to drive")
+    parser.add_argument(
+        "--artifacts", type=Path, default=None, help="persist the rate log and per-run traces here"
+    )
     args, passthrough = parser.parse_known_args()
-    with tempfile.TemporaryDirectory() as tmp:
-        log = Path(tmp) / "rate.jsonl"
-        # -m e2e and --no-cov undo the repo addopts: -m 'not e2e' would
-        # deselect the suites this instrument exists for, and the coverage
-        # gate fails every subset run (same reasoning as [tool.mutmut]).
-        for _ in range(args.runs):
-            result = subprocess.run(  # noqa: S603 - argv is built in-process, no shell, no untrusted input
-                [sys.executable, "-m", "pytest", "-m", "e2e", "--no-cov", "-q", *passthrough],
-                env=os.environ | {"LORE_RATE_LOG": str(log)},
-                check=False,
-            )
-            # 0 and 1 are both expected: a rate run measures failures. Anything
-            # else (usage error, interrupted, no tests collected) is not a
-            # measurement and must not read as one.
-            if result.returncode not in (0, 1):
-                sys.exit(result.returncode)
-        # A collect-only run leaves no log at all; a keyless run leaves only
-        # skips. Neither is a measurement, and exit 0 must not claim one.
-        outcomes = tally(log) if log.exists() else []
-        print(format_table(outcomes))
-        if not any(o.passed + o.failed for o in outcomes):
-            sys.exit("rate: no attempts recorded; is GEMINI_API_KEY set?")
+    # Every run is metered spend; the artifacts are the receipts. They always
+    # persist, to a fresh tempdir unless --artifacts places them deliberately.
+    if args.artifacts is None:
+        root = Path(tempfile.mkdtemp(prefix="lore-rate-"))
+    else:
+        root = args.artifacts
+        root.mkdir(parents=True, exist_ok=True)
+    layout = artifact_layout(root, runs=args.runs)
+    # -m e2e and --no-cov undo the repo addopts: -m 'not e2e' would
+    # deselect the suites this instrument exists for, and the coverage
+    # gate fails every subset run (same reasoning as [tool.mutmut]).
+    for run in range(args.runs):
+        result = subprocess.run(  # noqa: S603 - argv is built in-process, no shell, no untrusted input
+            [sys.executable, "-m", "pytest", "-m", "e2e", "--no-cov", "-q", *passthrough],
+            env=os.environ
+            | {"LORE_RATE_LOG": str(layout.rate_log), "LORE_TRACE_LOG": str(layout.traces[run])},
+            check=False,
+        )
+        # 0 and 1 are both expected: a rate run measures failures. Anything
+        # else (usage error, interrupted, no tests collected) is not a
+        # measurement and must not read as one.
+        if result.returncode not in (0, 1):
+            sys.exit(result.returncode)
+    # A collect-only run leaves no log at all; a keyless run leaves only
+    # skips. Neither is a measurement, and exit 0 must not claim one.
+    outcomes = tally(layout.rate_log) if layout.rate_log.exists() else []
+    print(format_table(outcomes))
+    print(f"artifacts: {root}")
+    if not any(o.passed + o.failed for o in outcomes):
+        sys.exit("rate: no attempts recorded; is GEMINI_API_KEY set?")
 
 
 if __name__ == "__main__":

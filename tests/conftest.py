@@ -57,6 +57,26 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
         sink.write(line + "\n")
 
 
+def configure_trace_sink(log: Path) -> None:
+    """Point structlog at a JSONL trace file, debug level, contextvars merged.
+
+    Test-lane only; production telemetry (``configure_telemetry``) is
+    untouched. Tests calling this must opt into ``reset_telemetry``: the
+    helper never sets ``_telemetry._configured``, so the autouse tripwire
+    cannot catch the structlog leak.
+    """
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.JSONRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+        logger_factory=structlog.WriteLoggerFactory(file=log.open("a", encoding="utf-8")),
+    )
+
+
 def _reset_telemetry_state() -> None:
     # Note: the LiteLLM trio ``configure_telemetry`` reroutes (LiteLLM,
     # LiteLLM Proxy, LiteLLM Router) is not restored. Those loggers hold the

@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from scripts.rate import Outcome, format_table, tally
+from scripts.rate import Outcome, artifact_layout, format_table, tally
 
 
 def _log(tmp_path: Path, *, lines: list[dict[str, str]]) -> Path:
@@ -50,3 +50,14 @@ def test_format_table_renders_a_zero_attempt_test() -> None:
 
     assert "0/0" in table
     assert "skipped 2" in table
+
+
+def test_artifact_layout_names_rate_log_and_per_run_traces(tmp_path: Path) -> None:
+    layout = artifact_layout(tmp_path, runs=3)
+
+    assert layout.rate_log == tmp_path / "rate.jsonl"
+    assert layout.traces == [
+        tmp_path / "trace-run1.jsonl",
+        tmp_path / "trace-run2.jsonl",
+        tmp_path / "trace-run3.jsonl",
+    ]

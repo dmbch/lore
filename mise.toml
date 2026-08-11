@@ -51,6 +51,8 @@ run = "uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20"
 # Pass-rate measurement for the stochastic e2e suites; the protocol is k >= 5
 # (docs/testing.md). Everything after -- passes through to pytest for
 # selection: `mise run rate -- tests/e2e/test_consult_shapes.py`.
+# Artifacts (rate log, per-run traces) persist to a printed tempdir or
+# --artifacts DIR; /rate-analyze reads them.
 [tasks.rate]
 run = "uv run python scripts/rate.py"
 
