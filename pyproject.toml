@@ -120,7 +120,9 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=lore --cov-report=term-missing --cov-config=pyproject.toml -m 'not e2e'"
+# -p no:tach: boundary enforcement is `tach check` (mise run tach); the pytest
+# plugin only runs impact analysis nobody consumes and banners every run.
+addopts = "-p no:tach --cov=lore --cov-report=term-missing --cov-config=pyproject.toml -m 'not e2e'"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 # Global so an e2e module missing its session-loop mark fails in 300s with a
