@@ -37,7 +37,7 @@ PLAN.md
 .env.*
 !.env.example
 !.env.claude
-references
+/references
 
 # IDE
 .idea/
