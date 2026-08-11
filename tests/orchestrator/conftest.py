@@ -491,9 +491,9 @@ def instrumented(
                 "lore.telemetry.otel_trace.get_tracer_provider",
                 return_value=tracer_provider,
             ),
-            # Prepend merge_contextvars so bound context (oracle_id, path from
-            # start_span) survives capture_logs' processor replacement and
-            # appears in every event dict.
+            # Prepend merge_contextvars so bound context (oracle_id, path,
+            # correlation_id from start_span) survives capture_logs' processor
+            # replacement and appears in every event dict.
             structlog.testing.capture_logs(
                 processors=[structlog.contextvars.merge_contextvars],
             ) as cap,

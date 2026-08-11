@@ -86,6 +86,7 @@ class Orchestrator:
                 "lore.consult",
                 path=path,
                 oracle_id=oracle_id,
+                correlation_id=correlation_id,
             ):
                 log.info("consult.start", path=path)
 
@@ -196,11 +197,7 @@ class Orchestrator:
                         except RetryableTransactionError:
                             if attempt == RECORD_MAX_ATTEMPTS - 1:
                                 raise
-                            log.warning(
-                                "record.retry",
-                                attempt=attempt + 1,
-                                correlation_id=correlation_id,
-                            )
+                            log.warning("record.retry", attempt=attempt + 1)
                             ceiling = _RETRY_BASE_SECONDS * 2**attempt
                             delay = random.uniform(  # noqa: S311 - jitter, not crypto
                                 ceiling / 2, ceiling
