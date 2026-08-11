@@ -7,23 +7,25 @@ re-probes) live in [docs/testing.md](docs/testing.md). Landed work lives in git.
 
 ---
 
-## Evaluation harness: retrieval recall and prompt regression
+## Evaluation harness: retrieval recall
 
 **Found:** 2026-07-19, TODO sweep; carried from the prompt-audit (2026-06-21)
-and authority-lane (2026-07-03) entries, both otherwise landed.
+and authority-lane (2026-07-03) entries, both otherwise landed. Narrowed
+2026-08-11: the rate runner (`mise run rate`, k >= 5) and the SCR-12 corpus
+probes (`tests/e2e/test_consult_shapes.py`) landed; prompt behavior is
+measured by the e2e fixture suites plus rate runs.
 
-**What.** Two measurements the pipeline lacks. A retrieval-recall eval: a
-fixture corpus and query set scoring the two-lane search, so lane weights and
-`max_keywords` are tuned against numbers. Prompt regression coverage: golden
-input to expected resolution, pinning Interpreter and Archivist behavior, so a
-prompt edit cannot silently degrade decomposition or paraphrase detection.
+**What.** A retrieval-recall eval: a fixture corpus and labeled query set
+scoring the two-lane search, so lane weights and `max_keywords` are tuned
+against numbers.
 
-**Why it matters.** Retrieval recall bounds paraphrase detection, and a
-mislabeled or hallucinated resolution is the one failure mode the math cannot
-digest. Both surfaces were tuned by review and live pilots; nothing measures
-either. The next prompt or weight change flies blind.
+**Why it matters.** Retrieval recall bounds paraphrase detection: a paraphrase
+the search never surfaces is one the Archivist never sees. The lane weights
+were tuned by review and live pilots; nothing measures retrieval. The next
+weight change flies blind.
 
-**Fixture candidates**, each a behavior already observed and worth pinning:
+**Fixture candidates** for growing the prompt suites, each a behavior already
+observed and none yet pinned:
 
 - Notes emission on the hedged gRPC composite. Pass rate dropped to ~75-80%
   when Step 0's refusal imperatives landed, caught by one CI red plus rate runs
@@ -41,15 +43,11 @@ either. The next prompt or weight change flies blind.
   point value, as a Step 1 classification case: assert that a strictly weaker
   or stronger proposition contributes with the near-miss noted. The prompt now
   carries the rule; the fixture keeps it.
-- Corpus gaps (audit SCR-12). No e2e consult submits a negative confidence, a
-  deixis-dependent consult, or a mixed-certainty compound. The doctrine the
-  Scribe is drilled hardest on is the client behavior no e2e performs. Grow the
-  corpus with these shapes first.
-
-**Options / open questions.** The two evals likely share a fixture corpus;
-`tests/e2e/corpus.py` seeds one from the golden archive and already names the
-role in its docstring. Decide whether evals run in CI (live LLM calls: cost and
-flake) or as a manual mise task.
+**Options / open questions.** The eval likely shares a fixture corpus with the
+prompt suites; `tests/e2e/corpus.py` seeds one from the golden archive and
+already names the role in its docstring. Decide whether it runs in CI (live
+LLM calls: cost and flake) or as a manual mise task. The labeled query set is
+the build's real cost.
 
 **Scope boundary.** The Scribe representation rules (no-soften, no-sharpen,
 most-recent-wins) execute client-side and are structurally unattestable
