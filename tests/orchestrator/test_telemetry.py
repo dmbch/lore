@@ -96,6 +96,22 @@ class TestConsultSpanAttributes:
         assert root.attributes is not None
         assert root.attributes.get("path") == "write"
 
+    async def test_consult_span_and_events_carry_correlation_id(self) -> None:
+        with instrumented() as (fixture, spans, cap):
+            await fixture.orchestrator.consult(
+                oracle_id="oracle-1",
+                request=ConsultLoreRequest(question="What is X?"),
+                correlation_id="corr-join-key",
+            )
+
+        root = next(s for s in spans.get_finished_spans() if s.name == "lore.consult")
+        assert root.attributes is not None
+        assert root.attributes.get("correlation_id") == "corr-join-key"
+
+        stage_events = [e for e in cap if e.get("event") == "consult.interpret.result"]
+        assert len(stage_events) == 1
+        assert stage_events[0]["correlation_id"] == "corr-join-key"
+
 
 class TestConsultEmitsStructuredLogs:
     async def test_consult_emits_start_log_event(self) -> None:
