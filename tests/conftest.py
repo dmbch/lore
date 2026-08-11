@@ -15,14 +15,46 @@ import os
 # ignore).
 os.environ["FASTMCP_LOG_ENABLED"] = "false"
 
+import json
 import logging
 from collections.abc import Iterator
+from pathlib import Path
 
 import litellm
 import pytest
 import structlog
 
 import lore.telemetry as _telemetry
+
+
+def _rate_line(report: pytest.TestReport) -> str | None:
+    # Under xdist the controller replays every worker report through this hook
+    # and stamps `report.node` on the way (dsession.py); the worker already
+    # logged it, so rendering the replay would double every count.
+    if getattr(report, "node", None) is not None:
+        return None
+    # The call phase decides the outcome; setup and teardown matter only when
+    # they fail or skip (require_gemini skips at setup). Rendering passing
+    # non-call phases would triple-count every test.
+    if report.when != "call" and report.outcome == "passed":
+        return None
+    return json.dumps({"id": report.nodeid, "outcome": report.outcome})
+
+
+def pytest_runtest_logreport(report: pytest.TestReport) -> None:
+    """Append the outcome to the run log scripts/rate.py aggregates.
+
+    Inert unless LORE_RATE_LOG names the log file. Append mode by design:
+    all k runs of a rate measurement share one file.
+    """
+    log = os.environ.get("LORE_RATE_LOG")
+    if log is None:
+        return
+    line = _rate_line(report)
+    if line is None:
+        return
+    with Path(log).open("a", encoding="utf-8") as sink:
+        sink.write(line + "\n")
 
 
 def _reset_telemetry_state() -> None:
