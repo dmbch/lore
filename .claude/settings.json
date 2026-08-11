@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(mise run e2e*)",
+      "Bash(mise run rate*)",
+      "Bash(mise run golden-rebuild*)",
+      "Bash(mise e2e*)",
+      "Bash(mise rate*)",
+      "Bash(mise golden-rebuild*)",
+      "Bash(python -m scripts.rate*)",
+      "Bash(uv run python -m scripts.rate*)",
+      "Bash(pytest -m e2e*)",
+      "Bash(uv run pytest -m e2e*)",
+      "Bash(python -m pytest -m e2e*)",
+      "Bash(uv run python -m pytest -m e2e*)",
+      "Bash(python scripts/rate.py*)",
+      "Bash(uv run python scripts/rate.py*)",
+      "Bash(python -m tests.e2e.fixtures.rebuild_golden*)",
+      "Bash(uv run python -m tests.e2e.fixtures.rebuild_golden*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // \"\"' | sed -E 's|\\\"([A-Za-z0-9_./:-]+)\\\"|\\1|g' | sed -E \"s|'([A-Za-z0-9_./:-]+)'|\\1|g\" | sed -E 's/\\\"[^\\\"]*\\\"//g' | sed -E \"s/'[^']*'//g\" | grep -qE 'pytest[^|&;]*e2e|python[^|&;]*(scripts[/.]rate|rebuild_golden)|(^|[^[:alnum:]])mise +(r(un)? +)?(e2e|rate|golden-rebuild)|generativelanguage' && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Metered LLM spend guard (.claude/rules/llm-spend.md): this command can reach the live Gemini API. Programmer approval required.\"}}' || true",
+            "statusMessage": "Checking LLM spend guard"
+          }
+        ]
+      }
+    ]
+  }
+}
