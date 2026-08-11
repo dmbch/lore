@@ -13,7 +13,9 @@ re-probes) live in [docs/testing.md](docs/testing.md). Landed work lives in git.
 and authority-lane (2026-07-03) entries, both otherwise landed. Narrowed
 2026-08-11: the rate runner (`mise run rate`, k >= 5) and the SCR-12 corpus
 probes (`tests/e2e/test_consult_shapes.py`) landed; prompt behavior is
-measured by the e2e fixture suites plus rate runs.
+measured by the e2e fixture suites plus rate runs. Rate runs now persist
+per-run stage traces and `/rate-analyze` delivers the cross-run sniff test
+(landed 2026-08-11).
 
 **What.** A retrieval-recall eval: a fixture corpus and labeled query set
 scoring the two-lane search, so lane weights and `max_keywords` are tuned
@@ -53,6 +55,35 @@ the build's real cost.
 most-recent-wins) execute client-side and are structurally unattestable
 in-repo. The harness covers Interpreter and Archivist only; that limit is
 accepted rather than unstated.
+
+**Status:** open; not started.
+
+---
+
+## Interpreter: emit both surface forms for abbreviation keywords
+
+**Found:** 2026-08-11, k=5 trace analysis of the SCR-12 probes via
+`/rate-analyze`.
+
+**What.** The Interpreter normalizes abbreviations and emits only the expanded
+form as retrieval keywords: "HTTP" and "RPC" in the probe hypothesis became
+"Hypertext Transfer Protocol" and "remote procedure call", short forms nowhere
+in the set. The authority lane then matches only hypotheses that also spell
+the expansion out. Wanted: both surface forms per abbreviation.
+
+**Why it matters.** The seeded probes hit rank 1 in both lanes in all five
+runs, but only because the golden seeds happen to spell the expansions out; an
+archive storing "the HTTP service" would miss every expanded phrase and ride
+on "gRPC" alone. The extra form is free under the query shape: keywords are
+quoted phrases joined by OR, so a miss costs nothing and a hit adds a lane
+rank.
+
+**Options / open questions.** Likely one interpreter.md instruction: emit the
+abbreviation and its expansion as separate keywords. Prompt change:
+golden-rebuild trigger. Measure per the delta doctrine, old prompt vs
+candidate on the same fixtures via `mise run rate`; the shapes probes already
+exercise the HTTP/RPC case. Watch `max_keywords` pressure on keyword-rich
+composites.
 
 **Status:** open; not started.
 
@@ -289,6 +320,9 @@ shape: one consult makes several model calls, so a sibling table keyed by
 correlation ID fits better than columns on `requests`. Where capture hooks: the
 provider layer (one seam for both roles) vs the orchestrator. Model I/O embeds
 retrieved-neighbor content; fine on-prem, but the security story should say so.
+Prior art: the test-lane trace sink (`tests/conftest.py`, `LORE_TRACE_LOG`)
+already captures correlation-tagged stage events per consult for rate runs;
+production capture wants the same events on a durable store.
 
 **Status:** open; not started.
 
