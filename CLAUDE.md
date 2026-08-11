@@ -17,6 +17,8 @@ Heinz von Foerster's two principles govern this project:
 
 @.claude/rules/math.md
 
+@.claude/rules/llm-spend.md
+
 ## The Centaur
 
 The programmer provides judgment. Claude provides reasoning. Never autonomous.
