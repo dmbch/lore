@@ -1,8 +1,5 @@
 # pyright: reportPrivateUsage=false
-import gzip
 import os
-import sqlite3
-import time
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any, cast
@@ -18,6 +15,7 @@ from lore.math import EpistemicsConfig
 from lore.orchestrator import Orchestrator
 from lore.repositories.sqlite.pool import SqlitePool
 from tests.conftest import configure_trace_sink
+from tests.e2e.fixtures.golden import golden_copy
 
 # Wired at import, not via fixture: same-scope autouse fixtures do not
 # instantiate in definition order, so a fixture could lose the race against
@@ -66,44 +64,10 @@ async def decay_system(
         yield orchestrator
 
 
-_GOLDEN_ARCHIVE = Path(__file__).parent / "fixtures" / "golden.db.gz"
-
-
-def _golden_copy(target_dir: Path) -> str:
-    """Decompress the golden archive into target_dir and re-base its timestamps.
-
-    Every stored timestamp shifts by one delta (now minus the newest
-    attestation), so relationships between rows are preserved while seeds
-    read as attested today, matching the same-session invariant the suites
-    document. Plain sqlite3 suffices: no virtual table is touched. Returns
-    the dsn for the copy.
-    """
-    if not _GOLDEN_ARCHIVE.exists():
-        msg = f"golden archive missing at {_GOLDEN_ARCHIVE}: run `mise run golden-rebuild`"
-        raise FileNotFoundError(msg)
-    db_path = target_dir / "lore.db"
-    with gzip.open(_GOLDEN_ARCHIVE, "rb") as src:
-        db_path.write_bytes(src.read())
-    conn = sqlite3.connect(db_path)
-    try:
-        (latest,) = conn.execute("SELECT max(timestamp) FROM attestations").fetchone()
-        if latest is None:
-            msg = "golden archive has no attestations: run `mise run golden-rebuild`"
-            raise ValueError(msg)
-        delta = int(time.time()) - int(latest)
-        conn.execute("UPDATE attestations SET timestamp = timestamp + ?", (delta,))
-        conn.execute("UPDATE requests SET timestamp = timestamp + ?", (delta,))
-        conn.execute("UPDATE hypotheses SET created_at = created_at + ?", (delta,))
-        conn.commit()
-    finally:
-        conn.close()
-    return f"sqlite:///{db_path}"
-
-
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def golden_system(tmp_path_factory: pytest.TempPathFactory) -> AsyncGenerator[Orchestrator]:
     """Pre-seeded archive from the golden fixture; see tests/e2e/corpus.py."""
-    dsn = _golden_copy(tmp_path_factory.mktemp("lore"))
+    dsn = golden_copy(tmp_path_factory.mktemp("lore"))
     async for orchestrator in _bootstrap(dsn):
         yield orchestrator
 

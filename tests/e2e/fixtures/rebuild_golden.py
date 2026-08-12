@@ -20,9 +20,9 @@ from lore.domain import ConsultLoreRequest
 from lore.server import system
 from tests.e2e.conftest import attestations
 from tests.e2e.corpus import SEEDS
+from tests.e2e.fixtures.golden import GOLDEN_ARCHIVE
 
 GOLDEN_MAX_COMPRESSED_BYTES = 1_048_576
-GOLDEN_PATH = Path(__file__).parent / "golden.db.gz"
 
 
 async def _build(db_path: Path) -> None:
@@ -77,25 +77,25 @@ def _vacuum(db_path: Path) -> None:
 
 
 def _compress(db_path: Path) -> tuple[int, int]:
-    """Gzip db_path to GOLDEN_PATH with mtime=0: identical DB bytes, identical artifact."""
+    """Gzip db_path to GOLDEN_ARCHIVE with mtime=0: identical DB bytes, identical artifact."""
     raw = db_path.read_bytes()
-    with GOLDEN_PATH.open("wb") as out, gzip.GzipFile(fileobj=out, mode="wb", mtime=0) as gz:
+    with GOLDEN_ARCHIVE.open("wb") as out, gzip.GzipFile(fileobj=out, mode="wb", mtime=0) as gz:
         gz.write(raw)
-    return len(raw), GOLDEN_PATH.stat().st_size
+    return len(raw), GOLDEN_ARCHIVE.stat().st_size
 
 
 def main() -> None:
     if not os.environ.get("GEMINI_API_KEY"):
         msg = "GEMINI_API_KEY is not set; the rebuild seeds through live consults"
         raise SystemExit(msg)
-    GOLDEN_PATH.unlink(missing_ok=True)
+    GOLDEN_ARCHIVE.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory() as scratch:
         db_path = Path(scratch) / "lore.db"
         asyncio.run(_build(db_path))
         _vacuum(db_path)
         raw_size, compressed_size = _compress(db_path)
     if compressed_size > GOLDEN_MAX_COMPRESSED_BYTES:
-        GOLDEN_PATH.unlink()
+        GOLDEN_ARCHIVE.unlink()
         msg = (
             f"golden archive exceeds the size budget: {compressed_size} compressed bytes "
             f"({raw_size} raw) > {GOLDEN_MAX_COMPRESSED_BYTES}. Growing past the budget "
