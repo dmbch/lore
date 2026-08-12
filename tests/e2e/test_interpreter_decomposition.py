@@ -372,6 +372,26 @@ async def test_keywords_contain_named_entities(
     assert len(found) >= 2, f"Expected named-entity keywords, got {out.keywords}"
 
 
+async def test_abbreviation_keywords_carry_both_surface_forms(
+    system: Orchestrator,
+) -> None:
+    out = await _interpret(
+        system,
+        hypothesis="The ECG showed ST-segment elevation in the anterior leads.",
+    )
+
+    # The short form must stand free of the expansion: a merged keyword like
+    # "electrocardiogram (ECG)" would satisfy both lookups here while its
+    # quoted FTS phrase matches neither surface form in an archive.
+    lowered = [keyword.lower() for keyword in out.keywords]
+    assert any("ecg" in keyword and "electrocardiogram" not in keyword for keyword in lowered), (
+        f"Expected the short form as its own keyword, got {out.keywords}"
+    )
+    assert any("electrocardiogram" in keyword for keyword in lowered), (
+        f"Expected the expanded form among keywords, got {out.keywords}"
+    )
+
+
 async def test_multi_conjunct_compound_with_embedded_causal_splits_at_top_level(
     system: Orchestrator,
 ) -> None:
