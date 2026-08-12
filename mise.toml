@@ -56,6 +56,13 @@ run = "uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20"
 [tasks.rate]
 run = "uv run python scripts/rate.py"
 
+# Retrieval-recall eval over the labeled query set; the delta protocol is in
+# docs/testing.md. Everything after -- passes through to the script:
+# `mise run recall -- --artifacts DIR --prompt PATH`. Artifacts (recall log)
+# persist to a printed tempdir or --artifacts DIR.
+[tasks.recall]
+run = "uv run python scripts/recall.py"
+
 [tasks.golden-rebuild]
 run = "uv run python -m tests.e2e.fixtures.rebuild_golden"
 

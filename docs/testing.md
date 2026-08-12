@@ -1,9 +1,9 @@
 # Testing
 
 The three checks in [CLAUDE.md](../CLAUDE.md) gate every commit. This document
-covers the lanes that run outside them: mutation, end-to-end, and the golden
-archive. Standing constraints, not open work; intended work lives in
-[TODO.md](../TODO.md).
+covers the lanes that run outside them: mutation, end-to-end, the golden
+archive, and retrieval recall. Standing constraints, not open work; intended
+work lives in [TODO.md](../TODO.md).
 
 ## The math mutation floor
 
@@ -82,6 +82,44 @@ runner prints; `--artifacts DIR` places them deliberately instead. Trace
 files carry hypothesis texts, so mind which machine that tempdir is on. The
 `/rate-analyze` skill is the consumer: the offline sniff test over atom
 counts, classification kinds, and divergent outputs across runs.
+
+## Retrieval recall
+
+`mise run recall` scores the two-lane search against the labeled query set in
+`tests/e2e/queries.py`, over a fresh copy of the golden archive. Per query it
+runs one fast interpret call, one embedding batch, and three search passes
+(composite plus each lane isolated); the archivist is never invoked and
+nothing is written. Settings load from the ambient config, so a local
+`lore.toml`'s retrieval weights flow into the measurement: the eval scores
+the config you'd run. Manual and metered, never CI: programmer's terminal
+only.
+
+A `-` rank means the lane never surfaced the hypothesis within the result
+limit: zero-score pool filler is dropped before ranking, and each search
+pass truncates to the limit. And recall@limit discriminates only once the
+archive outgrows that limit; on the current golden corpus every pool holds
+the whole archive, so the per-lane ranks carry the signal and recall@limit
+is structurally 1.0.
+
+Every recall run is paid; its artifacts are the receipts and always persist:
+one JSONL row per query at `recall.jsonl`, in a fresh `lore-recall-*` tempdir
+whose path the runner prints; `--artifacts DIR` places them deliberately
+instead. A rerun into the same dir replaces the receipt; runs never
+concatenate. Each row carries the interpreted keywords and propositions
+alongside the per-expected ranks, so the receipt doubles as surface-form
+evidence for prompt deltas.
+
+The delta protocol: same frozen archive, two runs. Extract the old prompt,
+point the first run at it, then run the candidate without `--prompt`:
+
+```bash
+git show <pre-change-ref>:src/lore/prompts/interpreter.md > /tmp/interpreter-old.md
+mise run recall -- --prompt /tmp/interpreter-old.md --artifacts <dir-old>
+mise run recall -- --artifacts <dir-new>
+```
+
+Compare per-lane ranks between the runs; the regression channel is
+authority-lane rank loss on keyword-rich queries.
 
 ## Model aliases
 
