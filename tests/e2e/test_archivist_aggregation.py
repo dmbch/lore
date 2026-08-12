@@ -48,12 +48,12 @@ from lore.domain import TRANSFER_ORACLE
 from lore.orchestrator import Orchestrator
 from tests.e2e.conftest import (
     _bootstrap,
-    _golden_copy,
     age_attestations,
     attestations,
     consult,
     golden_seed_id,
 )
+from tests.e2e.fixtures.golden import golden_copy
 
 pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]
 
@@ -63,7 +63,7 @@ async def captured_system(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> AsyncGenerator[tuple[Orchestrator, list[EventDict]]]:
     """Per-test golden-archive copy with structlog capture for inspecting consult.notes."""
-    dsn = _golden_copy(tmp_path_factory.mktemp("lore"))
+    dsn = golden_copy(tmp_path_factory.mktemp("lore"))
     async for orchestrator in _bootstrap(dsn):
         with structlog.testing.capture_logs() as cap:
             yield orchestrator, cap
