@@ -15,16 +15,17 @@ and authority-lane (2026-07-03) entries, both otherwise landed. Narrowed
 probes (`tests/e2e/test_consult_shapes.py`) landed; prompt behavior is
 measured by the e2e fixture suites plus rate runs. Rate runs now persist
 per-run stage traces and `/rate-analyze` delivers the cross-run sniff test
-(landed 2026-08-11).
+(landed 2026-08-11). Narrowed 2026-08-12: the recall eval landed as a manual
+mise task (`mise run recall`): labeled queries in `tests/e2e/queries.py`,
+lane-isolated scoring and JSONL receipts in `scripts/recall.py`, delta
+protocol in docs/testing.md. Retrieval is measured; weight changes no longer
+fly blind.
 
-**What.** A retrieval-recall eval: a fixture corpus and labeled query set
-scoring the two-lane search, so lane weights and `max_keywords` are tuned
-against numbers.
-
-**Why it matters.** Retrieval recall bounds paraphrase detection: a paraphrase
-the search never surfaces is one the Archivist never sees. The lane weights
-were tuned by review and live pilots; nothing measures retrieval. The next
-weight change flies blind.
+**What remains.** The short-form-archive edge. The surface-form keyword rule
+protects archives that store abbreviations verbatim, and the golden corpus
+cannot pin one deterministically: seeding runs the same normalizer that
+expands them. Coverage waits for organic corpus growth; revisit the query
+labels when a live archive stores short forms.
 
 **Fixture candidates** for growing the prompt suites, each a behavior already
 observed and none yet pinned:
@@ -45,45 +46,100 @@ observed and none yet pinned:
   point value, as a Step 1 classification case: assert that a strictly weaker
   or stronger proposition contributes with the near-miss noted. The prompt now
   carries the rule; the fixture keeps it.
-**Options / open questions.** The eval likely shares a fixture corpus with the
-prompt suites; `tests/e2e/corpus.py` seeds one from the golden archive and
-already names the role in its docstring. Decide whether it runs in CI (live
-LLM calls: cost and flake) or as a manual mise task. The labeled query set is
-the build's real cost.
-
 **Scope boundary.** The Scribe representation rules (no-soften, no-sharpen,
 most-recent-wins) execute client-side and are structurally unattestable
 in-repo. The harness covers Interpreter and Archivist only; that limit is
 accepted rather than unstated.
 
-**Status:** open; not started.
+**Status:** harness landed 2026-08-12; the short-form-archive edge and the
+fixture candidates stay open.
 
 ---
 
 ## Interpreter: emit both surface forms for abbreviation keywords
 
 **Found:** 2026-08-11, k=5 trace analysis of the SCR-12 probes via
-`/rate-analyze`.
+`/rate-analyze`. Landed 2026-08-12: step 6 emits both surface forms when
+normalization expanded an abbreviation (the pair counts toward the cap of 8,
+generic terms drop before either form); Examples 2, 7, and 8 obey the rule;
+`test_abbreviation_keywords_carry_both_surface_forms` (ECG, held-out domain)
+pins it directly, expected red under the pre-change prompt.
 
-**What.** The Interpreter normalizes abbreviations and emits only the expanded
-form as retrieval keywords: "HTTP" and "RPC" in the probe hypothesis became
-"Hypertext Transfer Protocol" and "remote procedure call", short forms nowhere
-in the set. The authority lane then matches only hypotheses that also spell
-the expansion out. Wanted: both surface forms per abbreviation.
+**Measurement** (delta doctrine; measured 2026-08-13, k=5 per rate run):
 
-**Why it matters.** The seeded probes hit rank 1 in both lanes in all five
-runs, but only because the golden seeds happen to spell the expansions out; an
-archive storing "the HTTP service" would miss every expanded phrase and ride
-on "gRPC" alone. The extra form is free under the query shape: keywords are
-quoted phrases joined by OR, so a miss costs nothing and a hit adds a lane
-rank.
+- Probe, old vs candidate: 0/5 to 5/5. Every old-prompt failure showed the
+  predicted mechanism: keywords carried "electrocardiogram", never "ECG".
+- Neighbors: no attributable regression. One 4/5 per run on different tests
+  (old: colloquial-question, judge rejected "recently" for "lately";
+  candidate: paragraph-deixis, judge read a criterion's example list as
+  exhaustive); each test's counterpart run was 5/5. Judge noise, not prompt
+  effect.
+- Recall delta on the frozen archive: identical aggregates both runs.
+  `keyword-rich-composite` authority ranks 1-4 in both (a 2-3 swap in
+  middle ranks); receipts show the candidate emitting surface-form pairs
+  ("remote procedure call" + "RPC") with no eviction of seed-critical
+  terms. The identical-both-runs conclusion is what carries forward. The
+  aggregates themselves (recall@limit 1.000, MRR 0.827) do not: the review
+  batch redefined MRR to the textbook per-query form, dropped zero-score
+  pool filler from lane ranks, and added `abbrev-cap-composite`, and the
+  re-baseline below reseeded the archive. Numbers across that line are
+  incommensurable, not a trend; the 1.000 was structural anyway, since
+  every pool holds the whole 10-hypothesis archive.
+- After acceptance: `mise run golden-rebuild`, `mise run e2e`, rate the
+  shapes suite (prompt change = rebuild trigger; prompt edits have shifted
+  neighbors before).
+- Re-baselined 2026-08-13, `mise run recall-protocol -- --rebuild
+  --old-ref main`: archive reseeded under the candidate prompt (10
+  hypotheses, the scen3 collapse repeated), then old vs candidate on that
+  frozen copy: 0/17 entries regressed, every cell identical. recall@limit
+  1.000 (structural), MRR 1.000 (textbook: each query's best hit at rank
+  1). The zero-score filter surfaced its first honest lane miss (the Mars
+  seed missed the authority lane on the planetary query that session), and
+  `abbrev-cap-composite` resolved 3/3 at ranks 1-3 with surface-form pairs
+  in the receipts and no eviction.
+- Noise floor priced 2026-08-16, `mise run recall-protocol -- -k 3` on the
+  committed archive: 0 unstable cells across three candidate runs (17
+  entries, all lanes), recall@limit 1.000 and MRR 1.000 in each. Within a
+  session the instrument is stable and k=1 deltas are licensed. Across
+  sessions it is not: the Mars seed's authority cell read `-` on 08-13 and
+  2 in every 08-16 run, so day-to-day interpreter drift is real. Compare
+  receipts only within one protocol session, which is the only comparison
+  the driver performs anyway.
 
-**Options / open questions.** Likely one interpreter.md instruction: emit the
-abbreviation and its expansion as separate keywords. Prompt change:
-golden-rebuild trigger. Measure per the delta doctrine, old prompt vs
-candidate on the same fixtures via `mise run rate`; the shapes probes already
-exercise the HTTP/RPC case. Watch `max_keywords` pressure on keyword-rich
-composites.
+**The p99 boundary, closed 2026-08-13.** Step 2 normalizes "p99" to "99th
+percentile" while Example 8 omits "p99 latency" from its keywords; the
+jargon-vs-abbreviation distinction was taught by omission only. Review found
+the rule/example contradiction; step 6 now states it: metric notation is
+jargon, not an abbreviation, only the expanded form earns a slot.
+
+**Status:** landed 2026-08-12; measured green 2026-08-13; golden-rebuilt
+and re-baselined 2026-08-13. Remaining: `mise run e2e` and the shapes rate
+against the new archive, then commit the fixture.
+
+---
+
+## Claude tooling: a guard blocks the canonical keyless spelling in worktrees
+
+**Found:** 2026-08-12, recall-harness build; two worktree agents hit it
+independently.
+
+**What.** In worktree agent sessions, a guard hook refused
+`env -u GEMINI_API_KEY uv run pytest ... -m e2e`: exactly the keyless
+spelling llm-spend.md documents as canonical. The agents' accounts differ on
+the mechanism (one: the guard cannot see through the `env` wrapper; the
+other: it misread `-m` as a git flag), so the first step is identifying which
+layer refuses it, the repo's settings.json guard or the harness's own
+worktree protection. Both agents fell back to `GEMINI_API_KEY="" ...`,
+equivalent since the conftest skip checks truthiness.
+
+**Why it matters.** A tripwire that blocks the fence's own documented safe
+spelling pushes sessions toward ad-hoc workarounds, while the known-dangerous
+spellings (quoted multi-word selections) still slip past.
+
+**Options / open questions.** Reproduce in a worktree session and attribute
+the refusal; then either teach the guard the `env -u GEMINI_API_KEY` prefix
+or bless `GEMINI_API_KEY=""` in llm-spend.md as the worktree-compatible
+spelling.
 
 **Status:** open; not started.
 
