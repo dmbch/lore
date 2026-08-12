@@ -31,7 +31,7 @@ Process every input in this order.
 
    A mixed sentence splits at the top-level "and" only, each bound structure intact: "A because B, and C" yields the original, then "A because B", then "C". Never re-split an atom. When honest splitting would exceed 15 atoms, keep the atoms coarser instead. When unsure, do not split: return only the first proposition.
 
-6. Keywords. Extract up to 8 keywords for full-text search from all populated input fields, most specific first. Keep named entities and domain terms: product names, component names, dated events. Drop words that could appear in any document: system, performance, issue. Deduplicate ignoring case and inflection. Use forms consistent with the propositions; proper names stay verbatim. A thin input yields a short list, even an empty one; never pad. When unsure whether a term earns a slot, drop it.
+6. Keywords. Extract up to 8 keywords for full-text search from all populated input fields, most specific first. Keep named entities and domain terms: product names, component names, dated events. Drop words that could appear in any document: system, performance, issue. Deduplicate ignoring case and inflection. Use forms consistent with the propositions; proper names stay verbatim. When a keyword's source term is an abbreviation the normalization expanded, emit both surface forms as separate keywords; the pair counts toward the cap of 8, and generic terms drop before either form does. Metric notation (p99, p50) is jargon, not an abbreviation: only its expanded form may earn a slot. A thin input yields a short list, even an empty one; never pad. When unsure whether a term earns a slot, drop it.
 
 7. Question. If `question` is present, rewrite it into a clean, embedding-friendly form: filler removed, jargon normalized, intent unchanged, no constraint added or dropped. When unsure whether a rewrite shifts intent, stay closer to the original. If `question` is absent, leave the output question unset.
 
@@ -50,7 +50,7 @@ Input: {"question": null, "hypothesis": "we finished the calibration runs on the
 Output:
 question: null
 propositions: ["We finished the calibration runs on the nuclear magnetic resonance spectrometer in the week of 2026-06-22."]
-keywords: ["nuclear magnetic resonance spectrometer", "calibration runs"]
+keywords: ["nuclear magnetic resonance spectrometer", "NMR spectrometer", "calibration runs"]
 
 Example 3: a deictic reference grounds from context and reasoning.
 Input: {"question": null, "hypothesis": "the eradication worked", "context": "investigating the collapse of the tern colony on Gull Island", "reasoning": "eradicating the invasive rats restored nesting success", "today": "2026-07-03"}
@@ -89,14 +89,14 @@ Input: {"question": null, "hypothesis": "if we cool the RF cavity below 2 K, the
 Output:
 question: null
 propositions: ["If we cool the radio-frequency cavity below 2 kelvin, the quality factor will exceed a billion."]
-keywords: ["radio-frequency cavity", "quality factor"]
+keywords: ["radio-frequency cavity", "RF cavity", "quality factor", "Q factor"]
 
 Example 8: a mixed sentence splits at the top-level "and" only.
 Input: {"question": null, "hypothesis": "p99 latency doubled after the 2025-03-15 deploy because the CDN cache hit rate fell, and the WAF added 12ms on top", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
 question: null
 propositions: ["99th-percentile latency doubled after the 2025-03-15 deploy because the content delivery network cache hit rate fell, and the web application firewall added 12 milliseconds of latency.", "99th-percentile latency doubled after the 2025-03-15 deploy because the content delivery network cache hit rate fell.", "The web application firewall added 12 milliseconds of latency after the 2025-03-15 deploy."]
-keywords: ["2025-03-15 deploy", "content delivery network", "web application firewall", "cache hit rate", "99th-percentile latency"]
+keywords: ["2025-03-15 deploy", "content delivery network", "CDN", "web application firewall", "WAF", "cache hit rate", "99th-percentile latency"]
 The causal chain survives whole in its atom; the event's date anchors every atom it scopes over, so none becomes a timeless claim.
 
 Example 9: separate sentences split; grounding draws on the rest of the hypothesis.
