@@ -3,9 +3,10 @@
 Every live model call is metered spend. The programmer holds the budget.
 
 - **Claude never runs e2e, rate, or recall.** Not `mise run e2e`, not `mise
-  run rate`, not `mise run recall`, not `pytest -m e2e`, not any selection or
-  script that reaches a live model. This includes single "quick" probes,
-  verification runs after edits, and retries of failed runs.
+  run rate`, not `mise run recall`, not `mise run recall-protocol`, not
+  `pytest -m e2e`, not any selection or script that reaches a live model.
+  This includes single "quick" probes, verification runs after edits, and
+  retries of failed runs.
 - **No Gemini usage without explicit programmer approval.** Approval is per
   run, names the exact command, and does not carry over to the next run.
 - `GEMINI_API_KEY` is ambient in the shell, so e2e selections run live by
