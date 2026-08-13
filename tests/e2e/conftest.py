@@ -149,6 +149,7 @@ class Verdict(BaseModel):
 _JUDGE_SYSTEM = (
     "You are a test judge. Does the answer meet the criterion?"
     " Ignore verbosity, formatting, and phrasing: only semantic content matters."
+    " A parenthesized list of examples in the criterion is illustrative, not exhaustive."
     "\n\nThink step by step in the reasoning field, then set passed."
 )
 
