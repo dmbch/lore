@@ -109,17 +109,30 @@ concatenate. Each row carries the interpreted keywords and propositions
 alongside the per-expected ranks, so the receipt doubles as surface-form
 evidence for prompt deltas.
 
-The delta protocol: same frozen archive, two runs. Extract the old prompt,
-point the first run at it, then run the candidate without `--prompt`:
+`mise run recall-protocol` drives a whole measurement session:
 
 ```bash
-git show <pre-change-ref>:src/lore/prompts/interpreter.md > /tmp/interpreter-old.md
-mise run recall -- --prompt /tmp/interpreter-old.md --artifacts <dir-old>
-mise run recall -- --artifacts <dir-new>
+mise run recall-protocol -- --rebuild --old-ref <pre-change-ref> --artifacts <dir>
 ```
 
-Compare per-lane ranks between the runs; the regression channel is
-authority-lane rank loss on keyword-rich queries.
+`--rebuild` reseeds the golden archive first. A prompt change is a rebuild
+trigger, and a baseline against an archive seeded under another prompt
+measures a mixed system; rebuilding first puts the archive and the query
+pipeline on the same prompt. Omit it when the committed archive already
+matches the working tree's prompt.
+
+`-k N` repeats the candidate run; every repeat is a full paid run. Cells
+that move between identical runs are the interpreter's noise floor, printed
+before the delta: a movement within the floor is noise, not evidence. The
+one licence for reading a k=1 delta as signal is a floor already measured
+at zero.
+
+Both recall runs then share that frozen archive: the candidate prompt from
+the working tree and, with `--old-ref`, the old prompt extracted from git.
+The driver joins the two receipts and prints per-lane rank movements,
+regressions first; the regression channel is authority-lane rank loss on
+keyword-rich queries. Without `--old-ref` the protocol is a plain
+re-baseline.
 
 ## Model aliases
 
