@@ -10,11 +10,11 @@ question = "QUESTION_ANSWERING"
 verification = "FACT_VERIFICATION"
 
 [fast]
-model = "gemini/gemini-flash-latest"
+model = "gemini/gemini-3.6-flash"
 reasoning_effort = "medium"
 num_retries = 2
 
 [reasoning]
-model = "gemini/gemini-flash-latest"
+model = "gemini/gemini-3.6-flash"
 reasoning_effort = "high"
 num_retries = 2

@@ -229,7 +229,7 @@ verification = "FACT_VERIFICATION"
 
 | Vendor | Embedding | Fast | Reasoning |
 |--------|-----------|------|-----------|
-| Gemini | `gemini-embedding-001` | `gemini-flash-latest` | `gemini-flash-latest` |
+| Gemini | `gemini-embedding-001` | `gemini-3.6-flash` | `gemini-3.6-flash` |
 
 No overlap: env vars do not override TOML fields. Single validated object: a bad DSN or missing models fail fast at startup, surfacing as a `ConfigurationError` that names fields and rules, never pydantic's `input_value` dump of the merged config. Vendor auto-detection fills model defaults from API keys when TOML is silent (first lexical match among bundled vendor files wins); TOML overrides vendor defaults per-role. TOML is discovered from conventional paths: `./lore.toml` (project-local) then `/etc/lore.toml` (system-wide). First found wins. Neither found → defaults only.
 
