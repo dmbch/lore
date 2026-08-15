@@ -112,9 +112,48 @@ jargon-vs-abbreviation distinction was taught by omission only. Review found
 the rule/example contradiction; step 6 now states it: metric notation is
 jargon, not an abbreviation, only the expanded form earns a slot.
 
-**Status:** landed 2026-08-12; measured green 2026-08-13; golden-rebuilt
-and re-baselined 2026-08-13. Remaining: `mise run e2e` and the shapes rate
-against the new archive, then commit the fixture.
+**Status:** landed 2026-08-12; measured green 2026-08-13; golden-rebuilt,
+re-baselined, and fixture committed 2026-08-13. e2e ran 43/44 on 2026-08-15
+with the one failure adjudicated as the `-latest` alias flip (see the
+Gemini 3.7 entry); the shapes rate is 5/5 across the file under the 3.6
+pin. Remaining: one clean `mise run e2e` under the pin to confirm the
+committed fixture.
+
+---
+
+## Gemini 3.7 and the err-toward-novel boundary
+
+**Found:** 2026-08-15. The `-latest` alias flipped to Gemini 3.7 flash
+(released 2026-08-13) mid-acceptance: live behavior shifted and the deixis
+shapes probe went 0/5 with identical reasoning each run. Pinned both roles
+to `gemini-3.6-flash`; the probe returned to 5/5. Contained, not resolved.
+
+**What.** Two coupled questions, doctrine first.
+
+3.7 applies archivist.md's err-toward-novel rule more faithfully than 3.6.
+Adjudicated on the deixis case: "Database B is built on PostgreSQL" and
+"Database B uses PostgreSQL as its storage engine" are distinct claims
+(Aurora: built on PostgreSQL, custom storage engine), so 3.7's
+novel-with-note was correct under Step 1 and 3.6's corroboration was lax.
+The doctrine was priced under a lax model. A rule-faithful one splits more
+evidence: uncertainty stays higher, the herd converges slower, near-misses
+accumulate as separate nodes rejoined only by retrieval. Is err-toward-novel
+still right when the model stops erring? The asymmetry argument stands (a
+false paraphrase writes onto the wrong claim irreversibly; a false novel
+splits evidence retrieval can rejoin), but the fragmentation cost is now
+real. Options: keep the rule and accept fragmentation; soften the boundary
+(same-subject role refinements corroborate); or restate it two-sided,
+naming both error costs.
+
+Then 3.7 adoption, blocked on the doctrine call: bump the pin,
+`recall-protocol -- --rebuild --old-ref`, e2e, shapes and decomposition
+rates, and re-probe the Gemini 3 tuning facts (temperature, thinking,
+compound splitting). The deixis test example rides the boundary and passes
+only under 3.6; whichever way doctrine lands, re-choose the example (a true
+paraphrase of the seed) or respec the assertion to the grounding observable
+before the pin moves.
+
+**Status:** open; pin landed 2026-08-15; doctrine decision blocks adoption.
 
 ---
 
