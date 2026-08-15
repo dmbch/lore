@@ -410,16 +410,18 @@ async def _evaluate(*, prompt: Path | None, recall_log: Path) -> list[QueryScore
 
 
 def main() -> None:
-    # The whole driver is metered spend; a keyless run must exit here,
-    # before any composition, filesystem work, or network.
-    if not os.environ.get("GEMINI_API_KEY"):
-        sys.exit("recall: GEMINI_API_KEY not set; the eval drives live interpret and embed calls")
     # `python scripts/recall.py` puts scripts/ (not the repo root) on
-    # sys.path, and the query labels and golden fixture live under tests/.
-    # A no-op under pytest, which already resolves tests/ from the rootdir.
+    # sys.path; the query labels, golden fixture, and shared driver shell
+    # resolve from the root. A no-op under pytest, which already resolves
+    # the packages from the rootdir.
     repo_root = str(Path(__file__).resolve().parent.parent)
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
+    from scripts._metered import artifacts_root, require_gemini_key
+
+    # The whole driver is metered spend; a keyless run must exit here,
+    # before any composition, filesystem work, or network.
+    require_gemini_key(script="recall", spend="the eval drives live interpret and embed calls")
     parser = argparse.ArgumentParser(
         description="Score two-lane retrieval recall over the labeled query set."
     )
@@ -428,13 +430,7 @@ def main() -> None:
         "--prompt", type=Path, default=None, help="interpreter prompt override for delta runs"
     )
     args = parser.parse_args()
-    # Every run is metered spend; the artifacts are the receipts. They always
-    # persist, to a fresh tempdir unless --artifacts places them deliberately.
-    if args.artifacts is None:
-        root = Path(tempfile.mkdtemp(prefix="lore-recall-"))
-    else:
-        root = args.artifacts
-        root.mkdir(parents=True, exist_ok=True)
+    root = artifacts_root(args.artifacts, prefix="lore-recall-")
     layout = artifact_layout(root)
     # One receipt per run: a rerun into the same --artifacts dir must
     # replace the old receipt, never concatenate two paid runs.

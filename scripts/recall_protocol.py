@@ -16,11 +16,9 @@ subprocess driver stays untested, like rate.py's main.
 """
 
 import argparse
-import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
@@ -220,15 +218,18 @@ def _extract_old_prompt(*, ref: str, target: Path) -> None:
 
 
 def main() -> None:
-    # The whole protocol is metered spend; a keyless run must exit here,
-    # before any composition, filesystem work, or subprocess.
-    if not os.environ.get("GEMINI_API_KEY"):
-        sys.exit("recall-protocol: GEMINI_API_KEY not set; every step drives live model calls")
     # `python scripts/recall_protocol.py` puts scripts/ (not the repo root)
-    # on sys.path, and the receipt schema lives in scripts.recall. A no-op
-    # under pytest, which already resolves the package from the rootdir.
+    # on sys.path; the receipt schema and shared driver shell resolve from
+    # the root. A no-op under pytest, which already resolves the package
+    # from the rootdir.
     if str(_REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(_REPO_ROOT))
+    from scripts._metered import artifacts_root, require_gemini_key
+    from scripts.recall import artifact_layout
+
+    # The whole protocol is metered spend; a keyless run must exit here,
+    # before any composition, filesystem work, or subprocess.
+    require_gemini_key(script="recall-protocol", spend="every step drives live model calls")
     parser = argparse.ArgumentParser(
         description="Drive the recall protocol: optional rebuild, candidate run, old-prompt delta."
     )
@@ -252,15 +253,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.k < 1:
         parser.error("-k must be >= 1")
-    if args.artifacts is None:
-        root = Path(tempfile.mkdtemp(prefix="lore-recall-protocol-"))
-    else:
-        root = args.artifacts
-        root.mkdir(parents=True, exist_ok=True)
-    # Deferred like the sys.path bootstrap above: scripts.recall resolves
-    # only once the repo root is importable.
-    from scripts.recall import artifact_layout
-
+    root = artifacts_root(args.artifacts, prefix="lore-recall-protocol-")
     layout = protocol_layout(root)
     recall = [sys.executable, str(_REPO_ROOT / "scripts" / "recall.py")]
 
