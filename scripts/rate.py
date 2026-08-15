@@ -16,7 +16,6 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from pathlib import Path
@@ -84,6 +83,14 @@ def _positive_int(text: str) -> int:
 
 
 def main() -> None:
+    # `python scripts/rate.py` puts scripts/ (not the repo root) on
+    # sys.path; the shared driver shell resolves from the root. A no-op
+    # under pytest, which already resolves the package from the rootdir.
+    repo_root = str(Path(__file__).resolve().parent.parent)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    from scripts._metered import artifacts_root
+
     parser = argparse.ArgumentParser(
         description="Measure per-test pass rates over k fresh pytest processes."
     )
@@ -94,13 +101,7 @@ def main() -> None:
         "--artifacts", type=Path, default=None, help="persist the rate log and per-run traces here"
     )
     args, passthrough = parser.parse_known_args()
-    # Every run is metered spend; the artifacts are the receipts. They always
-    # persist, to a fresh tempdir unless --artifacts places them deliberately.
-    if args.artifacts is None:
-        root = Path(tempfile.mkdtemp(prefix="lore-rate-"))
-    else:
-        root = args.artifacts
-        root.mkdir(parents=True, exist_ok=True)
+    root = artifacts_root(args.artifacts, prefix="lore-rate-")
     layout = artifact_layout(root, runs=args.runs)
     # -m e2e and --no-cov undo the repo addopts: -m 'not e2e' would
     # deselect the suites this instrument exists for, and the coverage
