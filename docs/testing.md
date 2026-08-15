@@ -134,10 +134,16 @@ regressions first; the regression channel is authority-lane rank loss on
 keyword-rich queries. Without `--old-ref` the protocol is a plain
 re-baseline.
 
-## Model aliases
+## Model versions
 
-Both gemini roles ride `-latest`. Frontier dogfooding is itself eval signal, and
-the other vendors have no rolling aliases anyway.
+Both gemini roles pin a stable version in `config/vendors/gemini.toml`. They
+rode `-latest` until 2026-08-15, when the alias flipped to Gemini 3.7 flash
+mid-acceptance: live behavior shifted and the deixis shapes probe went 0/5,
+back to 5/5 under the pin. A rolling alias runs someone else's release
+schedule against a calibrated system; frontier dogfooding was not worth
+that. Model adoption is deliberate: bump the pin on a branch, run
+`recall-protocol -- --rebuild --old-ref`, e2e, and the shapes and
+decomposition rates, and re-probe the model tuning facts before landing.
 
 After any alias flip, run e2e deliberately and re-probe tuning. The 2026-07-21
 flip to Gemini 3 made the inherited fast-role `temperature = 0.0` pin toxic and

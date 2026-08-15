@@ -187,7 +187,7 @@ def test_user_toml_overrides_single_vendor_model_section() -> None:
         s = load_settings(toml_path=_PARTIAL_FAST_TOML)
         assert s.fast.model == "custom/my-fast-model"
         assert s.embedding.model == "gemini/gemini-embedding-001"
-        assert s.reasoning.model == "gemini/gemini-flash-latest"
+        assert s.reasoning.model == "gemini/gemini-3.6-flash"
 
 
 def test_user_overrides_embedding_dimension_preserves_vendor_task_type(
