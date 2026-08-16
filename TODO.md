@@ -37,6 +37,14 @@ credibility of the live ones next to it.
 - docs normalizing any of the above as "structural" or "by design" where
   the honest move is removal or an instrument with headroom.
 
+**The fix**, since the metric was never the problem: recall guards the
+failure that matters, and that guard was right. Its fixture was wrong. The
+eval now measures recall at a pool depth the archive can overflow, squeezing
+to a third of the archive until the corpus outgrows the configured limit,
+and marks the number `(squeezed)` when it did. Weaker than the real thing,
+because a small corpus cannot supply the competitors a large one would;
+still a test that can fail.
+
 **Swept 2026-08-16**, four passes (tests, production code, scripts/docs/
 prompts, formalism). What the sweep found beyond exhibit A, and landed:
 
@@ -58,17 +66,20 @@ prompts, formalism). What the sweep found beyond exhibit A, and landed:
 
 **What remains**, each a judgment call rather than a mechanical cut:
 
-- **Math property asserts.** `b + d + u == 1` after operations, across
-  `tests/math`, is unfailable: the `Opinion` constructor rejects any other
-  triple, and a mutated operator reds through the constructor's raise, not
-  the assert. Deleting them should not move the mutation floor under
-  single-mutation semantics, but the floor table is the arbiter and a
-  `mise run mutation` confirms it. Cheap, unverified, deferred.
-- **`find_by_id` / `find_by_hypothesis`.** Two Protocol methods, four
-  implementations, parity tests, zero production callers; consumed only by
-  tests as ledger-inspection primitives. architecture.md cites `find_by_id`
-  as the example relational method, so this is contract surface or dead
-  weight depending on intent.
+- **A retrieval corpus of its own.** The squeezed depth is a stopgap: it
+  thresholds the ranking a 10-hypothesis archive produces, and cannot
+  supply the confusable neighbors that make retrieval hard. Growing the
+  golden archive is the wrong lever, since it is the e2e fixture: every
+  seed is a live consult on every rebuild, every added hypothesis perturbs
+  existing probes' resolutions, and the 1 MiB budget is the ceiling. The
+  eval needs the opposite of what e2e needs. A recall-only corpus can be
+  written straight through the repositories (hypotheses, embeddings, a
+  minimal ledger row each) for one embedding batch and no interpret or
+  archivist call, so density is cheap: clusters of near-paraphrases around
+  each labeled target, sized past the configured limit. Retrieval sees only
+  content and vectors, so direct-written content is not the fabricated
+  distribution it would be for e2e. Same mechanism closes the short-form
+  archive edge above.
 - **logic.md's K = 0 dogmatic hazard.** The trust ceiling derives to
   `1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
   is unreachable at any finite K and the documented hazard describes a state
@@ -84,9 +95,18 @@ prompts, formalism). What the sweep found beyond exhibit A, and landed:
   while the project's stated convention counts `_transfer` as a distinct
   oracle, which would make it 1. Effect at K=1: the dissenting oracle enters
   at M=1/2 rather than 2/3. Bug or deliberate exclusion; neither doc says.
-- **Armed, not dead, and correctly so:** conflict CC/DC, the `t_oracle`
-  column, `correlation_id`, and the `requests` table all have zero runtime
-  readers by design, each with a named future consumer. Left alone.
+**Reported and dismissed**, so the next sweep does not re-file them:
+conflict CC/DC, the `t_oracle` column, `correlation_id`, and the `requests`
+table have zero runtime readers by design, each with a named future
+consumer: armed is not dead. `find_by_id` and `find_by_hypothesis` are
+consumed by tests as ledger-inspection primitives and are the read API the
+observatory and debug-UI entries already plan. The `b + d + u == 1` asserts
+across `tests/math` are unfailable (the `Opinion` constructor rejects any
+other triple) but harmless: under single-mutation semantics a mutated
+operator reds through the constructor's raise, so deleting them buys
+nothing the mutation floor would notice. `HypothesisResult.created_at`
+riding along unread and single-caller default arguments are not dead
+instruments, just ordinary slack.
 
 **Status:** open; exhibit A and the mechanical cuts landed 2026-08-16, the
 judgment calls above are unstarted.
