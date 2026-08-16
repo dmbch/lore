@@ -3,7 +3,8 @@
 Work we intend to do. Each entry: what, why it matters, options, status.
 
 Standing constraints (the mutation floor, the golden gate, flake posture, alias
-re-probes) live in [docs/testing.md](docs/testing.md). Landed work lives in git.
+re-probes) live in [docs/testing.md](docs/testing.md). Measurement records live
+in [docs/measurements.md](docs/measurements.md). Landed work lives in git.
 
 ---
 
@@ -18,14 +19,17 @@ per-run stage traces and `/rate-analyze` delivers the cross-run sniff test
 (landed 2026-08-11). Narrowed 2026-08-12: the recall eval landed as a manual
 mise task (`mise run recall`): labeled queries in `tests/e2e/queries.py`,
 lane-isolated scoring and JSONL receipts in `scripts/recall.py`, delta
-protocol in docs/testing.md. Retrieval is measured; weight changes no longer
-fly blind.
+protocol in docs/testing.md, records in docs/measurements.md. Retrieval is
+measured against the golden corpus: a census of it, not a sample, so the
+numbers pin this archive and say little about the next one.
 
 **What remains.** The short-form-archive edge. The surface-form keyword rule
 protects archives that store abbreviations verbatim, and the golden corpus
-cannot pin one deterministically: seeding runs the same normalizer that
-expands them. Coverage waits for organic corpus growth; revisit the query
-labels when a live archive stores short forms.
+does not pin one: seeding runs the same normalizer that expands them. A
+direct-write short-form fixture (repositories, not consult) could pin it
+today; deferred as a second fixture surface, not impossible. Coverage waits
+for organic corpus growth; revisit the query labels when a live archive
+stores short forms.
 
 **Fixture candidates** for growing the prompt suites, each a behavior already
 observed and none yet pinned:
@@ -65,46 +69,12 @@ generic terms drop before either form); Examples 2, 7, and 8 obey the rule;
 `test_abbreviation_keywords_carry_both_surface_forms` (ECG, held-out domain)
 pins it directly, expected red under the pre-change prompt.
 
-**Measurement** (delta doctrine; measured 2026-08-13, k=5 per rate run):
-
-- Probe, old vs candidate: 0/5 to 5/5. Every old-prompt failure showed the
-  predicted mechanism: keywords carried "electrocardiogram", never "ECG".
-- Neighbors: no attributable regression. One 4/5 per run on different tests
-  (old: colloquial-question, judge rejected "recently" for "lately";
-  candidate: paragraph-deixis, judge read a criterion's example list as
-  exhaustive); each test's counterpart run was 5/5. Judge noise, not prompt
-  effect.
-- Recall delta on the frozen archive: identical aggregates both runs.
-  `keyword-rich-composite` authority ranks 1-4 in both (a 2-3 swap in
-  middle ranks); receipts show the candidate emitting surface-form pairs
-  ("remote procedure call" + "RPC") with no eviction of seed-critical
-  terms. The identical-both-runs conclusion is what carries forward. The
-  aggregates themselves (recall@limit 1.000, MRR 0.827) do not: the review
-  batch redefined MRR to the textbook per-query form, dropped zero-score
-  pool filler from lane ranks, and added `abbrev-cap-composite`, and the
-  re-baseline below reseeded the archive. Numbers across that line are
-  incommensurable, not a trend; the 1.000 was structural anyway, since
-  every pool holds the whole 10-hypothesis archive.
-- After acceptance: `mise run golden-rebuild`, `mise run e2e`, rate the
-  shapes suite (prompt change = rebuild trigger; prompt edits have shifted
-  neighbors before).
-- Re-baselined 2026-08-13, `mise run recall-protocol -- --rebuild
-  --old-ref main`: archive reseeded under the candidate prompt (10
-  hypotheses, the scen3 collapse repeated), then old vs candidate on that
-  frozen copy: 0/17 entries regressed, every cell identical. recall@limit
-  1.000 (structural), MRR 1.000 (textbook: each query's best hit at rank
-  1). The zero-score filter surfaced its first honest lane miss (the Mars
-  seed missed the authority lane on the planetary query that session), and
-  `abbrev-cap-composite` resolved 3/3 at ranks 1-3 with surface-form pairs
-  in the receipts and no eviction.
-- Noise floor priced 2026-08-16, `mise run recall-protocol -- -k 3` on the
-  committed archive: 0 unstable cells across three candidate runs (17
-  entries, all lanes), recall@limit 1.000 and MRR 1.000 in each. Within a
-  session the instrument is stable and k=1 deltas are licensed. Across
-  sessions it is not: the Mars seed's authority cell read `-` on 08-13 and
-  2 in every 08-16 run, so day-to-day interpreter drift is real. Compare
-  receipts only within one protocol session, which is the only comparison
-  the driver performs anyway.
+**Measurement.** Green through the delta doctrine; the record lives in
+[docs/measurements.md](docs/measurements.md): the 08-13 delta (probe 0/5 to
+5/5 with the predicted mechanism, neighbors clean, recall aggregates
+identical), the 08-13 re-baseline (0/17 entries regressed), and the 08-16
+noise floor (0 unstable cells at k=3; k=1 deltas licensed within a
+session, cross-session comparison is not).
 
 **The p99 boundary, closed 2026-08-13.** Step 2 normalizes "p99" to "99th
 percentile" while Example 8 omits "p99 latency" from its keywords; the
@@ -113,11 +83,9 @@ the rule/example contradiction; step 6 now states it: metric notation is
 jargon, not an abbreviation, only the expanded form earns a slot.
 
 **Status:** landed 2026-08-12; measured green 2026-08-13; golden-rebuilt,
-re-baselined, and fixture committed 2026-08-13. e2e ran 43/44 on 2026-08-15
-with the one failure adjudicated as the `-latest` alias flip (see the
-Gemini 3.7 entry); the shapes rate is 5/5 across the file under the 3.6
-pin. Remaining: one clean `mise run e2e` under the pin to confirm the
-committed fixture.
+re-baselined, and fixture committed 2026-08-13. Remaining: one clean
+`mise run e2e` under the pin to confirm the committed fixture (the 08-15
+run's single failure was the alias flip; see docs/measurements.md).
 
 ---
 
