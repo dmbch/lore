@@ -37,12 +37,59 @@ credibility of the live ones next to it.
 - docs normalizing any of the above as "structural" or "by design" where
   the honest move is removal or an instrument with headroom.
 
-**Options.** For exhibit A: suppress ceiling aggregates while the archive
-fits inside the result limit, and add the pollution count (non-expected
-hypotheses ranked above the best expected), the one aggregate with headroom
-on a census fixture.
+**Swept 2026-08-16**, four passes (tests, production code, scripts/docs/
+prompts, formalism). What the sweep found beyond exhibit A, and landed:
 
-**Status:** open; sweep started 2026-08-16.
+- The leak test's secret scan read an empty string. structlog's PrintLogger
+  writes past the `capsys` buffer, so the sentinel had no stream to appear
+  in; the scan would have passed on a real leak. Both scans now capture
+  structlog events and carry positive controls.
+- Two paid archivist probes asserted "at most one" attestation per seed, a
+  count cross-resolution disjointness already makes unrepresentable, and
+  which also passed when the model corroborated nothing.
+- The Recorder guarded map keys the repository contract guarantees, in the
+  polarity that masks: a broken contract would have read as a fresh
+  hypothesis and fused against a vacuous prior instead of raising.
+- Two interpreter rules had no witness: the keyword cap of 8 (enforced
+  nowhere; the retrieval slice sits at 10) and the metric-notation rule
+  (whose only example is the one it was written from).
+- Docs asserting what the code denies: the README's vendor table still
+  advertised the rolling alias the config pinned away from.
+
+**What remains**, each a judgment call rather than a mechanical cut:
+
+- **Math property asserts.** `b + d + u == 1` after operations, across
+  `tests/math`, is unfailable: the `Opinion` constructor rejects any other
+  triple, and a mutated operator reds through the constructor's raise, not
+  the assert. Deleting them should not move the mutation floor under
+  single-mutation semantics, but the floor table is the arbiter and a
+  `mise run mutation` confirms it. Cheap, unverified, deferred.
+- **`find_by_id` / `find_by_hypothesis`.** Two Protocol methods, four
+  implementations, parity tests, zero production callers; consumed only by
+  tests as ledger-inspection primitives. architecture.md cites `find_by_id`
+  as the example relational method, so this is contract surface or dead
+  weight depending on intent.
+- **logic.md's K = 0 dogmatic hazard.** The trust ceiling derives to
+  `1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
+  is unreachable at any finite K and the documented hazard describes a state
+  the algebra cannot produce; the informative-commitment gate now binds
+  first, at every K. The dogmatic-fusion complex is likewise unreachable
+  from pipeline data at any configuration, not just at K >= 1 as the doc
+  states. Both paragraphs predate the gate. Needs a logician pass.
+- **`n_prior`.** IDEA.md lists it among the derivables and both backends'
+  SQL comments point future readers at it, but nothing derives it;
+  `n_oracle_prior` is what freshness detection actually uses. Implement or
+  strike (the IDEA.md half is approval-gated).
+- **`n_oracle_prior` on a novel that carries a transfer row.** Stored as 0
+  while the project's stated convention counts `_transfer` as a distinct
+  oracle, which would make it 1. Effect at K=1: the dissenting oracle enters
+  at M=1/2 rather than 2/3. Bug or deliberate exclusion; neither doc says.
+- **Armed, not dead, and correctly so:** conflict CC/DC, the `t_oracle`
+  column, `correlation_id`, and the `requests` table all have zero runtime
+  readers by design, each with a named future consumer. Left alone.
+
+**Status:** open; exhibit A and the mechanical cuts landed 2026-08-16, the
+judgment calls above are unstarted.
 
 ---
 
