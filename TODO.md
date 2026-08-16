@@ -8,6 +8,44 @@ in [docs/measurements.md](docs/measurements.md). Landed work lives in git.
 
 ---
 
+## Cull the dead instruments
+
+**Found:** 2026-08-16, programmer callout at the recall-harness wrap-up.
+
+**Exhibit A: recall@limit.** A paid metric that cannot fail. The golden
+corpus holds 10 hypotheses and the result limit is 10, so every pool holds
+the whole archive and recall@limit prints 1.000 by construction: metered
+recall runs pay live interpret and embed calls to headline a number known
+before the first call. It reads as an A+, and it was handled by annotating
+it "(structural)" in three places instead of by not printing a dead number.
+Labeling a tautology is not a substitute for refusing to build one; the
+annotation normalized the deadness, and review after review walked past it
+because the docs said so. A project about honest uncertainty headlined
+false certainty about itself.
+
+**Why it matters.** An instrument that cannot move teaches the reader to
+stop reading instruments. Every dead number in a summary line spends the
+credibility of the live ones next to it.
+
+**What.** A systematic sweep for the failure class, then a cull:
+
+- metrics or assertions at a forced ceiling, unable to fail against the
+  fixtures they run on;
+- guards on unreachable states beyond the documented mutation-floor set;
+- config knobs no code path varies, or varies without observable effect;
+- paid operations computing constants;
+- docs normalizing any of the above as "structural" or "by design" where
+  the honest move is removal or an instrument with headroom.
+
+**Options.** For exhibit A: suppress ceiling aggregates while the archive
+fits inside the result limit, and add the pollution count (non-expected
+hypotheses ranked above the best expected), the one aggregate with headroom
+on a census fixture.
+
+**Status:** open; sweep started 2026-08-16.
+
+---
+
 ## Evaluation harness: retrieval recall
 
 **Found:** 2026-07-19, TODO sweep; carried from the prompt-audit (2026-06-21)
