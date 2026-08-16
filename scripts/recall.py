@@ -1,7 +1,10 @@
 """Score two-lane retrieval against the labeled query set in tests/e2e/queries.py.
 
-The scoring core is pure: per-expected-hypothesis ranks in, recall and MRR
-aggregates and a worst-first table out. ``main()`` is the live, metered
+The scoring core is pure: per-expected-hypothesis ranks in, crowding and MRR
+aggregates and a worst-first table out. recall@limit prints only when the
+archive outgrows the result limit, the one regime where it can fail; below
+that every pool holds every hypothesis and the number would be 1.000 by
+construction. ``main()`` is the live, metered
 driver: it composes a read-only stack over a fresh golden-archive copy and,
 per labeled query, runs one interpret call, one embedding batch, and three
 search passes (composite plus each lane isolated). It never reasons and never
@@ -75,6 +78,12 @@ class ReceiptRow(DataModel):
     composite_results: tuple[str, ...]
 
 
+class Evaluation(NamedTuple):
+    scores: list[QueryScore]
+    archive_size: int
+    limit: int
+
+
 class ArtifactLayout(NamedTuple):
     recall_log: Path
 
@@ -109,6 +118,35 @@ def recall_at_limit(scores: Sequence[QueryScore]) -> float:
     return _found(outcomes) / len(outcomes)
 
 
+def recall_discriminates(*, archive_size: int, limit: int) -> bool:
+    """Can recall@limit fail at all?
+
+    Only when the archive outgrows the result limit. Below that every pool
+    holds every hypothesis, membership cannot fail, and recall@limit reports
+    1.000 without measuring anything. The eval refuses to print it there:
+    annotating a dead number is not the same as not printing one.
+    """
+    return archive_size > limit
+
+
+def interlopers(score: QueryScore) -> int | None:
+    """Non-expected hypotheses ranked above the query's worst expected hit.
+
+    The metric with headroom while the archive fits the pool: retrieval
+    degrades by letting other hypotheses crowd in above the expected ones
+    long before it drops them. None when an expected hypothesis is missing,
+    which is a miss and outranks any amount of crowding.
+    """
+    ranks = [o.composite for o in score.outcomes if o.composite is not None]
+    if not score.outcomes or len(ranks) != len(score.outcomes):
+        return None
+    return max(ranks) - len(ranks)
+
+
+def total_interlopers(scores: Sequence[QueryScore]) -> int:
+    return sum(count for score in scores if (count := interlopers(score)) is not None)
+
+
 def _best_reciprocal(score: QueryScore) -> float:
     found = [o.composite for o in score.outcomes if o.composite is not None]
     return 1 / min(found) if found else 0.0
@@ -125,13 +163,6 @@ def mean_reciprocal_rank(scores: Sequence[QueryScore]) -> float:
     return sum(_best_reciprocal(score) for score in scores) / len(scores)
 
 
-def _found_fraction(score: QueryScore) -> float:
-    # A query with no expectations carries no evidence of a retrieval miss;
-    # fraction 1.0 sinks it below every query that actually missed one.
-    outcomes = score.outcomes
-    return _found(outcomes) / len(outcomes) if outcomes else 1.0
-
-
 def _cell(rank: int | None) -> str:
     return str(rank) if rank is not None else "-"
 
@@ -143,11 +174,21 @@ def _ranks(outcome: ExpectedEntry) -> str:
     )
 
 
+def _worst_first(score: QueryScore) -> tuple[int, int, str]:
+    # Misses first, then the most crowded. Both keys move on this archive;
+    # a found-fraction key would not, since every hypothesis reaches every
+    # pool while the archive fits the limit.
+    crowding = interlopers(score)
+    return (0, 0, score.query_id) if crowding is None else (1, -crowding, score.query_id)
+
+
 def format_table(scores: Sequence[QueryScore]) -> str:
     rows: list[str] = []
-    for score in sorted(scores, key=lambda s: (_found_fraction(s), s.query_id)):
+    for score in sorted(scores, key=_worst_first):
         details = "  ".join(_ranks(outcome) for outcome in score.outcomes)
-        rows.append(f"{_found(score.outcomes)}/{len(score.outcomes)}  {score.query_id}  {details}")
+        crowding = interlopers(score)
+        lead = "miss" if crowding is None else f"+{crowding}"
+        rows.append(f"{lead}  {score.query_id}  {details}")
     return "\n".join(rows)
 
 
@@ -221,6 +262,16 @@ def resolve_expected(
     finally:
         conn.close()
     return resolved
+
+
+def count_hypotheses(db_path: Path) -> int:
+    """How many hypotheses the archive holds: the denominator that decides
+    whether recall@limit can fail at all."""
+    conn = sqlite3.connect(db_path)
+    try:
+        return int(conn.execute("SELECT COUNT(*) FROM hypotheses").fetchone()[0])
+    finally:
+        conn.close()
 
 
 def _request(query: LabeledQuery) -> ConsultLoreRequest:
@@ -357,7 +408,7 @@ def _append_row(log: Path, *, row: ReceiptRow) -> None:
         sink.write(row.model_dump_json() + "\n")
 
 
-async def _evaluate(*, prompt: Path | None, recall_log: Path) -> list[QueryScore]:
+async def _evaluate(*, prompt: Path | None, recall_log: Path) -> Evaluation:
     from tests.e2e.corpus import SEEDS
     from tests.e2e.fixtures.golden import golden_copy
     from tests.e2e.queries import QUERIES
@@ -366,8 +417,10 @@ async def _evaluate(*, prompt: Path | None, recall_log: Path) -> list[QueryScore
     # dies with the run.
     with tempfile.TemporaryDirectory(prefix="lore-recall-db-") as scratch:
         dsn = golden_copy(Path(scratch))
+        db_path = Path(dsn.removeprefix("sqlite:///"))
+        archive_size = count_hypotheses(db_path)
         resolved = resolve_expected(
-            db_path=Path(dsn.removeprefix("sqlite:///")),
+            db_path=db_path,
             oracles={seed.correlation_id: seed.oracle for seed in SEEDS},
             labeled={cid for query in QUERIES for cid in query.expected},
         )
@@ -404,7 +457,9 @@ async def _evaluate(*, prompt: Path | None, recall_log: Path) -> list[QueryScore
                 )
                 scores.append(score)
                 _append_row(recall_log, row=row)
-            return scores
+            return Evaluation(
+                scores=scores, archive_size=archive_size, limit=settings.retrieval.limit
+            )
         finally:
             await pool.close()
 
@@ -435,10 +490,18 @@ def main() -> None:
     # One receipt per run: a rerun into the same --artifacts dir must
     # replace the old receipt, never concatenate two paid runs.
     layout.recall_log.unlink(missing_ok=True)
-    scores = asyncio.run(_evaluate(prompt=args.prompt, recall_log=layout.recall_log))
+    evaluation = asyncio.run(_evaluate(prompt=args.prompt, recall_log=layout.recall_log))
+    scores = evaluation.scores
     print(format_table(scores))
-    print(f"recall@limit: {recall_at_limit(scores):.3f}")
+    print(f"interlopers: {total_interlopers(scores)}")
     print(f"mrr: {mean_reciprocal_rank(scores):.3f}")
+    if recall_discriminates(archive_size=evaluation.archive_size, limit=evaluation.limit):
+        print(f"recall@limit: {recall_at_limit(scores):.3f}")
+    else:
+        print(
+            f"recall@limit: not measured ({evaluation.archive_size} hypotheses"
+            f" fit the limit of {evaluation.limit}; every pool holds the archive)"
+        )
     print(f"artifacts: {root}")
 
 

@@ -97,10 +97,17 @@ only.
 
 A `-` rank means the lane never surfaced the hypothesis within the result
 limit: zero-score pool filler is dropped before ranking, and each search
-pass truncates to the limit. And recall@limit discriminates only once the
-archive outgrows that limit; on the current golden corpus every pool holds
-the whole archive, so the per-lane ranks carry the signal and recall@limit
-is structurally 1.0.
+pass truncates to the limit. On the current golden corpus only the
+authority lane can show one; every hypothesis scores above zero in the
+proximity lane, so the composite and proximity columns are always ranked.
+
+The headline is `interlopers`: non-expected hypotheses ranked above a
+query's worst expected hit, summed over queries. It is the metric with
+headroom while the archive fits the pool, because retrieval degrades by
+crowding long before it drops anything. recall@limit prints only when the
+archive outgrows the result limit, the one regime where it can fail; below
+that the runner says so instead of printing 1.000. MRR is live but
+saturated: it can fall, never rise.
 
 Every recall run is paid; its artifacts are the receipts and always persist:
 one JSONL row per query at `recall.jsonl`, in a fresh `lore-recall-*` tempdir
