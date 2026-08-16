@@ -338,4 +338,10 @@ class TestCompletePassThroughExtras:
                 user="usr",
             )
         kwargs = harness.mock_create.call_args.kwargs
-        assert list(kwargs.keys()).count("model") == 1
+        # A dict cannot hold a duplicate key, so counting occurrences here
+        # can only ever read 1: the live channel for the bug this test names
+        # is the TypeError the call itself raises when the typed field also
+        # arrives through the extras splat. What is worth pinning is that
+        # the typed surface, not the extras, supplied the value.
+        assert kwargs["model"] == "gpt-4.1-mini"
+        assert "temperature" in kwargs

@@ -56,6 +56,8 @@ async def test_decay_reduces_confidence(decay_system: Orchestrator) -> None:
     assert current_1 > 0, f"Sign should be preserved: {current_1}"
     assert current_2 > 0, f"Sign should be preserved: {current_2}"
 
-    # Stored c_herd unchanged (immutable ledger)
-    rows_after = await attestations(decay_system, "decay-01")
-    assert float(rows_after[0]["c_herd"]) == stored_c_herd, "Stored c_herd must be immutable"
+    # Ledger immutability under decay is not asserted here: re-reading the
+    # same row after two pure MathService calls cannot disagree with itself,
+    # since nothing wrote in between. The property is structural (decay is
+    # read-time arithmetic in lore.math, which tach bars from importing any
+    # repository) and pinning it would take a writer between the reads.

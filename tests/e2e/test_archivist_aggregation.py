@@ -96,9 +96,15 @@ async def test_paraphrase_aggregation_yields_at_most_one_positive_per_seed(
     rows = await attestations(golden_system, composite_corr_id)
     seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
     positive = [r for r in seed_atts if float(r["c_oracle_raw"]) > 0]
-    assert len(positive) <= 1, (
-        f"Cross-resolution disjointness: at most one positive attestation on the "
-        f"seeded hypothesis from this consult, got {len(positive)}: {positive}"
+    # Exactly one: the composite paraphrases the seed three ways, so the
+    # aggregation claim is that all three land as a single positive row.
+    # "At most one" would be schema-guaranteed by cross-resolution
+    # disjointness (ArchivistOutput rejects a repeated ID before the
+    # orchestrator sees it) and would also pass on zero, greening this
+    # probe when the model corroborates nothing at all.
+    assert len(positive) == 1, (
+        f"Expected exactly one positive attestation on the seeded hypothesis "
+        f"from this consult, got {len(positive)}: {positive}"
     )
 
 
@@ -132,12 +138,15 @@ async def test_multi_contradict_writes_consolidated_transfer(
     assert float(transfer["c_oracle_raw"]) == float(transfer["c_oracle_discounted"])
     assert float(transfer["c_oracle_raw"]) < 0  # negated positive herd state
 
-    # At most one negative attestation per seed from the prober.
+    # One negative attestation per seed: the novel contradicts both, and the
+    # per-seed count is where that shows. "At most one" is schema-guaranteed
+    # (a contradicts list rejects duplicates, resolutions reject a repeated
+    # ID) and passes when a seed is never contradicted at all.
     for seed in (seed_a, seed_b):
         seed_atts = _by_seed(rows, seed, oracle="oracle-prober")
         negative = [r for r in seed_atts if float(r["c_oracle_raw"]) < 0]
-        assert len(negative) <= 1, (
-            f"At most one negative attestation per seed, got {len(negative)} on {seed}"
+        assert len(negative) == 1, (
+            f"Expected one negative attestation per seed, got {len(negative)} on {seed}"
         )
 
 
