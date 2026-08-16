@@ -54,7 +54,7 @@ DSNs and API keys come from environment variables (12-factor); behavioral config
 
 ### Adapter
 
-MCP is the interface. One tool, `consult`, plus the same-named prompt that serves the Scribe persona. Two adapters from day one:
+MCP is the interface. The epistemic write interface is exactly one tool, `consult`, plus the same-named prompt that serves the Scribe persona; `observe` rides alongside it as a read-only view of the uncertainty frontier. Two adapters from day one:
 
 - **MCP over stdio**: single-user local development. No auth; oracle identity is the synthetic `_local`.
 - **MCP over HTTP**: multi-user. When `OIDC_URL` is configured, the adapter runs OAuth and extracts the oracle identity from the IdP's `sub` claim (see Authentication). Otherwise the adapter falls back to the same `_local` identity, fine for sidecar topologies that authenticate at the proxy; operators who want Lore to refuse the unauthenticated path set `[auth] required = true` in `lore.toml`.
@@ -225,7 +225,7 @@ verification = "FACT_VERIFICATION"
 
 `task_type` (`TaskTypeConfig | None`). A sub-table mapping semantic keys (`document`, `question`, `verification`) to vendor-specific strings passed through to LiteLLM as kwargs. Sparse configs are fine; set only the task types you need, and the provider omits any that are `None`. Gemini supports granular task types; OpenAI and Bedrock Titan v2 have none. `extra="forbid"` catches typos.
 
-**Vendor defaults.** Vendor default files (`config/vendors/{vendor}.toml`) specify model strings and an `api_key` env var name for auto-detection, with no dimensions. Dimensions are always resolved at bootstrap. A bundled default is a promise: supply the key and the system works. Gemini is the only vendor that has earned it against the live e2e suite, so it ships the only file; its defaults include task_type for the three execution loop stages and `reasoning_effort` on both completion roles. Other vendors run through explicit `lore.toml` model strings (any LiteLLM-supported string), with the vendor's API key exported for LiteLLM to read at call time.
+**Vendor defaults.** Vendor default files (`src/lore/config/vendors/{vendor}.toml`) specify model strings and an `api_key` env var name for auto-detection, with no dimensions. Dimensions are always resolved at bootstrap. A bundled default is a promise: supply the key and the system works. Gemini is the only vendor that has earned it against the live e2e suite, so it ships the only file; its defaults include task_type for the three execution loop stages and `reasoning_effort` on both completion roles. Other vendors run through explicit `lore.toml` model strings (any LiteLLM-supported string), with the vendor's API key exported for LiteLLM to read at call time.
 
 | Vendor | Embedding | Fast | Reasoning |
 |--------|-----------|------|-----------|

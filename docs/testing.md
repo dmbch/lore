@@ -144,7 +144,7 @@ re-baseline.
 
 ## Model versions
 
-Both gemini roles pin a stable version in `config/vendors/gemini.toml`. They
+Both gemini roles pin a stable version in `src/lore/config/vendors/gemini.toml`. They
 rode `-latest` until 2026-08-15, when the alias flipped to Gemini 3.7 flash
 mid-acceptance: live behavior shifted and the deixis shapes probe went 0/5,
 back to 5/5 under the pin. A rolling alias runs someone else's release

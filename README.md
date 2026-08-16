@@ -199,7 +199,12 @@ Lore auto-detects the LLM vendor from API keys in the environment, for vendors t
 
 | Vendor | Embedding | Fast | Reasoning |
 |--------|-----------|------|-----------|
-| Gemini | `gemini-embedding-001` | `gemini-flash-latest` | `gemini-flash-latest` |
+| Gemini | `gemini-embedding-001` | `gemini-3.6-flash` | `gemini-3.6-flash` |
+
+Both completion roles pin a stable version rather than riding a rolling
+alias: a `-latest` flip mid-acceptance shifted live classification behavior
+and cost a day of measurement. Model adoption is deliberate (see
+`docs/testing.md`).
 
 </details>
 
@@ -482,7 +487,7 @@ Launch Lore through `opentelemetry-instrument` with `OTEL_EXPORTER_OTLP_ENDPOINT
 
 Lore is developed as a centaur: a human programmer and Claude Code in close collaboration. The workflow lives in [CLAUDE.md](CLAUDE.md), enforced through Claude Code skills and commands. Non-trivial work follows brainstorm, `/plan`, `/build` (TDD), `/review`.
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (no scope). Releases are cut automatically from those commits by `.github/workflows/release.yml`: the version is computed from commit history, and the same checks that gate every PR (plus end-to-end and container smoke tests) must pass against the released commit before anything ships.
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/), scope optional. Releases are cut automatically from those commits by `.github/workflows/release.yml`: the version is computed from commit history, and the same checks that gate every PR (plus end-to-end and container smoke tests) must pass against the released commit before anything ships.
 
 ### Architecture
 
