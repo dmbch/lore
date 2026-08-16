@@ -3,7 +3,8 @@
 The three checks in [CLAUDE.md](../CLAUDE.md) gate every commit. This document
 covers the lanes that run outside them: mutation, end-to-end, the golden
 archive, and retrieval recall. Standing constraints, not open work; intended
-work lives in [TODO.md](../TODO.md).
+work lives in [TODO.md](../TODO.md), and the record of measurements taken
+lives in [measurements.md](measurements.md).
 
 ## The math mutation floor
 
