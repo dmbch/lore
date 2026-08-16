@@ -14,10 +14,12 @@ formalism and Jøsang (2016), §3, for the canonical definitions.
 import math
 from typing import NamedTuple, Self
 
-# Floating-point comparison tolerance. Used throughout the math core for
-# equality checks (b + d + u ≈ 1.0) and boundary detection (is_vacuous,
-# is_dogmatic). Tight enough to catch real errors, loose enough to absorb
-# IEEE 754 rounding across a few arithmetic operations.
+# Floating-point comparison tolerance for the constructor's b + d + u ≈ 1.0
+# check. Tight enough to catch real errors, loose enough to absorb IEEE 754
+# rounding across a few arithmetic operations. The ``is_vacuous`` and
+# ``is_dogmatic`` predicates below also use it, but no production path calls
+# them: fusion tests ``u == 0.0`` exactly and handles the underflow regime
+# separately (see fusion.py).
 EPSILON = 1e-9
 
 # Prior probability assigned in the absence of evidence: Jøsang's base rate

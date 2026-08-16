@@ -50,7 +50,7 @@ class EmbeddingProvider:
             exclude={"model", "task_type"}, exclude_none=True
         )
         if task_type_key is not None:
-            vendor_string = self.resolve_task_type(task_type_key)
+            vendor_string = self._resolve_task_type(task_type_key)
             if vendor_string is not None:
                 extra["task_type"] = vendor_string
 
@@ -68,8 +68,10 @@ class EmbeddingProvider:
             raise InferenceError(msg)
         return [d.embedding for d in response.data]
 
-    def resolve_task_type(self, key: TaskTypeKey | None) -> str | None:
-        if key is None or self._config.task_type is None:
+    def _resolve_task_type(self, key: TaskTypeKey) -> str | None:
+        # The key is never None here: the sole caller resolves only when it
+        # holds one. A `key is None` arm would be covered and unfailable.
+        if self._config.task_type is None:
             return None
         mapping: dict[TaskTypeKey, str | None] = {
             "document": self._config.task_type.document,

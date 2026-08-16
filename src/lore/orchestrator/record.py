@@ -256,8 +256,12 @@ class Recorder:
         balanced contradictions): no transfer row is written."""
         evidence_pieces: list[EvidenceInput] = []
         for h_id in contradicts:
-            view = self._attestation_map.get(h_id)
-            latest = _latest_row(view.rows) if view is not None else None
+            # Indexed, not ``.get``: find_by_hypotheses keys every requested
+            # ID, and these were requested. A missing key is a broken
+            # repository contract and must raise, not silently drop the
+            # hypothesis from the transfer. An empty view is different: a
+            # hypothesis with no rows in range carries nothing to transfer.
+            latest = _latest_row(self._attestation_map[h_id].rows)
             if latest is None:
                 continue
             evidence_pieces.append(
@@ -279,8 +283,10 @@ class Recorder:
         return c_transfer
 
     async def _attest_existing(self, *, hypothesis_id: str, confidence: float) -> None:
-        view = self._attestation_map.get(hypothesis_id)
-        existing = view.rows if view is not None else []
+        # Indexed for the same reason as the transfer above: a missing key
+        # would otherwise read as a fresh hypothesis and write the row
+        # against a vacuous prior, masking the contract violation.
+        existing = self._attestation_map[hypothesis_id].rows
         # ``n_oracle_prior`` is stored on the row at write time and read back
         # unchanged by the trust scan: the column is the single source of
         # truth. The semantics ("distinct oracles other than self") live here;
