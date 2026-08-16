@@ -97,19 +97,17 @@ only.
 
 A `-` rank means the lane never surfaced the hypothesis within the result
 limit: zero-score pool filler is dropped before ranking, and each search
-pass truncates to the limit. On the current golden corpus only the
-authority lane can show one; every hypothesis scores above zero in the
-proximity lane, so the composite and proximity columns are always ranked.
+pass truncates to the limit. Every lane can show one once the archive
+outgrows what a lane fetches (limit times fan-out).
 
 Recall is the guard the eval exists for: retrieval bounds paraphrase
 detection, and a paraphrase the Archivist never sees becomes a false novel
 on an append-only ledger. It is reported at a pool depth the archive can
-overflow, which is the configured limit once the corpus outgrows it and a
-third of the archive until then, marked `(squeezed)`. A squeezed depth
-cannot conjure the competitors a large archive would supply, so it is the
-weaker test: passing at depth 3 today does not promise passing at scale,
-but failing there is a real alarm. Reporting 1.000 at a depth nothing can
-fall out of promises nothing at all.
+overflow: the configured limit once the corpus outgrows it, and a third of
+the archive until then, marked `(squeezed)`. The squeeze is a fallback for
+a corpus too small to contest the pool, not the intended state; the corpus
+carries distractors precisely so the real limit binds. Reporting 1.000 at a
+depth nothing can fall out of promises nothing at all.
 
 Alongside it, `interlopers` counts non-expected hypotheses ranked above a
 query's worst expected hit: finer-grained than recall, and the only signal

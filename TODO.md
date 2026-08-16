@@ -66,20 +66,19 @@ prompts, formalism). What the sweep found beyond exhibit A, and landed:
 
 **What remains**, each a judgment call rather than a mechanical cut:
 
-- **A retrieval corpus of its own.** The squeezed depth is a stopgap: it
-  thresholds the ranking a 10-hypothesis archive produces, and cannot
-  supply the confusable neighbors that make retrieval hard. Growing the
-  golden archive is the wrong lever, since it is the e2e fixture: every
-  seed is a live consult on every rebuild, every added hypothesis perturbs
-  existing probes' resolutions, and the 1 MiB budget is the ceiling. The
-  eval needs the opposite of what e2e needs. A recall-only corpus can be
-  written straight through the repositories (hypotheses, embeddings, a
-  minimal ledger row each) for one embedding batch and no interpret or
-  archivist call, so density is cheap: clusters of near-paraphrases around
-  each labeled target, sized past the configured limit. Retrieval sees only
-  content and vectors, so direct-written content is not the fabricated
-  distribution it would be for e2e. Same mechanism closes the short-form
-  archive edge above.
+- **Verify the grown corpus.** Seventeen distractors were appended to
+  `corpus.py` so the configured limit actually binds: entities and sentence
+  shapes shared with the labeled targets, without paraphrasing them (a
+  paraphrase corroborates into the target's node and grows nothing) or
+  contradicting them. A second recall-only fixture was considered and
+  rejected: it would split the archive into two things to keep in sync, and
+  direct-written content never passes through the normalizer, which is
+  exactly the loop the surface-form work measures. One archive, one story.
+  Unverified until the rebuild runs: whether the Archivist stores each
+  distractor as an orthogonal-novel (corroboration would grow the archive
+  by less than expected and move a target's epistemic state), what the
+  fixture weighs against the 1 MiB budget, and whether the wider
+  neighborhood shifts any e2e resolution.
 - **logic.md's K = 0 dogmatic hazard.** The trust ceiling derives to
   `1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
   is unreachable at any finite K and the documented hazard describes a state
