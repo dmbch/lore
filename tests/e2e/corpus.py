@@ -4,8 +4,11 @@ Rebuild triggers: corpus, prompt, model, or epistemics/trust-math
 changes. The fixture bakes write-time ledger math (t_oracle,
 c_oracle_discounted, c_herd); a trust-pipeline change silently
 invalidates it. Run `mise run golden-rebuild` to regenerate
-`tests/e2e/fixtures/golden.db.gz`. The future eval-harness corpus grows
-from this module (see TODO.md).
+`tests/e2e/fixtures/golden.db.gz`. The recall eval's labeled queries bind
+to these seeds by correlation ID (see `tests/e2e/queries.py`), so a
+rebuild that collapses or splits a seed moves what those labels resolve
+to. The pinned model version is a rebuild trigger too: the archive is
+seeded through the live pipeline.
 
 Order is significant: later seeds resolve against earlier ones in the
 archive. Seeds are stored fresh; temporal tests backdate at test time.
