@@ -8,7 +8,11 @@ constructs ``OIDCProxy``:
   kwarg. Secrets must reach the auth path; the leak we forbid is downstream
   in telemetry.
 - **Negative:** the sentinel ``client_secret`` must not appear in any
-  structlog stderr line or span attribute emitted during construction.
+  structlog event or span attribute emitted during construction.
+
+Both scans carry a positive control: construction may legitimately emit
+nothing, so an empty capture would pass on any secret. A marker event and a
+marker span attribute prove the captures are armed before the scans run.
 
 ``OIDCProxy`` is patched with ``MagicMock`` so the real discovery flow never
 executes. That path's logging is FastMCP's contract, not Lore's, and
@@ -30,6 +34,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import structlog
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -45,6 +50,7 @@ _COMPLETE_TOML = Path(__file__).parents[1] / "fixtures" / "lore_complete.toml"
 _SENTINEL_SECRET = "SENTINEL-SECRET-XYZ-12345"
 _SENTINEL_CLIENT_ID = "SENTINEL-CLIENT-ID-67890"
 _SENTINEL_BASE_URL = "https://lore.sentinel.example.com"
+_CONTROL_MARKER = "CONTROL-MARKER-ARMED-54321"
 
 
 @asynccontextmanager
@@ -79,9 +85,10 @@ def captured_spans(
     the installed SDK provider for the rest of the process and every later
     test sees it through ``get_tracer_provider()`` regardless of teardown.
 
-    structlog stderr is captured by pytest's ``capsys``. Module-level loggers
-    in the adapter materialize against the wrapper class ``configure_telemetry``
-    installed, so adapter log lines land in capsys.
+    structlog events are captured by ``structlog.testing.capture_logs`` in
+    the test itself, not by pytest's stream fixtures: the configured
+    PrintLogger writes past both the sys-level (``capsys``) and descriptor
+    level (``capfd``) buffers, so either would scan an empty string.
     """
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
@@ -92,12 +99,12 @@ def captured_spans(
         yield exporter
 
 
-def test_oidc_client_secret_does_not_leak_to_stderr_or_spans(
-    captured_spans: InMemorySpanExporter, capsys: pytest.CaptureFixture[str]
+def test_oidc_client_secret_does_not_leak_to_logs_or_spans(
+    captured_spans: InMemorySpanExporter,
 ) -> None:
     """Booting create_server in HTTP mode must not write the client_secret anywhere observable.
 
-    Observable surfaces under test: the structlog stderr stream and every
+    Observable surfaces under test: every structlog event and every
     attribute on every span emitted during ``create_server``. The DB-bound
     ``OidcConfig.client_secret`` field is exempt: secrets must reach the
     OIDCProxy constructor; what we forbid is them being written to telemetry.
@@ -119,9 +126,18 @@ def test_oidc_client_secret_does_not_leak_to_stderr_or_spans(
 
     # Patch OIDCProxy so we don't make real discovery calls. We still want to
     # observe what create_server writes to telemetry around the construction.
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with (
+        structlog.testing.capture_logs() as captured_logs,
+        patch("lore.adapter.mcp.OIDCProxy") as mock_proxy,
+    ):
         mock_proxy.return_value = MagicMock()
         server = create_server(settings=settings, system=_noop_system)
+        # Positive control: both scans below run over surfaces construction
+        # may legitimately leave empty, so an empty capture proves nothing.
+        # Prove the capture is armed with a marker the scans would catch if
+        # it were the secret.
+        with telemetry_module.start_span("leak.control", marker=_CONTROL_MARKER):
+            structlog.get_logger(__name__).info("leak.control", marker=_CONTROL_MARKER)
 
     # OIDCProxy must have received the raw secret. The leak we forbid is in
     # telemetry, not the auth path itself. The adapter unwraps the SecretStr
@@ -130,12 +146,29 @@ def test_oidc_client_secret_does_not_leak_to_stderr_or_spans(
     assert mock_proxy.call_args.kwargs["client_secret"] == _SENTINEL_SECRET
     assert server.auth is mock_proxy.return_value
 
-    log_output = capsys.readouterr().err
-    assert _SENTINEL_SECRET not in log_output, (
-        f"client_secret leaked to stderr/log output:\n{log_output}"
+    # structlog's own capture, not capsys/capfd: the configured PrintLogger
+    # writes past both pytest stream buffers, so scanning either reads empty
+    # and passes on any secret. Event dicts are the surface that matters.
+    # capture_logs drops the contextvar merge, so a secret bound through
+    # start_span's context reaches the span scan below, not this one.
+    log_output = "\n".join(str(event) for event in captured_logs)
+    assert _CONTROL_MARKER in log_output, (
+        "log capture is not wired: the control event never arrived, so a"
+        f" leaked secret would not have either:\n{log_output}"
     )
+    assert _SENTINEL_SECRET not in log_output, f"client_secret leaked to log output:\n{log_output}"
 
     finished_spans = span_exporter.get_finished_spans()
+    control_attributes = [
+        value
+        for span in finished_spans
+        for value in (span.attributes or {}).values()
+        if str(value) == _CONTROL_MARKER
+    ]
+    assert control_attributes, (
+        "span capture is not wired: the control span never reached the exporter,"
+        " so the attribute scan below would pass on any secret"
+    )
     for span in finished_spans:
         if span.attributes is None:
             continue

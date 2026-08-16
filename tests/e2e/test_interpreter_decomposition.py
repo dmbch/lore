@@ -538,7 +538,10 @@ async def test_overloaded_compound_stays_within_cap_without_dropping_claims(
     )
 
     assert out.propositions, "hypothesis present, expected at least one proposition"
-    assert len(out.propositions) <= 16, out.propositions
+    # The cap itself is schema-enforced (InterpreterOutput.propositions,
+    # max_length=16): overflow never reaches here, it reds as InferenceError
+    # inside _interpret. The live claim is the judge criterion below, that
+    # staying under the cap dropped no finding.
     verdict = await judge(
         system,
         answer=_lines(out.propositions),

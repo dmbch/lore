@@ -281,7 +281,7 @@ class TestSearch:
             embedding=_embedding(seed=1),
             created_at=1000,
         )
-        await hypothesis_repo.store(
+        h2 = await hypothesis_repo.store(
             content="general purpose notes",
             embedding=_embedding(seed=2),
             created_at=2000,
@@ -309,8 +309,11 @@ class TestSearch:
         assert len(authority_results) >= 1
         assert len(proximity_results) >= 1
 
-        # Authority finds h1 first (FTS match), proximity finds h2 first (closer embedding)
+        # Authority finds h1 first (FTS match), proximity finds h2 first (closer
+        # embedding). Both halves are asserted: one alone passes when the
+        # weights are ignored and one ordering happens to dominate.
         assert authority_results[0].id == h1.id
+        assert proximity_results[0].id == h2.id
 
     async def test_search_fts_only_candidates(self, hypothesis_repo: HypothesisRepository) -> None:
         """A hypothesis found by FTS keyword match ranks first when authority is the sole signal."""
