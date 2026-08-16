@@ -216,8 +216,15 @@ def _make_recorder(
     hypotheses = _StubHypotheses()
     attestations = _StubAttestations()
     math_service = MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0)
+    # Keyed for every ID the resolution targets, exactly like the real
+    # fetch: find_by_hypotheses keys every requested ID and maps unattested
+    # ones to an empty view, so the Recorder indexes rather than guarding.
+    targets: set[str] = set(resolution.contradicts)
+    if resolution.corroborates is not None:
+        targets.add(resolution.corroborates)
+    seeded = [_attestation_with_c_herd(c_herd_of_contradicted)]
     attestation_map = {
-        _CONTRADICTED_ID: _ledger_view([_attestation_with_c_herd(c_herd_of_contradicted)])
+        target: _ledger_view(seeded if target == _CONTRADICTED_ID else []) for target in targets
     }
     repos = Repositories(
         hypotheses=hypotheses,
