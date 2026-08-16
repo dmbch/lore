@@ -5,7 +5,9 @@ Authoring rules:
 - `expected` entries are correlation IDs from `tests.e2e.corpus.SEEDS`.
   The eval driver resolves them to hypothesis IDs against the golden
   archive at runtime; paraphrase collapse may map several correlation
-  IDs to one hypothesis (the scen3 pair does).
+  IDs to one hypothesis (the scen3 pair did before the 2026-08-16 rebuild,
+  and stored as two hypotheses after it: the collapse flaps, which is why
+  labels bind to seeds and resolve to hypothesis sets at runtime).
 - No relative dates in query text. Spell dates absolutely; the golden
   archive is frozen, the eval runs later.
 - Queries are read-only eval inputs. They never enter the archive.
