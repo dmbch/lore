@@ -1,10 +1,10 @@
 """Score two-lane retrieval against the labeled query set in tests/e2e/queries.py.
 
-The scoring core is pure: per-expected-hypothesis ranks in, crowding and MRR
-aggregates and a worst-first table out. recall@limit prints only when the
-archive outgrows the result limit, the one regime where it can fail; below
-that every pool holds every hypothesis and the number would be 1.000 by
-construction. ``main()`` is the live, metered
+The scoring core is pure: per-expected-hypothesis ranks in, recall, crowding
+and MRR aggregates and a worst-first table out. Recall is reported at a pool
+depth the archive can actually overflow, so it measures the guard it exists
+for (did the expected hypothesis reach the Archivist) rather than printing
+1.000 by construction. ``main()`` is the live, metered
 driver: it composes a read-only stack over a fresh golden-archive copy and,
 per labeled query, runs one interpret call, one embedding batch, and three
 search passes (composite plus each lane isolated). It never reasons and never
@@ -103,30 +103,34 @@ def _all_outcomes(scores: Sequence[QueryScore]) -> list[ExpectedEntry]:
     return [outcome for score in scores for outcome in score.outcomes]
 
 
-def _found(outcomes: Sequence[ExpectedEntry]) -> int:
-    return sum(1 for outcome in outcomes if outcome.composite is not None)
+def recall_at_depth(scores: Sequence[QueryScore], *, depth: int) -> float:
+    """Share of expected hypotheses reaching a pool `depth` results deep.
 
-
-def recall_at_limit(scores: Sequence[QueryScore]) -> float:
-    # Every search pass truncates to the configured limit before per-source
-    # pools merge, so a non-None composite rank means the hypothesis reached
-    # the pool the Archivist would receive. Zero expectations reads as zero
-    # recall: an eval that scored nothing must not read as perfect.
+    The guard this eval exists for: retrieval bounds paraphrase detection,
+    and a paraphrase the Archivist never sees becomes a false novel on an
+    append-only ledger. Zero expectations reads as zero, never as perfect.
+    """
     outcomes = _all_outcomes(scores)
     if not outcomes:
         return 0.0
-    return _found(outcomes) / len(outcomes)
+    inside = sum(1 for o in outcomes if o.composite is not None and o.composite <= depth)
+    return inside / len(outcomes)
 
 
-def recall_discriminates(*, archive_size: int, limit: int) -> bool:
-    """Can recall@limit fail at all?
+def measured_depth(*, archive_size: int, limit: int) -> int:
+    """The deepest pool this archive can actually overflow.
 
-    Only when the archive outgrows the result limit. Below that every pool
-    holds every hypothesis, membership cannot fail, and recall@limit reports
-    1.000 without measuring anything. The eval refuses to print it there:
-    annotating a dead number is not the same as not printing one.
+    Recall is evidence only when something can fall out. Once the archive
+    outgrows the configured limit that is the honest depth, and recall@limit
+    is the production-shaped question. Below it, every pool holds every
+    hypothesis and the number would be 1.000 by construction, so the eval
+    squeezes the pool to a third of the archive and measures there: it
+    cannot conjure competitors the corpus lacks, but it can ask whether the
+    expected hypothesis still wins the room it would have to win at scale.
     """
-    return archive_size > limit
+    if archive_size > limit:
+        return limit
+    return max(1, archive_size // 3)
 
 
 def interlopers(score: QueryScore) -> int | None:
@@ -492,16 +496,14 @@ def main() -> None:
     layout.recall_log.unlink(missing_ok=True)
     evaluation = asyncio.run(_evaluate(prompt=args.prompt, recall_log=layout.recall_log))
     scores = evaluation.scores
+    depth = measured_depth(archive_size=evaluation.archive_size, limit=evaluation.limit)
+    squeezed = (
+        "" if evaluation.archive_size > evaluation.limit else " (squeezed: archive fits the limit)"
+    )
     print(format_table(scores))
+    print(f"recall@{depth}: {recall_at_depth(scores, depth=depth):.3f}{squeezed}")
     print(f"interlopers: {total_interlopers(scores)}")
     print(f"mrr: {mean_reciprocal_rank(scores):.3f}")
-    if recall_discriminates(archive_size=evaluation.archive_size, limit=evaluation.limit):
-        print(f"recall@limit: {recall_at_limit(scores):.3f}")
-    else:
-        print(
-            f"recall@limit: not measured ({evaluation.archive_size} hypotheses"
-            f" fit the limit of {evaluation.limit}; every pool holds the archive)"
-        )
     print(f"artifacts: {root}")
 
 

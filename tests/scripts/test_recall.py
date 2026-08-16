@@ -22,9 +22,9 @@ from scripts.recall import (
     interlopers,
     lane_variants,
     mean_reciprocal_rank,
+    measured_depth,
     rank_of,
-    recall_at_limit,
-    recall_discriminates,
+    recall_at_depth,
     resolve_expected,
     total_interlopers,
     with_interpreter_prompt,
@@ -64,9 +64,7 @@ def test_rank_of_is_one_based_position_or_none() -> None:
     assert rank_of("hyp-x", results=results) is None
 
 
-def test_recall_counts_expected_hypotheses_found_within_limit() -> None:
-    # Results arrive already truncated to the configured limit, so a
-    # composite rank of None is the one way an expected hypothesis is missed.
+def test_recall_counts_expected_hypotheses_that_reached_the_pool() -> None:
     scores = [
         QueryScore(
             query_id="both-found",
@@ -78,7 +76,7 @@ def test_recall_counts_expected_hypotheses_found_within_limit() -> None:
         ),
     ]
 
-    assert recall_at_limit(scores) == 0.75
+    assert recall_at_depth(scores, depth=10) == 0.75
 
 
 def test_mrr_uses_the_best_ranked_expected_per_query() -> None:
@@ -108,18 +106,33 @@ def test_aggregates_over_no_outcomes_read_as_zero() -> None:
     no_scores: list[QueryScore] = []
     no_outcomes = [QueryScore(query_id="scored-nothing", outcomes=())]
 
-    assert recall_at_limit(no_scores) == 0.0
+    assert recall_at_depth(no_scores, depth=10) == 0.0
     assert mean_reciprocal_rank(no_scores) == 0.0
-    assert recall_at_limit(no_outcomes) == 0.0
+    assert recall_at_depth(no_outcomes, depth=10) == 0.0
     assert mean_reciprocal_rank(no_outcomes) == 0.0
 
 
-def test_recall_at_limit_is_only_measured_once_the_archive_outgrows_the_pool() -> None:
-    # The metric cannot fail while every pool holds every hypothesis; the
-    # driver refuses to print a number that is 1.000 by construction.
-    assert not recall_discriminates(archive_size=10, limit=10)
-    assert not recall_discriminates(archive_size=3, limit=10)
-    assert recall_discriminates(archive_size=11, limit=10)
+def test_measured_depth_squeezes_the_pool_until_the_archive_can_overflow_it() -> None:
+    # At or below the limit the archive fills every pool, so recall there is
+    # 1.000 by construction; the eval measures at a depth something can fall
+    # out of instead. Past the limit the configured pool is the real one.
+    assert measured_depth(archive_size=10, limit=10) == 3
+    assert measured_depth(archive_size=2, limit=10) == 1
+    assert measured_depth(archive_size=40, limit=10) == 10
+
+
+def test_recall_at_depth_counts_only_hypotheses_inside_the_pool() -> None:
+    scores = [
+        QueryScore(
+            query_id="one-deep-one-shallow",
+            outcomes=(_outcome("hyp-a", composite=1), _outcome("hyp-b", composite=7)),
+        ),
+        QueryScore(query_id="missed", outcomes=(_outcome("hyp-c"),)),
+    ]
+
+    assert recall_at_depth(scores, depth=10) == pytest.approx(2 / 3)
+    assert recall_at_depth(scores, depth=3) == pytest.approx(1 / 3)
+    assert recall_at_depth([], depth=3) == 0.0
 
 
 def test_interlopers_count_non_expected_hypotheses_outranking_the_expected() -> None:
