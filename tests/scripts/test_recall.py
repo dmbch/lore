@@ -19,11 +19,14 @@ from scripts.recall import (
     artifact_layout,
     collapse_outcomes,
     format_table,
+    interlopers,
     lane_variants,
     mean_reciprocal_rank,
     rank_of,
     recall_at_limit,
+    recall_discriminates,
     resolve_expected,
+    total_interlopers,
     with_interpreter_prompt,
 )
 from tests.e2e.queries import LabeledQuery
@@ -111,19 +114,49 @@ def test_aggregates_over_no_outcomes_read_as_zero() -> None:
     assert mean_reciprocal_rank(no_outcomes) == 0.0
 
 
-def test_format_table_sorts_missed_queries_first() -> None:
+def test_recall_at_limit_is_only_measured_once_the_archive_outgrows_the_pool() -> None:
+    # The metric cannot fail while every pool holds every hypothesis; the
+    # driver refuses to print a number that is 1.000 by construction.
+    assert not recall_discriminates(archive_size=10, limit=10)
+    assert not recall_discriminates(archive_size=3, limit=10)
+    assert recall_discriminates(archive_size=11, limit=10)
+
+
+def test_interlopers_count_non_expected_hypotheses_outranking_the_expected() -> None:
+    # The live metric on a census archive: retrieval degrades by crowding
+    # before it drops anything from the pool.
+    clean = QueryScore(
+        query_id="clean",
+        outcomes=(_outcome("hyp-a", composite=1), _outcome("hyp-b", composite=2)),
+    )
+    crowded = QueryScore(
+        query_id="crowded",
+        outcomes=(_outcome("hyp-a", composite=1), _outcome("hyp-b", composite=5)),
+    )
+    missed = QueryScore(query_id="missed", outcomes=(_outcome("hyp-c"),))
+
+    assert interlopers(clean) == 0
+    assert interlopers(crowded) == 3
+    assert interlopers(missed) is None
+    assert total_interlopers([clean, crowded, missed]) == 3
+
+
+def test_format_table_sorts_misses_first_then_the_most_crowded() -> None:
     table = format_table(
         [
-            QueryScore(query_id="all-found", outcomes=(_outcome("hyp-a", composite=1),)),
-            QueryScore(query_id="all-missed", outcomes=(_outcome("hyp-b"),)),
+            QueryScore(query_id="clean", outcomes=(_outcome("hyp-a", composite=1),)),
+            QueryScore(query_id="crowded", outcomes=(_outcome("hyp-b", composite=4),)),
+            QueryScore(query_id="missed", outcomes=(_outcome("hyp-c"),)),
         ]
     )
 
     rows = table.splitlines()
-    assert "all-missed" in rows[0]
-    assert "0/1" in rows[0]
-    assert "all-found" in rows[1]
-    assert "1/1" in rows[1]
+    assert "missed" in rows[0]
+    assert rows[0].startswith("miss")
+    assert "crowded" in rows[1]
+    assert rows[1].startswith("+3")
+    assert "clean" in rows[2]
+    assert rows[2].startswith("+0")
 
 
 def test_collapsed_correlation_ids_count_their_hypothesis_once() -> None:
@@ -277,7 +310,7 @@ def test_lane_settings_isolate_one_lane_and_still_sum_to_one() -> None:
     assert variants.proximity_only.retrieval.weights == (1.0, 0.0)
     assert variants.authority_only.retrieval.weights == (0.0, 1.0)
     for variant in (variants.proximity_only, variants.authority_only):
-        assert variant.retrieval.proximity + variant.retrieval.authority == 1.0
+        # The weights are pinned exactly above; only the rest is open here.
         # Only the weights move; the rest of retrieval and the settings stay put.
         assert variant.retrieval.limit == settings.retrieval.limit
         assert variant.retrieval.fan_out == settings.retrieval.fan_out
