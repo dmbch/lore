@@ -101,13 +101,20 @@ pass truncates to the limit. On the current golden corpus only the
 authority lane can show one; every hypothesis scores above zero in the
 proximity lane, so the composite and proximity columns are always ranked.
 
-The headline is `interlopers`: non-expected hypotheses ranked above a
-query's worst expected hit, summed over queries. It is the metric with
-headroom while the archive fits the pool, because retrieval degrades by
-crowding long before it drops anything. recall@limit prints only when the
-archive outgrows the result limit, the one regime where it can fail; below
-that the runner says so instead of printing 1.000. MRR is live but
-saturated: it can fall, never rise.
+Recall is the guard the eval exists for: retrieval bounds paraphrase
+detection, and a paraphrase the Archivist never sees becomes a false novel
+on an append-only ledger. It is reported at a pool depth the archive can
+overflow, which is the configured limit once the corpus outgrows it and a
+third of the archive until then, marked `(squeezed)`. A squeezed depth
+cannot conjure the competitors a large archive would supply, so it is the
+weaker test: passing at depth 3 today does not promise passing at scale,
+but failing there is a real alarm. Reporting 1.000 at a depth nothing can
+fall out of promises nothing at all.
+
+Alongside it, `interlopers` counts non-expected hypotheses ranked above a
+query's worst expected hit: finer-grained than recall, and the only signal
+that catches a non-expected hypothesis wedged *between* two expected ones.
+MRR is live but saturated: it can fall, never rise.
 
 Every recall run is paid; its artifacts are the receipts and always persist:
 one JSONL row per query at `recall.jsonl`, in a fresh `lore-recall-*` tempdir
