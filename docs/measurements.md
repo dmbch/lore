@@ -6,6 +6,28 @@ prints own the raw receipts; this file owns the interpreted result. Newest
 first. Numbers compare only within one entry unless the entry says
 otherwise: archives, metrics, and prompts drift between sessions.
 
+## 2026-08-17: recall after the litellm bump
+
+`mise run recall` on the rebased branch, an hour after the baseline below
+and with the production litellm bump from main in place: no provider error,
+**recall@10 = 1.000**, interlopers 5 (was 4), MRR 1.000.
+
+Cells moved, and this run cannot say why. `abbrev-cap-composite` sent the
+scen3 hypothesis from composite rank 1 to 5 while its sibling took the top
+slot; `planetary-orbit-direction` lost the Mars seed from the authority lane
+(rank 4 to `-`); the two scen3 hypotheses swapped in
+`abbrev-bridge-hypothesis`. Either the bump changed something or the
+interpreter reshuffled near-ties on its own. The evidence leans to noise:
+authority ranks follow the interpreter's keywords, and that same Mars
+authority cell already flapped `-` to 2 between 08-13 and 08-16.
+
+The floor that would settle it is stale. Zero unstable cells across three
+runs was measured against the 10-hypothesis archive; at 28 there are far
+more near-ties for a keyword change to flip, so rank stability is a property
+of the archive and does not transfer across a corpus change. Re-price with
+`mise run recall-protocol -- -k 3` before reading any future single-run
+delta on this archive as signal.
+
 ## 2026-08-17: changed probes under the crowded archive
 
 `mise run rate -- tests/e2e/test_interpreter_decomposition.py
