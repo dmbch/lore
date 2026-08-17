@@ -13,6 +13,13 @@ updates:
       prefix: fix
       prefix-development: chore
       include: scope
+    # Supply-chain quarantine, not a patch delay: cooldown covers version
+    # updates only, never security updates, so an advisory still lands the
+    # day it publishes. Flat days rather than per-semver windows, because a
+    # malicious release ships as a patch precisely to draw the least
+    # scrutiny; a short patch window would invert the defense.
+    cooldown:
+      default-days: 5
     groups:
       production:
         dependency-type: production
@@ -36,11 +43,18 @@ updates:
     commit-message:
       prefix: ci
       include: scope
+    cooldown:
+      default-days: 5
     groups:
       actions:
         patterns:
           - "*"
 
+  # No cooldown here on purpose. Base-image digest bumps are the only path an
+  # OS-layer CVE fix has into this repo, and OS CVEs never reach the advisory
+  # graph that exempts security updates, so any delay is a straight delay on
+  # the fix. The risk it would buy down (a poisoned Docker Official Image) is
+  # remote, and CI runs against the new base on the PR either way.
   - package-ecosystem: docker
     directory: /
     schedule:
