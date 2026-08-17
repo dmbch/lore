@@ -23,6 +23,16 @@ def test_absent_artifacts_dir_falls_back_to_a_fresh_tempdir() -> None:
     assert root.name.startswith("lore-test-")
 
 
+def test_artifacts_path_is_announced_before_the_run_spends(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A run killed partway has still paid for the receipts it wrote; a path
+    # printed only in the summary is a path it never prints.
+    root = artifacts_root(tmp_path / "receipts", prefix="lore-test-")
+
+    assert str(root) in capsys.readouterr().out
+
+
 def test_keyless_run_exits_before_any_spend() -> None:
     with (
         patch.dict(os.environ, {}, clear=True),
