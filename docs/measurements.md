@@ -6,6 +6,36 @@ prints own the raw receipts; this file owns the interpreted result. Newest
 first. Numbers compare only within one entry unless the entry says
 otherwise: archives, metrics, and prompts drift between sessions.
 
+## 2026-08-17: first contested recall baseline
+
+The corpus grew from 11 seeds to 28 (17 distractors sharing the labeled
+targets' entities and sentence shapes), and `mise run golden-rebuild`
+stored every one as an orthogonal-novel: 28 hypotheses, 28 attestations,
+no paraphrase collapse, 363 KB compressed against the 1 MiB budget. No
+distractor corroborated into a labeled target, so no target's epistemic
+state moved, and `mise run e2e` came back 45/45 on the denser archive.
+
+`mise run recall`: **recall@10 = 1.000** with no squeeze marker, the first
+run where that number is evidence: 28 hypotheses contest 10 pool slots, so
+18 could have been pushed out. **interlopers = 4**, the live headline.
+MRR = 1.000 remains saturated (every query lands a target at rank 1) and is
+now the least informative of the three.
+
+The margin, which is what makes the pass meaningful: `keyword-rich-composite`
+holds its fourth expected hypothesis at rank 7 with three crowders above it,
+so it sits three slots from a genuine recall failure. The crowders are the
+distractors working as designed, each sharing an entity with the target it
+competes against: "The Meridian Tower in Harborview has forty-two floors" at
+rank 3, "The Valletta maritime academy admits sixty cadets each year" at 5,
+"Cedarbrook Health operates four regional clinics" at 6. On
+`planetary-orbit-direction`, the ecliptic distractor takes rank 2 between the
+two expected seeds.
+
+Baseline reset, not a continuation: the scen3 pair stored as two hypotheses
+this rebuild where it collapsed to one before, moving the denominator from
+17 expected entries to 18, and the archive itself is new. Nothing here
+compares to an entry above.
+
 ## 2026-08-16: recall noise floor
 
 `mise run recall-protocol -- -k 3` on the committed archive: 0 unstable

@@ -66,19 +66,17 @@ prompts, formalism). What the sweep found beyond exhibit A, and landed:
 
 **What remains**, each a judgment call rather than a mechanical cut:
 
-- **Verify the grown corpus.** Seventeen distractors were appended to
-  `corpus.py` so the configured limit actually binds: entities and sentence
-  shapes shared with the labeled targets, without paraphrasing them (a
-  paraphrase corroborates into the target's node and grows nothing) or
-  contradicting them. A second recall-only fixture was considered and
+- **Keep the pool contested as the archive grows.** The corpus grew to 28
+  seeds so the retrieval limit binds; verified 2026-08-17 (see
+  docs/measurements.md). A second recall-only fixture was considered and
   rejected: it would split the archive into two things to keep in sync, and
   direct-written content never passes through the normalizer, which is
   exactly the loop the surface-form work measures. One archive, one story.
-  Unverified until the rebuild runs: whether the Archivist stores each
-  distractor as an orthogonal-novel (corroboration would grow the archive
-  by less than expected and move a target's epistemic state), what the
-  fixture weighs against the 1 MiB budget, and whether the wider
-  neighborhood shifts any e2e resolution.
+  What stays open is the ratio: recall is evidence only while the archive
+  exceeds the pool, and it now does so 28 to 10. If the limit is ever raised
+  toward the archive size, the metric goes quiet again and the eval prints
+  `(squeezed)` to say so. The distractor density is also uneven, since only
+  two queries currently draw any crowding at all.
 - **logic.md's K = 0 dogmatic hazard.** The trust ceiling derives to
   `1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
   is unreachable at any finite K and the documented hazard describes a state
