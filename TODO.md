@@ -8,82 +8,23 @@ in [docs/measurements.md](docs/measurements.md). Landed work lives in git.
 
 ---
 
-## Cull the dead instruments
+## Formalism docs diverge from the shipped algebra
 
-**Found:** 2026-08-16, programmer callout at the recall-harness wrap-up.
+**Found:** 2026-08-16, dead-instrument sweep of the epistemics layer.
 
-**Exhibit A: recall@limit.** A paid metric that cannot fail. The golden
-corpus holds 10 hypotheses and the result limit is 10, so every pool holds
-the whole archive and recall@limit prints 1.000 by construction: metered
-recall runs pay live interpret and embed calls to headline a number known
-before the first call. It reads as an A+, and it was handled by annotating
-it "(structural)" in three places instead of by not printing a dead number.
-Labeling a tautology is not a substitute for refusing to build one; the
-annotation normalized the deadness, and review after review walked past it
-because the docs said so. A project about honest uncertainty headlined
-false certainty about itself.
+**Why it matters.** logic.md is the canonical reference every operator
+implementation is checked against. Where it describes behavior the algebra
+cannot produce, the next prior-art check verifies against fiction.
 
-**Why it matters.** An instrument that cannot move teaches the reader to
-stop reading instruments. Every dead number in a summary line spends the
-credibility of the live ones next to it.
-
-**What.** A systematic sweep for the failure class, then a cull:
-
-- metrics or assertions at a forced ceiling, unable to fail against the
-  fixtures they run on;
-- guards on unreachable states beyond the documented mutation-floor set;
-- config knobs no code path varies, or varies without observable effect;
-- paid operations computing constants;
-- docs normalizing any of the above as "structural" or "by design" where
-  the honest move is removal or an instrument with headroom.
-
-**The fix**, since the metric was never the problem: recall guards the
-failure that matters, and that guard was right. Its fixture was wrong. The
-eval now measures recall at a pool depth the archive can overflow, squeezing
-to a third of the archive until the corpus outgrows the configured limit,
-and marks the number `(squeezed)` when it did. Weaker than the real thing,
-because a small corpus cannot supply the competitors a large one would;
-still a test that can fail.
-
-**Swept 2026-08-16**, four passes (tests, production code, scripts/docs/
-prompts, formalism). What the sweep found beyond exhibit A, and landed:
-
-- The leak test's secret scan read an empty string. structlog's PrintLogger
-  writes past the `capsys` buffer, so the sentinel had no stream to appear
-  in; the scan would have passed on a real leak. Both scans now capture
-  structlog events and carry positive controls.
-- Two paid archivist probes asserted "at most one" attestation per seed, a
-  count cross-resolution disjointness already makes unrepresentable, and
-  which also passed when the model corroborated nothing.
-- The Recorder guarded map keys the repository contract guarantees, in the
-  polarity that masks: a broken contract would have read as a fresh
-  hypothesis and fused against a vacuous prior instead of raising.
-- Two interpreter rules had no witness: the keyword cap of 8 (enforced
-  nowhere; the retrieval slice sits at 10) and the metric-notation rule
-  (whose only example is the one it was written from).
-- Docs asserting what the code denies: the README's vendor table still
-  advertised the rolling alias the config pinned away from.
-
-**What remains**, each a judgment call rather than a mechanical cut:
-
-- **Keep the pool contested as the archive grows.** The corpus grew to 28
-  seeds so the retrieval limit binds; verified 2026-08-17 (see
-  docs/measurements.md). A second recall-only fixture was considered and
-  rejected: it would split the archive into two things to keep in sync, and
-  direct-written content never passes through the normalizer, which is
-  exactly the loop the surface-form work measures. One archive, one story.
-  What stays open is the ratio: recall is evidence only while the archive
-  exceeds the pool, and it now does so 28 to 10. If the limit is ever raised
-  toward the archive size, the metric goes quiet again and the eval prints
-  `(squeezed)` to say so. The distractor density is also uneven, since only
-  two queries currently draw any crowding at all.
-- **logic.md's K = 0 dogmatic hazard.** The trust ceiling derives to
+- **The K = 0 dogmatic hazard.** The per-row trust ceiling derives to
   `1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
   is unreachable at any finite K and the documented hazard describes a state
-  the algebra cannot produce; the informative-commitment gate now binds
-  first, at every K. The dogmatic-fusion complex is likewise unreachable
-  from pipeline data at any configuration, not just at K >= 1 as the doc
-  states. Both paragraphs predate the gate. Needs a logician pass.
+  the pipeline cannot reach; the informative-commitment gate binds first, at
+  every K. The dogmatic-fusion complex (Case II, `_dogmatic_average`, the
+  mixed partition) is likewise unreachable from pipeline data at any
+  configuration, not just at K >= 1 as the doc states. Both paragraphs
+  predate the gate. Needs a logician pass to confirm the derivation before
+  anything is rewritten.
 - **`n_prior`.** IDEA.md lists it among the derivables and both backends'
   SQL comments point future readers at it, but nothing derives it;
   `n_oracle_prior` is what freshness detection actually uses. Implement or
@@ -92,21 +33,8 @@ prompts, formalism). What the sweep found beyond exhibit A, and landed:
   while the project's stated convention counts `_transfer` as a distinct
   oracle, which would make it 1. Effect at K=1: the dissenting oracle enters
   at M=1/2 rather than 2/3. Bug or deliberate exclusion; neither doc says.
-**Reported and dismissed**, so the next sweep does not re-file them:
-conflict CC/DC, the `t_oracle` column, `correlation_id`, and the `requests`
-table have zero runtime readers by design, each with a named future
-consumer: armed is not dead. `find_by_id` and `find_by_hypothesis` are
-consumed by tests as ledger-inspection primitives and are the read API the
-observatory and debug-UI entries already plan. The `b + d + u == 1` asserts
-across `tests/math` are unfailable (the `Opinion` constructor rejects any
-other triple) but harmless: under single-mutation semantics a mutated
-operator reds through the constructor's raise, so deleting them buys
-nothing the mutation floor would notice. `HypothesisResult.created_at`
-riding along unread and single-caller default arguments are not dead
-instruments, just ordinary slack.
 
-**Status:** open; exhibit A and the mechanical cuts landed 2026-08-16, the
-judgment calls above are unstarted.
+**Status:** open; not started.
 
 ---
 
@@ -121,17 +49,24 @@ per-run stage traces and `/rate-analyze` delivers the cross-run sniff test
 (landed 2026-08-11). Narrowed 2026-08-12: the recall eval landed as a manual
 mise task (`mise run recall`): labeled queries in `tests/e2e/queries.py`,
 lane-isolated scoring and JSONL receipts in `scripts/recall.py`, delta
-protocol in docs/testing.md, records in docs/measurements.md. Retrieval is
-measured against the golden corpus: a census of it, not a sample, so the
-numbers pin this archive and say little about the next one.
+protocol in docs/testing.md, records in docs/measurements.md. Narrowed
+2026-08-17: the corpus grew to 28 seeds so the archive exceeds the retrieval
+pool and recall can fail; the numbers still pin this archive rather than
+predicting the next one.
 
-**What remains.** The short-form-archive edge. The surface-form keyword rule
-protects archives that store abbreviations verbatim, and the golden corpus
-does not pin one: seeding runs the same normalizer that expands them. A
-direct-write short-form fixture (repositories, not consult) could pin it
-today; deferred as a second fixture surface, not impossible. Coverage waits
-for organic corpus growth; revisit the query labels when a live archive
-stores short forms.
+**What remains.**
+
+- **Even out the crowding.** Only two of eleven queries drew any competition
+  in the first contested run: the rest win uncontested, so their ranks would
+  not move until a regression is severe. The axis is distractors per cluster,
+  not more clusters.
+- **The short-form-archive edge.** The surface-form keyword rule protects
+  archives that store abbreviations verbatim, and the golden corpus does not
+  pin one: seeding runs the same normalizer that expands them. A direct-write
+  fixture could pin it, at the cost of content that never passes through the
+  normalizer, which is the loop this eval exists to measure. Coverage waits
+  for organic corpus growth; revisit the query labels when a live archive
+  stores short forms.
 
 **Fixture candidates** for growing the prompt suites, each a behavior already
 observed and none yet pinned:
