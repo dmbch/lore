@@ -6,6 +6,24 @@ prints own the raw receipts; this file owns the interpreted result. Newest
 first. Numbers compare only within one entry unless the entry says
 otherwise: archives, metrics, and prompts drift between sessions.
 
+## 2026-08-17: changed probes under the crowded archive
+
+`mise run rate -- tests/e2e/test_interpreter_decomposition.py
+tests/e2e/test_archivist_aggregation.py`: 31 tests, 4 runs, 124 executions,
+zero failures. Every probe 4/4, so per-test detail is uniform. The run was
+interrupted before the fifth pass and its artifact directory did not
+survive, which is why this entry cites stdout rather than a receipt; k=4
+falls one short of the k>=5 protocol.
+
+What it settles: tightening the two archivist probes from "at most one"
+attestation per seed to exactly one did not buy flakiness, so the model
+reliably corroborates the paraphrase and contradicts both seeds. The
+metric-notation rule generalizes to held-out notation (p95 in a payments
+hypothesis), so it is witnessed rather than witnessed by its own example.
+The keyword cap of 8 held on every run, which makes the retrieval slice at
+10 the pure backstop it was meant to be. All of it against the archive
+grown to 28 hypotheses, where these suites had only ever seen 10.
+
 ## 2026-08-17: first contested recall baseline
 
 The corpus grew from 11 seeds to 28 (17 distractors sharing the labeled
