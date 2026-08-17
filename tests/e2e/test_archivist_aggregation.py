@@ -75,7 +75,7 @@ def _by_seed(
     return [r for r in rows if r["hypothesis_id"] == hypothesis_id and r["oracle_id"] == oracle]
 
 
-async def test_paraphrase_aggregation_yields_at_most_one_positive_per_seed(
+async def test_paraphrase_aggregation_yields_exactly_one_positive_per_seed(
     golden_system: Orchestrator,
 ) -> None:
     seed = await golden_seed_id(golden_system, "agg-scen1-seed")
