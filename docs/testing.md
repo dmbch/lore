@@ -6,6 +6,15 @@ archive, and retrieval recall. Standing constraints, not open work; intended
 work lives in [TODO.md](../TODO.md), and the record of measurements taken
 lives in [measurements.md](measurements.md).
 
+**An instrument must be able to fail.** A metric pinned by its fixture, an
+assertion a validator already guarantees, or a scan over a surface that is
+always empty reports the same value forever and reads as evidence. Annotating
+one as "structural" does not redeem it; it teaches readers to trust the dead
+number beside the live ones. Before adding a check, name the input that would
+make it fail, and prefer a positive control where the surface can legitimately
+be empty. `mise run recall` refuses to print recall at a depth nothing can
+fall out of; the leak scan proves its capture is armed before scanning it.
+
 ## The math mutation floor
 
 `mise run mutation`, configured in `[tool.mutmut]`. Scope is `src/lore/math/*`
