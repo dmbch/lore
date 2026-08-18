@@ -606,6 +606,52 @@ class TestComputeOracleTrust:
         )
         assert abs(result - 0.6) < EPSILON
 
+    def test_committed_wrongness_on_uncertain_herd_scores_zero(self) -> None:
+        """The full-penalty extreme of the informative-commitment table:
+        signal = 1, align = 0 → effective_align = 0.
+
+        This pins the pure function's documented contract, not a state the
+        pipeline can reach. The row is analytical twice over, and the two
+        devices are the reason it needs both:
+
+          - align = 0 demands a dogmatic herd opposite the oracle
+            (|c - reference| = 2). Trust discounting keeps every stored
+            c_herd strictly interior at every finite K, so the ledger has
+            no such reference to offer.
+          - signal = 1 demands info = 1, a vacuous prior. At any finite K
+            the write leg then contributes M·0.5 > 0, so align = 0 and
+            signal = 1 cannot hold on the same row. Only the K = inf limit
+            (M_write = 0, pure read-time) admits both, the same analytical
+            device test_conviction_calibrates_alignment_signal uses and for
+            the same reason: EpistemicsConfig rejects a non-finite
+            maturity_k.
+
+          align     = align_read = 1 - 0.5·|1.0 - (-1.0)| = 0.0
+          info      = 1 - 0 = 1.0
+          signal    = 1.0·1.0 = 1.0
+          effective = 1.0·0.0 + 0.0·0.5 = 0.0
+
+        The counterpart to test_bandwagon_theorem_survives_calibration
+        below: uninformative wrongness neutralises to 0.5, informative
+        wrongness is punished to the floor.
+        """
+        svc = MathService(
+            c_half_life=float("inf"), t_half_life=float("inf"), maturity_k=float("inf")
+        )
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=1.0,
+                timestamp=1000,
+                c_herd_prior=0.0,
+                n_oracle_prior=0,
+            )
+        ]
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=-1.0), t_now=1000
+        )
+        assert abs(result) < EPSILON
+
     def test_bandwagon_theorem_survives_calibration(self) -> None:
         """Full conviction against a dogmatic herd still earns exactly 0.5.
 

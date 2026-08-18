@@ -437,6 +437,8 @@ Rather than using either factor as a row weight (a weight cancels symmetrically 
 | 0.50 | 0.50 | 0.25 | 1.00 | 0.625 | Moderate conviction, half-formed herd: partial credit |
 | 0.50 | 0.50 | 0.25 | 0.00 | 0.375 | Moderate conviction, half-formed herd, wrong: partial penalty |
 
+**The full-penalty row is analytical.** It states the operator's floor, not a state the pipeline reaches: `signal = 1` requires a vacuous prior, `align = 0` requires a dogmatic herd opposite the oracle, and at any finite K the write leg then contributes `M · 0.5 > 0`, so the two cannot hold on the same row. Only the K = ∞ limit (M_write = 0, pure read-time) admits both, and no deployment may select it, since `EpistemicsConfig` rejects a non-finite `maturity_k`. Trust discounting keeps every stored `c_herd` strictly interior besides, so the dogmatic reference does not exist to align against. `test_committed_wrongness_on_uncertain_herd_scores_zero` pins the contract at the limit; the reachable full-strength penalty is the fresh-row case, floor 0.25 at |c| = 1 (the archetype table's informative troll).
+
 The asymmetries are deliberate. *Informative, committed* wrongness (signal = 1, align = 0) is punished to 0; *uninformative* wrongness is neutralized to 0.5 (an oracle disagreeing with a dogmatic herd is epistemically indistinguishable from a prophet the herd cannot move to meet; we default to neutral until fresh evidence arrives); *hedged* anything is pinned near 0.5 (an oracle who asserts almost nothing can be credited with almost nothing, in either direction).
 
 ### Conviction Weighting (Weight and Calibration)
