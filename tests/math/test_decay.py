@@ -5,9 +5,13 @@ decay exponentially at rate λ; uncertainty fills the gap. At t=0 the
 opinion is unchanged; as t→∞ it approaches vacuous. The b/d ratio is
 preserved: decay erodes conviction, not direction.
 
-Custom formula: Jøsang Ch. 16.2.2 decays evidence counters, not
-opinions. Lore decays opinions directly (see decay.py module docstring).
-Cross-checked against reference implementation single-step erosion.
+Structurally this is Jøsang's trust-discounting operator (Def. 14.6) with
+a time-varying discount P = e^(−λΔt): b and d scale by P, uncertainty
+absorbs the rest, the base rate is preserved. What differs from Ch. 16.2.2
+is the object, not the operator: the book ages evidence counters, Lore
+ages opinions directly (see decay.py module docstring, and logic.md's
+Temporal Decay section for the correspondence). Cross-checked against
+reference implementation single-step erosion.
 """
 
 import math
