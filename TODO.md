@@ -446,21 +446,14 @@ CON-2/LIN-9, CON-4, CON-5/LIN-8, LIN-7, LIN-10, SCR-2, SCR-5, SCR-9, SCR-10,
 SCR-11. The prompt half changes live behavior and is unmeasured: it wants a
 golden rebuild plus a rate pass on the decomposition and shapes suites.
 
-**Ownership sentences.** Each fix is one sentence owning an instrument choice.
-ENG-1, ENG-4/CON-8, CON-6, and SCI-6 landed 2026-08-18 with the wording batch,
-their text taken from the proposals this entry drafted. Remaining:
-
-- **SCR-7.** scribe.md and the provenance docs. Provenance's "verbatim" is
-  verbatim-of-the-Scribe, one hop from the oracle. Own that, plus the cheap
-  norm: quote the oracle's operative words in `reasoning`.
-- **CON-7.** docs/logic.md at the ECBF "Contradiction cancels" bullet. `c_herd`
-  alone cannot distinguish contested from unexamined; name the oracle count and
-  the conflict metrics as the recovery channel. The fix has to bridge naming
-  too, since logic.md says `N_O` and never `oracle_count`.
-- **ENG-2.** archivist.md's synthesis section. The ledger path has airtight
-  input-only guards ("Proposition content comes only from the input"); the
-  answer has none. Extend the guard one clause: the answer states only what the
-  retrieved set supports.
+**Ownership sentences: all landed 2026-08-18.** ENG-1, ENG-4/CON-8, CON-6, and
+SCI-6 took the text this entry drafted. SCR-7, CON-7, and ENG-2 were authored
+against their sites: CON-7 names `oracle_count` and the §4.8 conflict metrics
+as the channel separating a cancelled fusion from an untouched one; SCR-7 owns
+provenance's one hop from the oracle in IDEA.md and makes the quote-the-words
+norm an instruction in scribe.md; ENG-2 gives synthesis the input-only guard
+the ledger path already had. ENG-5 (notes addressed "to a future oracle" while
+only the count reaches INFO) is still the programmer's call.
 
 **Tests and theory.**
 
@@ -529,6 +522,6 @@ SCI-6, the SCI-2 gloss, and SCI-7.
    and no doc decides it.
 
 **Status:** open. Wording, the IDEA.md proposals, the indexical-present
-residual, and four of the seven ownership sentences landed 2026-08-18; the
-prompt half of that batch is unmeasured. Remaining: SCR-7, CON-7, ENG-2, the
-tests-and-theory family, and the five Scribe-chair questions.
+residual, and every ownership sentence but ENG-5 landed 2026-08-18; the prompt
+half of that batch is unmeasured. Remaining: ENG-5, the tests-and-theory
+family, and the five Scribe-chair questions.
