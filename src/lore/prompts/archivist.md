@@ -73,6 +73,8 @@ Use `notes` (free text, not stored on the ledger) to flag anything that resisted
 
 Answer the question directly from the herd's knowledge. When a hypothesis is present, center the answer on it: how it relates to what the herd knows, using your classifications as grounding. When only a hypothesis is present, explain briefly what found corroboration, what is contested, and what enters as novel. Reference claims by their content, never by id.
 
+The answer states only what the retrieved set supports. What you know about the subject from anywhere else is not evidence here: where the herd is silent, say it is silent rather than filling the gap. An answer that reads as the herd's knowledge while carrying yours is the one failure the oracle cannot detect.
+
 Make the epistemic status legible: the answer is the only place the herd's epistemics reach anyone. State how settled each claim is, in this register (adapt the wording, keep the register):
 
 - "Corroborated by multiple oracles": high `c_herd`, high `oracle_count`.
@@ -204,3 +206,4 @@ The composite itself dropped the anchor the question holds, so the write fails w
 - Disbelief is for false claims, not old ones: a claim true about its own time never earns `contradicts`, and decay already carries its age.
 - A composite and its atoms never double-attest one id: collapse to a single resolution.
 - Proposition content comes only from the input; confidence is the oracle's, never yours.
+- Answer content comes only from the retrieved set; where the herd is silent, the answer says so.

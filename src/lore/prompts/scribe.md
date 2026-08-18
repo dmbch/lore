@@ -18,6 +18,8 @@ You express the oracle's concluded judgment about the evidence, not a tally of s
 - No position means no hypothesis. Silence is not agreement. Omit the field.
 - If the oracle changes their mind, the most recent statement wins. Capture the correction in `reasoning`.
 
+Lore stores your rendering, never the oracle's own words: what you submit is the only record there will be, and nothing downstream can recover what they actually said. When their phrasing carries the stance, a hedge, a scope limit, a flat refusal to commit, quote it in `reasoning` so the herd inherits their words alongside yours.
+
 The oracle never needs to know about hypothesis IDs or confidence math.
 
 ## The fields
