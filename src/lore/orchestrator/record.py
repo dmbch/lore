@@ -207,44 +207,52 @@ class Recorder:
             created_at=self._context.t_now,
         )
 
-        transfer_evidence: list[EvidenceInput] = []
+        transfer_rows: list[AttestationRecord] = []
         if transfer is not None:
-            log.debug(
-                "recorder.attestation",
+            # The transfer row is the novel's first row, so nothing precedes
+            # it: its own n_oracle_prior is 0.
+            transfer_row = AttestationRecord(
+                id=generate_id(),
                 hypothesis_id=record.id,
                 oracle_id=TRANSFER_ORACLE,
+                correlation_id=self._context.correlation_id,
+                timestamp=self._context.t_now,
+                t_oracle=1.0,
                 c_oracle_raw=transfer,
                 c_oracle_discounted=transfer,
                 c_herd=transfer,
-                t_oracle=1.0,
                 n_oracle_prior=0,
             )
-            await self._repos.attestations.append(
-                AttestationRecord(
-                    id=generate_id(),
-                    hypothesis_id=record.id,
-                    oracle_id=TRANSFER_ORACLE,
-                    correlation_id=self._context.correlation_id,
-                    timestamp=self._context.t_now,
-                    t_oracle=1.0,
-                    c_oracle_raw=transfer,
-                    c_oracle_discounted=transfer,
-                    c_herd=transfer,
-                    n_oracle_prior=0,
-                )
+            log.debug(
+                "recorder.attestation",
+                hypothesis_id=transfer_row.hypothesis_id,
+                oracle_id=transfer_row.oracle_id,
+                c_oracle_raw=transfer_row.c_oracle_raw,
+                c_oracle_discounted=transfer_row.c_oracle_discounted,
+                c_herd=transfer_row.c_herd,
+                t_oracle=transfer_row.t_oracle,
+                n_oracle_prior=transfer_row.n_oracle_prior,
             )
-            transfer_evidence.append(
-                EvidenceInput(c_oracle_discounted=transfer, timestamp=self._context.t_now)
-            )
+            await self._repos.attestations.append(transfer_row)
+            transfer_rows.append(transfer_row)
 
+        # The transfer row is prior scrutiny on the novel, and the oracle's
+        # own row fuses against it. Counting it through the same helper the
+        # existing path uses keeps one definition of what counts, so the
+        # row's maturity and its c_herd_prior describe the same room.
+        n_oracle_prior = _count_distinct_oracles(
+            records=transfer_rows, exclude=self._context.oracle_id
+        )
         computed = self._math.prepare_attestation(
             confidence=self._context.confidence,
-            existing=transfer_evidence,
+            existing=_to_evidence(transfer_rows),
             t_now=self._context.t_now,
             t_oracle=self._t_oracle,
-            n_oracle_prior=0,
+            n_oracle_prior=n_oracle_prior,
         )
-        await self._record_attestation(hypothesis_id=record.id, computed=computed, n_oracle_prior=0)
+        await self._record_attestation(
+            hypothesis_id=record.id, computed=computed, n_oracle_prior=n_oracle_prior
+        )
 
         for h_id in contradicts:
             await self._attest_existing(hypothesis_id=h_id, confidence=-self._context.confidence)
