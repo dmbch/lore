@@ -12,7 +12,7 @@ Lore is a shared archive for people who think for a living. It connects centaurs
 
 What makes this interesting is not the storage: it's the group epistemics.
 
-Lore tracks two distinct kinds of being right. Whether you agreed with the herd when you spoke, and whether the herd eventually came around to your position. The second one is the trick: it is how the prophet (early, alone, vindicated) earns more than the bandwagoner (late, settled, contributing nothing). Being early and right is the most valuable move an oracle can make. Rubber-stamping a settled answer earns nothing.
+Lore tracks two distinct kinds of being right. Whether you agreed with the herd when you spoke, and whether the herd eventually came around to your position. The second one is the trick: it is how the prophet (early, alone, vindicated) earns more than the bandwagoner (late, settled, contributing nothing). Being early and right is the most valuable move an oracle can make. Rubber-stamping a settled answer earns almost nothing.
 
 Dissent is priced honestly. When an oracle contradicts something the herd believes, the counter-claim does not enter a vacuum: the herd's existing position transfers onto it as prior evidence, and the oracle's opinion fuses against that real belief rather than silence. Contrarians who turn out right earn proper credit for pushing against the grain. Contrarians who turn out wrong are measured against what the herd actually thought.
 
@@ -32,7 +32,7 @@ The rest of this document is how it works.
 
 **The Scribe** (frontend LLM). The user-facing model, consulting with Lore Core via MCP. Translates the oracle's intent into structured arguments: extracts hypotheses, chains reasoning, captures directional confidence. Expresses the oracle's concluded judgment about the evidence, not a tally of sources. When the oracle corrects course mid-conversation, the Scribe captures the correction in the reasoning field.
 
-**The Interpreter** (fast LLM in Lore Core). The mechanical pre-processing step before the Archivist. Normalizes jargon, extracts retrieval keywords for the authority lane, and decomposes composite hypotheses into atomic propositions: single-issue statements that stand alone. Inputs already atomic pass through unchanged. The Interpreter is a lens, not a judge.
+**The Interpreter** (fast LLM in Lore Core). The pre-processing step before the Archivist. Normalizes jargon, extracts retrieval keywords for the authority lane, and decomposes composite hypotheses into atomic propositions: single-issue statements that stand alone. Inputs already atomic pass through unchanged. The Interpreter is a lens, not a judge.
 
 **The Archivist** (reasoning LLM in Lore Core). Retrieves the semantic neighborhood and reasons over it: paraphrase, contradiction, or orthogonal-novel. The only entity in the system that makes semantic judgments.
 
@@ -65,7 +65,7 @@ An append-only, immutable table. Each row records ten fields:
 
 Historical attestations are frozen. The ledger is never rewritten.
 
-**Derivable, not stored:** `c_herd_prior` (LAG window over the ledger), `n_prior` (COUNT from the ledger), and conflict metrics PD/CC/DC (derivable from `c_oracle_raw` and `c_herd_prior`). The immutable ledger is the source of truth.
+**Derivable, not stored:** `c_herd_prior` (LAG window over the ledger) and conflict metrics PD/CC/DC (derivable from `c_oracle_raw` and `c_herd_prior`). The immutable ledger is the source of truth.
 
 ### The Provenance (Requests)
 
@@ -87,6 +87,8 @@ A brand-new hypothesis with no attestations carries a vacuous opinion (0, 0, 1):
 
 The oracle's confidence is a scalar c in [-1, 1]. The Scribe captures directional confidence, not BDU triples; Lore maps the scalar to an uncertainty-maximized opinion internally. Only the scalar is stored in the ledger. BDU lives inside the math engine, derivable from c without loss for uncertainty-maximized opinions (see [logic.md](docs/logic.md)).
 
+The ladder's pull toward center and its 0.9 cap are deliberate input compression: a soft-knee limiter the instrument applies to stated certainty, owned as character rather than claimed as neutrality.
+
 ### Emergent Trust Grading
 
 No oracle is privileged. All must earn influence. Every attestation is discounted before fusion, by two independent signals that compose into a single effective discount:
@@ -103,7 +105,7 @@ The effective discount P_effective = M x t_oracle enters Jøsang's trust discoun
 **Bounded vulnerability.** The trust pipeline is robust against common attacks:
 
 - **Fresh-hypothesis attack.** A malicious oracle submitting extreme confidence on a fresh hypothesis is absorbed at quarter strength. One bullet, diminishing damage, self-correcting as honest oracles compound against it.
-- **Bandwagon farming.** An oracle rubber-stamping settled hypotheses earns nothing: the information factor collapses to zero, and agreement produces no trust credit.
+- **Bandwagon farming.** An oracle rubber-stamping settled hypotheses earns almost nothing: the information factor shrinks toward zero as the herd settles, and the exact zero is the dogmatic limit the system itself never builds.
 - **Trust exploitation.** An oracle who builds high trust through genuine contribution and then spends it on a bad claim gets one high-trust attestation before the herd corrects the hypothesis and the oracle's own trust drops.
 - **Sybil attacks.** Delegated to the authentication layer. The math assumes authenticated identity; the IdP provides it.
 
@@ -124,7 +126,7 @@ Unattested knowledge drifts back toward ignorance. Each attestation decays indiv
 
 ## The Interface
 
-One MCP tool.
+Two MCP tools: `consult`, the epistemic interface, and `observe`, a read-only view of the uncertainty frontier. The epistemic write interface is still exactly one tool.
 
 ### `consult`
 
@@ -173,15 +175,15 @@ Before reasoning, the orchestrator enriches each retrieved hypothesis with its c
 
 ### Stage 3: Resolution (The Archivist's Reasoning)
 
-**On read** (no hypothesis). The Archivist calculates the current epistemic state of each retrieved hypothesis (fusing the ledger, applying decay) and synthesizes the herd's beliefs. It surfaces uncertainty clusters: the frontier where the centaur's work would have the most impact.
+**On read** (no hypothesis). The Archivist calculates the current epistemic state of each retrieved hypothesis (fusing the ledger, applying decay) and synthesizes the herd's beliefs. It surfaces uncertainty clusters: the frontier where the centaur's work would have the most impact. Surfacing the frontier is the instrument steering herd attention; the steering is designed, not incidental.
 
 **On write** (hypothesis provided). The Archivist receives the normalized original, its atomic propositions (if any), and all retrieved hypotheses with their current epistemic states and per-lane retrieval scores. Per-lane scores inform the Archivist's judgment about the relationship. It can see which atomic propositions already have epistemic history, which premises the herd has opinions on, and reasons about the composite hypothesis with grounded inputs.
 
 The Archivist thinks proposition by proposition: the original hypothesis and every atom the Interpreter produced. Each becomes a resolution naming exactly one primary relationship, optionally paired with a list of contradicted hypotheses:
 
-- **Paraphrase.** The proposition IS an existing hypothesis: the same claim, perhaps rephrased. The resolution sets `corroborates` to that hypothesis's ID. Action: positive attestation on the corroborated hypothesis. No new node.
-- **Orthogonal-novel.** The proposition is genuinely new and does not paraphrase anything in the archive. The resolution sets `contributes` to a self-contained, atomic statement of the new content. Action: store the novel and write a positive attestation on it.
-- **Contradicts.** Either form may additionally list `contradicts: [HypothesisId, ...]`, existing hypotheses the proposition is mutually exclusive with. Action: disbelief attestation on each contradicted hypothesis. For an orthogonal-novel paired with contradicts, the herd's dampened contrary position transfers onto the novel as a single consolidated transfer attestation (see [logic.md](docs/logic.md)).
+- **Paraphrase.** The proposition IS an existing hypothesis: the same claim, perhaps rephrased. The resolution sets `corroborates` to that hypothesis's ID. Action: attestation on the corroborated hypothesis at `+c`. No new node.
+- **Orthogonal-novel.** The proposition is genuinely new and does not paraphrase anything in the archive. The resolution sets `contributes` to a self-contained, atomic statement of the new content. Action: store the novel and attest it at `+c`.
+- **Contradicts.** Either form may additionally list `contradicts: [HypothesisId, ...]`, existing hypotheses the proposition is mutually exclusive with. Action: attestation at `−c` on each contradicted hypothesis. For an orthogonal-novel paired with contradicts, the herd's dampened contrary position transfers onto the novel as a single consolidated transfer attestation (see [logic.md](docs/logic.md)). A contradicts attestation records the Archivist's mutual-exclusivity inference under the oracle's identity; `correlation_id` and verbatim provenance keep the delegation auditable.
 
 Across all resolutions in one consult, each existing hypothesis ID appears at most once, whether in `corroborates` or in any `contradicts` list. An oracle attests on each existing hypothesis at most once per consult call.
 
@@ -208,7 +210,7 @@ A single `consult` call may produce multiple writes. All writes execute within t
 
 How the organization tunes Lore to the shape of the field it serves. The first four are epistemic; the last two are retrieval plumbing.
 
-- **attestation decay** (`[epistemics] attestation_half_life`): how fast knowledge ages. Short for fast-moving fields, long for stable scholarship. Duration string (e.g. `"90d"`).
+- **attestation decay** (`[epistemics] attestation_half_life`): how fast unrefreshed attestations fade. Short for fast-moving fields, long for stable scholarship. Duration string (e.g. `"90d"`).
 - **maturity** (`[epistemics] maturity_k`, K in the formalism): half-saturation constant for oracle diversity. Higher values require more oracle diversity before the trust discount lifts. K also governs the adaptive blend between write-time and read-time alignment in oracle trust computation: a fresh hypothesis (low maturity) weights read-time validation, a mature hypothesis weights write-time agreement. K = 0 makes maturity transparent and collapses the blend to pure write-time. Default: 1.
 - **trust decay** (`[epistemics] trust_half_life`): separate decay time scale for oracle trust alignment. Controls how fast track records age. Decoupled from attestation decay because an organization may want long-lived knowledge but fast-adapting trust, or vice versa.
 - **transfer threshold** (`[epistemics] transfer_threshold`): epistemic-significance floor for the consolidated transfer attestation. When an orthogonal-novel contradicts existing claims and the fused herd magnitude falls below this value, no transfer row is written: the algebra has nothing meaningful to carry over. Decoupled from IEEE float noise so operators can tune what counts as "informationally meaningful." Default: 1e-3.

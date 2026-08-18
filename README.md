@@ -274,7 +274,7 @@ fulltext_config = "porter unicode61"
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `attestation_half_life` | duration | `"90d"` | How fast knowledge ages. Duration string: `"1y"`, `"3M"`, `"90d"`, `"24h"`, `"60m"`, `"3600s"` |
+| `attestation_half_life` | duration | `"90d"` | How fast unrefreshed attestations fade. Duration string: `"1y"`, `"3M"`, `"90d"`, `"24h"`, `"60m"`, `"3600s"` |
 | `trust_half_life` | duration | `"90d"` | How fast oracle track records age. Independent of attestation decay |
 | `maturity_k` | float | `1.0` | Half-saturation constant K for oracle diversity. Higher means more oracles needed before the trust discount lifts. K = 0 disables the maturity safeguard |
 | `transfer_threshold` | float > 0 | `1e-3` | Epistemic-significance floor for the consolidated transfer attestation. Fused magnitudes below this skip the transfer row |
@@ -348,7 +348,7 @@ Changing `fulltext_config` on an existing database requires rebuilding the FTS i
 | `context` | int | `4096` | Max characters for the context field |
 | `reasoning` | int | `4096` | Max characters for the reasoning field |
 
-**`[prompts]`**: template paths; bundled defaults unless overridden. Each value is a filesystem path or a `bundled:pkg/name.md` reference.
+**`[prompts]`**: template paths; bundled defaults unless overridden. Each value is a filesystem path or a `bundled:pkg/name.md` reference. The bundled prompts are English, and they set the language the archive is written in; a herd working in another language overrides them here (see also `fulltext_config` for the matching lexical analyzer).
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|

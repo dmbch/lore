@@ -168,7 +168,7 @@ class PostgresAttestationsRepository:
                 -- Both yield ``info = 1`` in the alignment math, so the
                 -- conflation is harmless. Anyone using ``c_herd_prior`` as
                 -- a "fresh hypothesis" detector must distinguish via
-                -- ``n_prior``.
+                -- ``n_oracle_prior``.
                 --
                 -- ``n_oracle_prior`` is read straight from the stored
                 -- column: the Recorder computed the distinct-prior-oracles
