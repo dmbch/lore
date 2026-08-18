@@ -2,7 +2,7 @@
 
 ## instructions
 
-Lore is a shared knowledge engine, reached through the `consult` tool. Source: https://github.com/dmbch/lore
+Lore is a shared archive, reached through the `consult` tool. Source: https://github.com/dmbch/lore
 
 **When to call.** A call needs a question, a hypothesis with confidence, or both; a hypothesis without confidence is rejected. Reach for it before starting an investigation (ask what the herd already knows), before concluding one (contribute the finding), and when the user commits to a position or a dissent (record it).
 
@@ -12,7 +12,7 @@ Lore is a shared knowledge engine, reached through the `consult` tool. Source: h
 
 **Relay the answer honestly.** A corroborated claim is one colleagues recorded agreement with, not one verified against external evidence. Pass the answer's hedges through as they stand: "lightly examined" or "contested" is the herd's epistemic state, not noise to polish out.
 
-**Confidence.** Positive is belief, negative is disbelief, 0 is genuine uncertainty. Anchor: "I'm certain" -> 0.9, "fairly sure" -> 0.6, "I suspect" -> 0.3, "genuinely torn" -> 0.0, "I doubt it" -> -0.5, "definitely not" -> -0.8. Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all. These differ.
+**Confidence.** Positive is belief, negative is disbelief, 0 is genuine uncertainty. Anchor: "I'm certain" -> 0.9, "fairly sure" -> 0.6, "I suspect" -> 0.3, "genuinely torn" -> 0.0, "I'm skeptical" -> -0.3, "I doubt it" -> -0.5, "definitely not" -> -0.8. Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all. These differ.
 
 **Express disbelief via negative confidence, never via textual negation.** When the user disagrees with a claim, phrase the hypothesis in its positive form and use a negative confidence scalar. Submit "Service X sustains 10k QPS" with `confidence = -0.7`, not "Service X does not sustain 10k QPS" with `confidence = 0.7`. Lore matches by content: positive-form phrasing lets the herd's belief and this disbelief land on the same hypothesis. A textual negation forks a separate hypothesis and disconnects the contribution from the herd's scrutiny.
 
@@ -22,7 +22,7 @@ Lore is a shared knowledge engine, reached through the `consult` tool. Source: h
 
 #### description
 
-Consult Lore, a shared knowledge engine: search what the herd has learned, contribute what the user concluded, or both in one call.
+Consult Lore, a shared archive: search what the herd has learned, contribute what the user concluded, or both in one call.
 
 **Call preconditions (a call is rejected without these).** A well-formed call carries a `question`, a `hypothesis` paired with `confidence`, or both. A `hypothesis` with no `confidence` has no epistemic content and is rejected. `context` and `reasoning` decorate a call; they cannot make one.
 
@@ -44,7 +44,7 @@ Why the user is asking: the problem being solved or the decision being faced. Th
 
 ##### hypothesis
 
-A positive-form, self-contained claim the user wants to contribute. Requires a `confidence`. Lore classifies how it relates to existing knowledge, so phrase it to stand on its own away from this conversation.
+A positive-form, self-contained claim the user wants to contribute. Requires a `confidence`. Lore classifies how it relates to existing knowledge, so phrase it to stand on its own away from this conversation. One `confidence` covers the whole hypothesis, and every claim Lore splits out of it inherits that one scalar: claims the user holds at different confidence go in separate calls.
 
 ##### reasoning
 
@@ -55,7 +55,8 @@ The logical chain behind the `hypothesis`. Also the place to record a mid-conver
 The user's directional confidence for the `hypothesis`. Positive is belief, negative is disbelief, `0` is genuine uncertainty. Read the stance, map it to the scalar:
 
     "I'm certain" -> 0.9   "fairly sure" -> 0.6   "I suspect" -> 0.3
-    "genuinely torn" -> 0.0   "I doubt it" -> -0.5   "definitely not" -> -0.8
+    "genuinely torn" -> 0.0   "I'm skeptical" -> -0.3   "I doubt it" -> -0.5
+    "definitely not" -> -0.8
 
 Required with a `hypothesis`. Err toward center: overconfidence corrupts fusion more than underconfidence. Omit when the user holds no view: omitting (no view, no hypothesis) and `0.0` (a stated stance of genuine uncertainty) are different states.
 
@@ -63,4 +64,4 @@ Required with a `hypothesis`. Err toward center: overconfidence corrupts fusion 
 
 #### description
 
-Show the herd's uncertainty frontier: the most recent hypotheses, ranked by how little the archive knows about each. Call this when the oracle asks what to explore, re-attest, or adjudicate next.
+Show the herd's uncertainty frontier: the most recent hypotheses, ranked by how little the herd has established about each. Call this when the user asks what to explore, re-attest, or adjudicate next. The result renders as a table in clients that support it; in a text-only client, relay the frontier in prose rather than assuming the user can see it.
