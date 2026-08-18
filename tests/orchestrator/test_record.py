@@ -255,6 +255,21 @@ def _transfer_rows(attestations: _StubAttestations) -> list[AttestationRecord]:
     return [a for a in attestations.appended if a.oracle_id == TRANSFER_ORACLE]
 
 
+def _oracle_row_on_novel(attestations: _StubAttestations) -> AttestationRecord:
+    """The oracle's own attestation on the stored novel.
+
+    ``_StubHypotheses.store`` returns a fixed id, so the novel is the one
+    hypothesis in the appended rows that is not the contradicted one.
+    """
+    rows = [
+        a
+        for a in attestations.appended
+        if a.oracle_id != TRANSFER_ORACLE and a.hypothesis_id != _CONTRADICTED_ID
+    ]
+    assert len(rows) == 1
+    return rows[0]
+
+
 class TestComputeTransferReturnsNoneAtExactlyZero:
     async def test_compute_transfer_returns_none_at_exactly_zero(self) -> None:
         recorder, attestations = _make_recorder(c_herd_of_contradicted=0.0)
@@ -620,6 +635,37 @@ class TestRecorderPassesDistinctOracleCountToAppend:
 
         assert len(attestations.appended) == 1
         assert attestations.appended[0].n_oracle_prior == 0
+
+
+class TestContributeCountsTheTransferOracle:
+    """A transfer row is prior scrutiny on the novel it lands on.
+
+    ``repositories/protocols.py`` and ``math/service.py`` both call the
+    synthetic ``_transfer`` an ordinary includable oracle. The novel path
+    writes the transfer row and then the oracle's own row against it, so the
+    count the oracle's row carries has to agree: ``c_herd_prior`` on that row
+    *is* the transfer, and a row claiming an empty prior room while fusing
+    against a formed one disagrees with itself.
+    """
+
+    async def test_contributing_novel_counts_the_transfer_oracle(self) -> None:
+        recorder, attestations = _make_recorder(c_herd_of_contradicted=0.8)
+
+        await recorder.dispatch()
+
+        assert len(_transfer_rows(attestations)) == 1
+        novel_row = _oracle_row_on_novel(attestations)
+        assert novel_row.n_oracle_prior == 1
+
+    async def test_contributing_novel_without_transfer_counts_no_prior(self) -> None:
+        """No transfer row, no prior scrutiny: the novel is genuinely fresh."""
+        recorder, attestations = _make_recorder(c_herd_of_contradicted=0.0)
+
+        await recorder.dispatch()
+
+        assert _transfer_rows(attestations) == []
+        novel_row = _oracle_row_on_novel(attestations)
+        assert novel_row.n_oracle_prior == 0
 
 
 class TestRecordWiresWitnessEvidence:
