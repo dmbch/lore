@@ -468,39 +468,27 @@ the ledger path already had. ENG-5 split: the prompt now addresses notes to the
 operators who actually read them, and the case for persisting them moved to the
 Debug UI entry, which already owns the sibling table they would live in.
 
-**Tests and theory.**
+**Tests and theory.** The documentation half landed 2026-08-18: LOG-3 (the
+future-timestamp clamp, both sites, owned as a commitment in logic.md's decay
+boundary cases), LOG-4 (test_decay.py's header now identifies Def. 14.6 with a
+time-varying discount rather than calling it custom), LOG-5 (the opposed
+dogmatic pair now has its own fusion test), LOG-7 (the Opinion constructor's
+clamp), LOG-8 (the K=inf analytical device owned in the test that uses it),
+LOG-9 ("conviction" disambiguated against the decay prose), SCI-8/LOG-10 (the
+Monte-Carlo table annotated as a dated, unrerunnable observation), and ENG-5
+(above). Remaining:
 
-- **LOG-3.** The future-timestamp clamp is an undocumented epistemic
-  commitment, in tension with the operator-level rejection of negative time.
-  One sentence in logic.md's decay boundary cases. Note there are two clamp
-  sites, `math/hypothesis.py` and `math/service.py`, not one.
-- **LOG-4.** tests/math/test_decay.py's header calls the decay formula
-  "Custom formula" where logic.md correctly identifies Def. 14.6 with
-  time-varying discount. Align the header.
-- **LOG-5.** The loudest degenerate case, (1,0,0) fused with (0,1,0) cancelling
-  to vacuous, is never stated as a test. The existing
-  `test_two_contradictory_cancel` uses non-dogmatic operands; the dogmatic pair
-  reaches `compute_degree_of_conflict` but never `fuse`. One test.
 - **LOG-6.** The full-penalty extreme of the informative-commitment table
   (signal 1, align 0) is unattested; punishment asymmetry is half-tested. The
-  nearest existing test lands at align ~0.35. One test.
+  nearest existing test lands at align ~0.35. One test, but first settle
+  whether `align = 0` is reachable from pipeline data at all: it needs the herd
+  to land fully opposite, and K >= 1 keeps `|c_herd| < 1`. If it is unreachable
+  the test still pins the pure function's documented contract, and the docstring
+  should say which it is. Same shape as the K = 0 hazard in the formalism entry.
 - **LOG-11.** "Surfaces uncertainty clusters" (IDEA.md Stage 3, read path) has
   no test or judge criterion, and no e2e test mentions the frontier at all. One
   e2e case: a settled plus a contested hypothesis, judge asserts the contested
-  one is flagged.
-- **SCI-8/LOG-10.** The Monte-Carlo archetype bands in logic.md's Trust
-  Dynamics Clusters rest on an uncommitted, unrerunnable artifact. Commit the
-  simulator as a manual mise task, or annotate the table as a dated one-off.
-- **ENG-5.** Archivist `notes` are addressed "to a future oracle" but only the
-  count reaches structlog at INFO and the contents at DEBUG. Reword the
-  address, or persist notes on provenance. Programmer's call.
-- **LOG-7/8/9** (one sentence each). The Opinion constructor's clamp is
-  undocumented in logic.md, which documents only the `t_oracle` clamp and
-  elsewhere states "No clamping". `maturity_k = inf` serves analytically in a
-  promise-bearing math test while config rejects it as non-finite; own the
-  analytical device where it is used rather than teaching config to accept inf.
-  "Conviction" is overloaded between the decay prose (magnitude eroding) and
-  the trust formalism (`|c_oracle_raw|`).
+  one is flagged. Metered: e2e lane.
 - **Read-after-write.** Rollback is attested, but no test writes through
   consult and reads the same state back through the read path. The nearest is
   `test_write_path_read_then_write`, which is the inverse and fully mocked. One
@@ -535,6 +523,7 @@ SCI-6, the SCI-2 gloss, and SCI-7.
    and no doc decides it.
 
 **Status:** open. Wording, the IDEA.md proposals, the indexical-present
-residual, and the ownership sentences all landed 2026-08-18; the prompt half of
-that batch is unmeasured. Remaining: the tests-and-theory family and the five
-Scribe-chair questions.
+residual, the ownership sentences, and the documentation half of tests-and-
+theory all landed 2026-08-18; the prompt part of that batch is unmeasured.
+Remaining: LOG-6, LOG-11, the read-after-write test, and the five Scribe-chair
+questions.
