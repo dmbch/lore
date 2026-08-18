@@ -70,6 +70,26 @@ class TestFuseHandCalculated:
         assert abs(result.d - 0.0) < EPSILON
         assert abs(result.u - 1.0) < EPSILON
 
+    def test_opposed_dogmatic_pair_cancels_to_vacuous(self) -> None:
+        """Total certainty against total certainty is total ignorance.
+
+        The loudest form of the cancellation above: the sibling test uses
+        non-dogmatic operands, so the u=0 path never carried it. Case II
+        (Eq. 12.15, γ=0.5) averages to (0.5, 0.5, 0.0); P = 0.5, so
+        maximization yields ü = min(P/a, (1−P)/(1−a)) = 1 at a = 0.5.
+
+        Two oracles certain of opposite things leave the herd knowing
+        nothing, not believing something in between.
+        """
+        certain_true = Opinion(b=1.0, d=0.0, u=0.0)
+        certain_false = Opinion(b=0.0, d=1.0, u=0.0)
+
+        result = fuse([certain_true, certain_false])
+
+        assert abs(result.b - VACUOUS.b) < EPSILON
+        assert abs(result.d - VACUOUS.d) < EPSILON
+        assert abs(result.u - VACUOUS.u) < EPSILON
+
     def test_two_both_dogmatic(self) -> None:
         """Both dogmatic: Case II: average, then maximize.
 

@@ -73,7 +73,9 @@ c = 0:  ω = (0, 0, 1)         (vacuous, pure ignorance)
 c = 2P − 1 = 2(b + 0.5u) − 1 = 2b + u − 1 = b − d
 ```
 
-No clamping: the algebra guarantees `|c| < 1` for all ECBF outputs with non-dogmatic inputs.
+No clamping on `c`: the algebra guarantees `|c| < 1` for all ECBF outputs with non-dogmatic inputs.
+
+The `Opinion` constructor is the one place a clamp does apply to b, d, and u. It validates each component against `[0, 1]` widened by EPSILON, then clamps the accepted value into `[0, 1]` exactly. Like the `t_oracle` clamp documented under Oracle Trust, this is an IEEE 754 safety net, not a semantic correction: it makes the invariant the type promises algebraically true of the stored value, so call sites need not each re-handle a component sitting a float ulp outside its interval. A component genuinely outside the tolerance still raises.
 
 **Lossless for uncertainty-maximized opinions.** When min(b, d) = 0 (the ECBF output shape), the roundtrip is exact: `to_confidence(to_opinion(c)) = c`. For non-maximized opinions (which only arise internally, never from the interface), the inverse projects through P. This is lossy but directionally correct.
 
@@ -194,6 +196,7 @@ where Δt = t_now − t_attestation (integer seconds)
 - Δt = 0: opinion unchanged (e⁰ = 1).
 - Δt → ∞: opinion approaches vacuous (0, 0, 1).
 - λ = 0: time-independent (no decay).
+- Δt < 0 (attestation timestamped after `t_now`): clamped to 0, so a future-dated row reads as undecayed rather than sharpened. The `decay` operator itself rejects negative `t`; the clamp lives at both call sites that compute an age, `math/hypothesis.py` and `math/service.py`. The commitment is that clock skew and future-dating cost the herd nothing beyond a row that has not started aging: the alternative, letting a negative Δt amplify belief past its stated value, would make a wrong clock an evidence multiplier.
 
 **Monotonicity:** uncertainty monotonically increases between attestations. Belief and disbelief monotonically decrease. Knowledge that nobody re-encounters returns to "we don't know."
 
@@ -431,7 +434,9 @@ The asymmetries are deliberate. *Informative, committed* wrongness (signal = 1, 
 conviction_i = |c_oracle_raw_i|
 ```
 
-For uncertainty-maximized oracle inputs, `conviction = 1 − u_oracle`. Conviction plays two roles:
+For uncertainty-maximized oracle inputs, `conviction = 1 − u_oracle`. This is the term's load-bearing sense throughout the trust formalism: a fixed property of the row, `|c_oracle_raw|` as the oracle stated it, which no later event changes. The decay prose uses the same word informally for what erodes with age ("decay erodes conviction, not direction"); that erosion is of the fused opinion's magnitude, never of a stored `conviction_i`. Trust scans read the raw scalar, so a decayed herd state cannot retroactively soften how hard an oracle once committed.
+
+Conviction plays two roles:
 
 - **Row weight.** Each row enters the aggregate weighted by `conviction_i · weight_i`: a vacuous attestation carries no weight at all, and the all-vacuous history falls through to the base-rate fallback.
 - **Calibration factor.** Conviction is half of the composite `signal_i = conviction_i · info_i` that discounts the row's alignment toward 0.5.
@@ -920,6 +925,8 @@ Reaching 1.0 requires `signal = 1` and `align = 1` on the same row: full convict
 ### Trust Dynamics Clusters
 
 Under the revised formula, oracles fall into recognizable clusters. The ranges are simulated, not asserted: Monte-Carlo archetype histories run through the implemented formula (4000 histories per archetype, 8-24 rows each, K = 1, decay disabled), reported as the 10th-90th percentile band. The simulation reproduces all four worked examples exactly before generating distributions, and each example value falls inside its archetype's band. The attack-analysis subsections below add detail on the adversarial cases.
+
+**Provenance of this table.** The simulator was a one-off run against the formula as it stood, and it is not committed, so these bands cannot be regenerated or re-checked against a changed formula. Read them as a dated observation rather than a live property: the archetype ordering is pinned by tests in `tests/math/test_service.py`, the specific percentiles are not. Any change to the trust algebra invalidates the numbers here without failing anything, which is the cost of not having committed the simulator.
 
 | Archetype | Target hypotheses | Simulated t_oracle (p10–p90) | Why |
 |---|---|---|---|

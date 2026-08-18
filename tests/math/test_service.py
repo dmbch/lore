@@ -571,6 +571,12 @@ class TestComputeOracleTrust:
         K=inf is the pure read-time limit: M_write = 1/(1+inf) = 0, so
         align = align_read exactly. (At any finite K the write leg mixes
         in and align=1 with info=1 is unreachable for nonzero conviction.)
+        It is an analytical device, not a configuration: ``EpistemicsConfig``
+        rejects a non-finite ``maturity_k`` because inf drives M to 0 for
+        every hypothesis and every write would land vacuous. ``MathService``
+        is constructed directly here to reach the limit the algebra has but
+        no deployment may select; the isolation is deliberate, and config
+        should not learn to accept inf on this test's account.
         With the reference equal to c_oracle_raw the row is perfectly
         aligned and the herd was vacuous at write time:
 
