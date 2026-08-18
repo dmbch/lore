@@ -16,43 +16,63 @@ in [docs/measurements.md](docs/measurements.md). Landed work lives in git.
 implementation is checked against. Where it describes behavior the algebra
 cannot produce, the next prior-art check verifies against fiction.
 
-- **The K = 0 dogmatic hazard.** The per-row trust ceiling derives to
-  `1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
-  is unreachable at any finite K and the documented hazard describes a state
-  the pipeline cannot reach; the informative-commitment gate binds first, at
-  every K. The dogmatic-fusion complex (Case II, `_dogmatic_average`, the
-  mixed partition) is likewise unreachable from pipeline data at any
-  configuration, not just at K >= 1 as the doc states. Both paragraphs
-  predate the gate. Needs a logician pass to confirm the derivation before
-  anything is rewritten.
-- **`n_prior`.** IDEA.md lists it among the derivables and both backends'
-  SQL comments point future readers at it, but nothing derives it;
-  `n_oracle_prior` is what freshness detection actually uses. Implement or
-  strike (the IDEA.md half is approval-gated).
-- **`n_oracle_prior` on a novel that carries a transfer row.** Stored as 0
-  while the project's stated convention counts `_transfer` as a distinct
-  oracle, which would make it 1. Effect at K=1: the dissenting oracle enters
-  at M=1/2 rather than 2/3. Bug or deliberate exclusion; neither doc says.
+**The K = 0 dogmatic hazard.** The per-row trust ceiling derives to
+`1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
+is unreachable at any finite K and the documented hazard describes a state
+the pipeline cannot reach; the informative-commitment gate binds first, at
+every K. The dogmatic-fusion complex (Case II, `_dogmatic_average`, the
+mixed partition) is likewise unreachable from pipeline data at any
+configuration, not just at K >= 1 as the doc states. Both paragraphs predate
+the gate. Needs a logician pass to confirm the derivation before anything is
+rewritten.
+
+The `n_prior` bullet closed 2026-08-18: nothing derived it, so IDEA.md's
+derivables list dropped it and both backends' SQL comments now point at
+`n_oracle_prior`. The third bullet became its own entry below.
 
 **Status:** open; not started.
+
+---
+
+## `n_oracle_prior` is 0 on a novel that carries a transfer row
+
+**Found:** 2026-08-16, dead-instrument sweep. Split out of the entry above
+2026-08-18: the fix is a decision about behavior, not a doc rewrite.
+
+**What.** `orchestrator/record.py` writes the `_transfer` row on a
+contradicting novel, then hardcodes `n_oracle_prior=0` for the oracle's own
+attestation on that same novel. The existing-hypothesis path counts distinct
+oracles via `_count_distinct_oracles`, which would count `_transfer`, and
+both `repositories/protocols.py` ("an ordinary includable oracle here") and
+`math/service.py` ("the synthetic `_transfer` included") state the convention
+the novel path ignores.
+
+**Why it matters.** At K = 1 the dissenting oracle enters at M = 1/2 rather
+than 2/3, so a contrarian's attestation on their own novel is discounted
+harder than the stated convention implies. The column is write-time and
+immutable, so rows already written keep whichever semantics produced them; a
+change applies to new rows only.
+
+**Options.** Count `_transfer` (one line, matches the convention both other
+sites state) or keep the exclusion and say why at those two sites. Neither
+doc decides it today.
+
+**Status:** open; needs a decision, not a derivation.
 
 ---
 
 ## Evaluation harness: retrieval recall
 
 **Found:** 2026-07-19, TODO sweep; carried from the prompt-audit (2026-06-21)
-and authority-lane (2026-07-03) entries, both otherwise landed. Narrowed
-2026-08-11: the rate runner (`mise run rate`, k >= 5) and the SCR-12 corpus
-probes (`tests/e2e/test_consult_shapes.py`) landed; prompt behavior is
-measured by the e2e fixture suites plus rate runs. Rate runs now persist
-per-run stage traces and `/rate-analyze` delivers the cross-run sniff test
-(landed 2026-08-11). Narrowed 2026-08-12: the recall eval landed as a manual
-mise task (`mise run recall`): labeled queries in `tests/e2e/queries.py`,
-lane-isolated scoring and JSONL receipts in `scripts/recall.py`, delta
-protocol in docs/testing.md, records in docs/measurements.md. Narrowed
-2026-08-17: the corpus grew to 28 seeds so the archive exceeds the retrieval
-pool and recall can fail; the numbers still pin this archive rather than
-predicting the next one.
+and authority-lane (2026-07-03) entries, both otherwise landed.
+
+The harness landed 2026-08-12 and has been narrowed three times since; git
+holds the sequence. Current state: `mise run recall` scores labeled queries
+(`tests/e2e/queries.py`) with lane-isolated ranks and JSONL receipts
+(`scripts/recall.py`), the delta protocol lives in docs/testing.md, and the
+corpus reached 28 seeds on 2026-08-17 so the archive now exceeds the
+retrieval pool and recall can genuinely fail. The numbers pin this archive;
+they do not predict the next one.
 
 **What remains.**
 
@@ -94,35 +114,6 @@ accepted rather than unstated.
 
 **Status:** harness landed 2026-08-12; the short-form-archive edge and the
 fixture candidates stay open.
-
----
-
-## Interpreter: emit both surface forms for abbreviation keywords
-
-**Found:** 2026-08-11, k=5 trace analysis of the SCR-12 probes via
-`/rate-analyze`. Landed 2026-08-12: step 6 emits both surface forms when
-normalization expanded an abbreviation (the pair counts toward the cap of 8,
-generic terms drop before either form); Examples 2, 7, and 8 obey the rule;
-`test_abbreviation_keywords_carry_both_surface_forms` (ECG, held-out domain)
-pins it directly, expected red under the pre-change prompt.
-
-**Measurement.** Green through the delta doctrine; the record lives in
-[docs/measurements.md](docs/measurements.md): the 08-13 delta (probe 0/5 to
-5/5 with the predicted mechanism, neighbors clean, recall aggregates
-identical), the 08-13 re-baseline (0/17 entries regressed), and the 08-16
-noise floor (0 unstable cells at k=3; k=1 deltas licensed within a
-session, cross-session comparison is not).
-
-**The p99 boundary, closed 2026-08-13.** Step 2 normalizes "p99" to "99th
-percentile" while Example 8 omits "p99 latency" from its keywords; the
-jargon-vs-abbreviation distinction was taught by omission only. Review found
-the rule/example contradiction; step 6 now states it: metric notation is
-jargon, not an abbreviation, only the expanded form earns a slot.
-
-**Status:** landed 2026-08-12; measured green 2026-08-13; golden-rebuilt,
-re-baselined, and fixture committed 2026-08-13. Remaining: one clean
-`mise run e2e` under the pin to confirm the committed fixture (the 08-15
-run's single failure was the alias flip; see docs/measurements.md).
 
 ---
 
@@ -180,12 +171,22 @@ equivalent since the conftest skip checks truthiness.
 spelling pushes sessions toward ad-hoc workarounds, while the known-dangerous
 spellings (quoted multi-word selections) still slip past.
 
-**Options / open questions.** Reproduce in a worktree session and attribute
-the refusal; then either teach the guard the `env -u GEMINI_API_KEY` prefix
-or bless `GEMINI_API_KEY=""` in llm-spend.md as the worktree-compatible
-spelling.
+**Read of the hook source, 2026-08-18** (not a repro). `.claude/settings.json`
+matches on `pytest[^|&;]*e2e`, which the `env -u` spelling satisfies, and
+returns `permissionDecision: "ask"` rather than a denial. An agent session has
+nobody to ask, so "ask" surfaces as refusal. That points at the repo's own
+hook, not harness worktree protection, and neither agent's mechanism fits. It
+does not close the entry: after the hook's quote-stripping seds, the
+`GEMINI_API_KEY=""` fallback matches the same pattern, so the read does not
+explain why the fallback worked.
 
-**Status:** open; not started.
+**Options / open questions.** Reproduce in a worktree session and confirm the
+attribution; then teach the guard that a command unsetting or emptying the key
+cannot reach the API, which is the distinction the regex cannot currently
+draw. Failing that, bless `GEMINI_API_KEY=""` in llm-spend.md as the
+worktree-compatible spelling.
+
+**Status:** open; attribution narrowed by source reading, repro pending.
 
 ---
 
@@ -438,81 +439,17 @@ record of what remains.
 Items carry a quoted anchor rather than a line number: the original line
 references rotted within days of being written. Grep the anchor.
 
-**Wording fixes.** Each is a word-level substitution.
-
-- **SCI-2 residue.** IDEA.md, "earns nothing: the information factor collapses
-  to zero", and the sibling slogan "Rubber-stamping a settled answer earns
-  nothing." Both conflate settled (info small, trust ~0.53) with dogmatic (info
-  exactly 0). Fix the gloss; add one logic.md clause at the "zero informational
-  contribution" site noting the exact limit is unreachable in herds the system
-  itself builds, since K >= 1 keeps |c_herd| < 1. IDEA.md half is
-  approval-gated; proposal below.
-- **CON-2/LIN-9.** archivist.md, "asserting that claim is false, not merely
-  old", overstates a graded, attributed disbelief row. If rewording to
-  "recording the oracle's disbelief", keep the vividness: it is the deterrent
-  behind omit-when-unsure.
-- **SCI-1.** IDEA.md Stage 3 ("positive attestation", "disbelief
-  attestation"), archivist.md at the CON-2 site, and architecture.md
-  ("positive attestation" twice, plus "negative attestation"). The glosses are
-  true only for c > 0 and are contradicted by Stage 4's sign rule. Reword
-  sign-neutral.
-- **CON-4.** docs/logic.md, "push a false opinion", "the false opinion diverges
-  from the herd that corrected it", "submitting false opinions when older
-  honest attestations have decayed". "False" imports a truth standard the
-  algebra cannot observe; use "bad claim" or "insincere attestation", as
-  IDEA.md already does.
-- **CON-5/LIN-8.** All three LLM-facing prompts open on "shared knowledge
-  engine" (contract.md twice, archivist.md, scribe.md) against the canonical
-  "shared archive" in IDEA.md and README.md. contract.md contradicts itself
-  internally, since it also says "Searches the shared archive". Align on
-  archive, or record the split as intentional.
-- **SCI-7.** README.md and IDEA.md config tables, "How fast knowledge ages", is
-  a world-frame slip; "how fast unrefreshed attestations fade". IDEA.md half is
-  approval-gated.
-- **SCI-9/ENG-7.** contract.md, "ranked by how little the archive knows about
-  each"; "how little the herd has established".
-- **LIN-7.** contract.md, "when the oracle asks what to explore", the sole
-  "oracle" in the user-register document; "when the user asks".
-- **SCR-10.** The negative confidence ladder is coarser than the positive, and
-  "I doubt it" at -0.5 overshoots mild skepticism. Add "I'm skeptical" at -0.3.
-  Three copies need the same insert: contract.md instructions, contract.md
-  field description, scribe.md.
-- **LIN-10.** archivist.md, "both cannot be true of the world". Mutual
-  exclusivity presupposes coreference of bare definites, never named as a
-  precondition. One clause: if the subjects could denote different things, omit.
-- **SCR-2.** scribe.md moments list. Correction handling exists only within a
-  conversation ("the most recent statement wins"). Add one line assigning the
-  correcting consult when an already-contributed position is later reversed.
-- **SCR-5.** contract.md `hypothesis` field description. No Scribe-facing
-  surface says a compound's single scalar is inherited whole by every atom. One
-  interface line: claims held at different confidence go in separate calls.
-- **SCR-9.** `observe` appears in the prompts only as a contract.md heading and
-  is invisible to the persona; it may also be UI-shaped in text-only clients.
-  One clause in scribe.md's moments list, one warning in the description.
-- **SCR-11.** README's `[prompts]` table never names the archive's language as
-  an operator knob for non-English herds. One sentence. (The only adjacent
-  mention is `fulltext_config` in the sqlite section.)
-- **CON-1 nit.** archivist.md Example, "Both are true of the world", reads
-  truth where the Archivist judges compatibility; "can both be true". The modal
-  is already carried earlier by "Claims about different times can both be true".
+**Wording fixes: all landed 2026-08-18** (commits `docs: close the audit
+residual's wording and ownership fixes` and `feat(prompts): close the audit
+residual's prompt-facing wording`). SCI-1, SCI-2, SCI-7, SCI-9/ENG-7, CON-1,
+CON-2/LIN-9, CON-4, CON-5/LIN-8, LIN-7, LIN-10, SCR-2, SCR-5, SCR-9, SCR-10,
+SCR-11. The prompt half changes live behavior and is unmeasured: it wants a
+golden rebuild plus a rate pass on the decomposition and shapes suites.
 
 **Ownership sentences.** Each fix is one sentence owning an instrument choice.
+ENG-1, ENG-4/CON-8, CON-6, and SCI-6 landed 2026-08-18 with the wording batch,
+their text taken from the proposals this entry drafted. Remaining:
 
-- **ENG-1.** scribe.md carries the ladder's 0.9 cap and its center-pull
-  ("Overconfidence corrupts the herd's fusion more than underconfidence"). Both
-  are a soft-knee limiter on the input chain, owned in the prompt and unowned
-  in IDEA.md's Ingestion section.
-- **ENG-4/CON-8.** IDEA.md Stage 3, read path. Frontier surfacing is the
-  instrument steering herd attention, the strongest instrument-to-herd feedback
-  loop in the system, owned here and not in the spec.
-- **CON-6.** IDEA.md, "The mechanical pre-processing step before the
-  Archivist", claims a neutrality the same paragraph's lens figure denies. Drop
-  "mechanical". Leave the README occurrence, which is operational and justifies
-  temperature 0.0. Two further sites the panel did not name carry the same
-  word: architecture.md and interpreter.md.
-- **SCI-6.** IDEA.md Stage 3, contradicts bullet. A contradicts row records an
-  Archivist inference under the oracle's identity; one sentence owns the
-  delegation. Skip certainty-discount machinery (YAGNI).
 - **SCR-7.** scribe.md and the provenance docs. Provenance's "verbatim" is
   verbatim-of-the-Scribe, one hop from the oracle. Own that, plus the cheap
   norm: quote the oracle's operative words in `reasoning`.
@@ -564,43 +501,12 @@ references rotted within days of being written. Grep the anchor.
   integration test; pin time (infinite half-life, or read at the write
   timestamp), else decay makes the comparison legitimately unequal.
 
-**The indexical-present residual** (SCI-4 plus LIN-3, merged by the critic).
-One entry for docs/logic.md's Known Residuals section, proposed text:
+**The indexical-present residual** (SCI-4 plus LIN-3, merged by the critic)
+landed 2026-08-18 in docs/logic.md's Known Residuals, as drafted.
 
-> **The indexical present.** Two tacit conventions govern reference time:
-> self-dated claims are temporal, undated present-tense claims are indexically
-> about now. Examples and tests pin both directions; no prose states either.
-> The indexical reading is load-bearing (supersession works by contradiction
-> because standing claims stay about now), and its cost is real: genuine
-> supersession of a standing claim fuses toward zero, and the register reads
-> change as controversy. Accepted; no supersession machinery (tried and
-> rejected).
-
-**IDEA.md proposals**, approval-gated per CLAUDE.md. This entry proposes; the
-programmer disposes.
-
-- **LIN-6** (Interface). "One MCP tool." is stale against the shipped contract,
-  which carries an `observe` block IDEA.md never mentions. Proposed: "Two MCP
-  tools: `consult`, the epistemic interface, and `observe`, a read-only view of
-  the uncertainty frontier. The epistemic write interface is still exactly one
-  tool."
-- **ENG-1** (Ingestion). Proposed: "The ladder's pull toward center and its 0.9
-  cap are deliberate input compression: a soft-knee limiter the instrument
-  applies to stated certainty, owned as character rather than claimed as
-  neutrality."
-- **ENG-4/CON-8** (Stage 3, read path). Proposed: "Surfacing the frontier is
-  the instrument steering herd attention; the steering is designed, not
-  incidental."
-- **CON-6.** Drop the word "mechanical".
-- **SCI-6** (Stage 3, contradicts bullet). Proposed: "A contradicts attestation
-  records the Archivist's mutual-exclusivity inference under the oracle's
-  identity; `correlation_id` and verbatim provenance keep the delegation
-  auditable."
-- **SCI-2 gloss.** Proposed: "An oracle rubber-stamping settled hypotheses
-  earns almost nothing: the information factor shrinks toward zero as the herd
-  settles, and the exact zero is the dogmatic limit the system itself never
-  builds."
-- **SCI-7** (config cell). "How fast unrefreshed attestations fade."
+**IDEA.md proposals** all landed 2026-08-18 with programmer approval: LIN-6
+(the Interface section now names both tools), ENG-1, ENG-4/CON-8, CON-6,
+SCI-6, the SCI-2 gloss, and SCI-7.
 
 **Open questions**, carried from the Scribe chair, for the programmer:
 
@@ -622,4 +528,7 @@ programmer disposes.
    literature-claim; the level choice changes what the herd later retrieves,
    and no doc decides it.
 
-**Status:** open; none of the families started.
+**Status:** open. Wording, the IDEA.md proposals, the indexical-present
+residual, and four of the seven ownership sentences landed 2026-08-18; the
+prompt half of that batch is unmeasured. Remaining: SCR-7, CON-7, ENG-2, the
+tests-and-theory family, and the five Scribe-chair questions.
