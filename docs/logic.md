@@ -847,7 +847,7 @@ The fix is to make the blend adaptive per attestation, derived from the same mat
 
 ### Info Weighting over Flat Alignment
 
-The original trust formula treated every alignment event identically: an oracle agreeing with a near-dogmatic herd earned the same credit as an oracle agreeing with an uncertain one. This opened a bandwagoning attack: an oracle who rubber-stamps settled hypotheses earns perfect alignment for zero informational contribution.
+The original trust formula treated every alignment event identically: an oracle agreeing with a near-dogmatic herd earned the same credit as an oracle agreeing with an uncertain one. This opened a bandwagoning attack: an oracle who rubber-stamps settled hypotheses earns perfect alignment for zero informational contribution. Exactly zero is the dogmatic limit: `info = 1 − |c_herd_prior|` reaches 0 only at `|c_herd_prior| = 1`, which K >= 1 keeps out of reach in any herd the pipeline itself builds. A settled herd leaves a small residual info; the gate shrinks the credit rather than erasing it.
 
 A first attempt used `info_i = 1 − |c_herd_prior_i|` as a *row weight* inside a conviction-weighted average: `t_oracle = Σ(align · conv · info · w) / Σ(conv · info · w)`. This was mathematically unsound. Because info appeared symmetrically in numerator and denominator, a pure bandwagoner (every `align_i = 1`) still earned `t_oracle = 1` regardless of info values; the weight cancelled. The defense only fired in the strict limit where every `info_i` was exactly zero (triggering a zero-denominator fallback), which never occurs for merely-settled herds in practice.
 
@@ -948,9 +948,9 @@ A malicious oracle submits c = ±1.0 (or near it) on a fresh hypothesis, attempt
 
 ### Echo Chamber Attack (Reputation Cashing)
 
-An oracle builds a high trust score by consistently agreeing with the herd, then exploits that trust to push a false opinion. Reputation cashing is Lore's name for the attack; the underlying observation is BRS's, which describes reputation as an asset that "can be cashed in through a fraudulent transaction."
+An oracle builds a high trust score by consistently agreeing with the herd, then exploits that trust to push a bad claim. Reputation cashing is Lore's name for the attack; the underlying observation is BRS's, which describes reputation as an asset that "can be cashed in through a fraudulent transaction."
 
-**Mitigation:** Two defenses compose. First, the informative-commitment gate makes trust-building through conformity much harder: agreeing with a near-dogmatic herd has `info ≈ 0`, so the attestation earns almost no trust credit regardless of how well it aligns. The attacker has to build reputation through *informative* agreement (attestations on hypotheses the herd was uncertain about), which is the honest path. Second, if the attacker does build genuine trust this way, the exploit itself is still bounded: the high-trust false attestation enters at elevated P_effective, but it is still a single opinion. Subsequent honest attestations compound against it via ECBF. The attacker's trust score drops immediately on the next trust computation (the false opinion diverges from the herd that corrected it; align_read drops). Trust decay ensures the damage window is finite. One bullet, one shot, diminishing damage.
+**Mitigation:** Two defenses compose. First, the informative-commitment gate makes trust-building through conformity much harder: agreeing with a near-dogmatic herd has `info ≈ 0`, so the attestation earns almost no trust credit regardless of how well it aligns. The attacker has to build reputation through *informative* agreement (attestations on hypotheses the herd was uncertain about), which is the honest path. Second, if the attacker does build genuine trust this way, the exploit itself is still bounded: the high-trust insincere attestation enters at elevated P_effective, but it is still a single opinion. Subsequent honest attestations compound against it via ECBF. The attacker's trust score drops immediately on the next trust computation (the insincere attestation diverges from the herd that corrected it; align_read drops). Trust decay ensures the damage window is finite. One bullet, one shot, diminishing damage.
 
 ### Bandwagoning
 
@@ -986,7 +986,7 @@ An attacker creates multiple oracle identities to simulate false consensus.
 
 ### Decay Exploitation
 
-An attacker times attestations to exploit decay, submitting false opinions when older honest attestations have decayed toward vacuous.
+An attacker times attestations to exploit decay, submitting insincere attestations when older honest attestations have decayed toward vacuous.
 
 **Mitigation:** This is intended behavior, not a vulnerability. Decay is a feature: knowledge that nobody re-encounters should lose influence. An active herd that re-attests important hypotheses naturally maintains their epistemic state. An attacker who waits for decay to weaken honest opinions is competing against any oracle who re-visits the hypothesis. The defense is a living herd, not a mathematical safeguard.
 
@@ -1006,4 +1006,5 @@ Bounded weaknesses the current algebra accepts, documented rather than hidden:
 - **Sparse-herd freeze.** Until oracles answer each other's hypotheses, every row is unwitnessed and every trust score idles at 0.5. A single-oracle or siloed deployment gets base-rate trust indefinitely; attestations still land (at quarter strength), so the archive functions while the trust signal waits for cross-engagement.
 - **Correlated corroboration.** ECBF's inner ACBF accumulates evidence from agreeing sources whether or not they are independent; correlated agreement pushes the projected probability P exactly as independent agreement would. Uncertainty maximization (Eq. 3.27) preserves P while redistributing mass toward uncertainty, so it cannot deflate compounded agreement. The real bounds are distinct-oracle maturity M, trust discounting, and decay; tightly coupled herds should raise K.
 - **Retroactivity.** t_oracle is recomputed from the ledger on every scan; nothing stores a live trust score. Changing the trust algebra therefore shifts every oracle's effective score at their next write. The per-row `t_oracle` values persisted on old attestations are historical record of what the discount was at write time, not current state, and are never rewritten.
+- **The indexical present.** Two tacit conventions govern reference time: self-dated claims are temporal, undated present-tense claims are indexically about now. Examples and tests pin both directions; no prose states either. The indexical reading is load-bearing (supersession works by contradiction because standing claims stay about now), and its cost is real: genuine supersession of a standing claim fuses toward zero, and the register reads change as controversy. Accepted; no supersession machinery (tried and rejected).
 
