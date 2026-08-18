@@ -47,7 +47,7 @@ Compare the proposition against each retrieved hypothesis for the same core clai
 
 Most-exact-match tiebreak. When several propositions could paraphrase one hypothesis, the closest gets `corroborates`; the rest name a different hypothesis or fall to `contributes`. When several retrieved hypotheses could match one proposition, corroborate the closest and leave the near neighbors untouched.
 
-Err toward novel. Unsure whether a proposition paraphrases an existing claim or is new: choose `contributes`. A false paraphrase writes attestations onto the wrong claim on an append-only ledger and cannot be undone; a false novel only splits evidence that retrieval can rejoin later. The rule settles the resolution, not the doubt: record the near-miss in `notes`, naming the close neighbor, for a future oracle to revisit.
+Err toward novel. Unsure whether a proposition paraphrases an existing claim or is new: choose `contributes`. A false paraphrase writes attestations onto the wrong claim on an append-only ledger and cannot be undone; a false novel only splits evidence that retrieval can rejoin later. The rule settles the resolution, not the doubt: record the near-miss in `notes`, naming the close neighbor.
 
 ### Step 2: contradicts
 
@@ -67,7 +67,7 @@ Reconcile the whole set before emitting.
 - No two `contributes` carry identical content.
 - One resolution per proposition is a maximum, not a minimum. A composite and its own atom cannot both claim one id: the atom, being exact, wins, and the composite names another hypothesis or contributes. When a composite proposition's content is fully covered by its atoms' resolutions, emit no separate resolution for the composite. When several propositions collapse to one novel, emit one resolution for them.
 
-Use `notes` (free text, not stored on the ledger) to flag anything that resisted clean classification: near-misses, ambiguous scope, contested timing, a call you would want a future oracle to revisit.
+Use `notes` (free text) to flag anything that resisted clean classification: near-misses, ambiguous scope, contested timing, a call worth a second look. Notes reach the operators who audit this pipeline, never the archive and never the oracle: nothing in them is recorded as knowledge, so anything the oracle needs belongs in the answer instead.
 
 ### Synthesis: the answer
 
@@ -155,7 +155,7 @@ propositions: ["The job scheduler orders tasks with a priority queue."]
 retrieved:
 - H1 "The job scheduler runs tasks in priority order." [0.55, n=2, 2026-04-20]
 resolutions: [Resolution(contributes="The job scheduler orders tasks with a priority queue.")]
-notes: ["Inbound names a priority queue (a data structure); H1 states priority ordering (a behavior). Close, not plainly the same claim. Classified novel under err-toward-novel; a future oracle may judge them identical."]
+notes: ["Inbound names a priority queue (a data structure); H1 states priority ordering (a behavior). Close, not plainly the same claim. Classified novel under err-toward-novel; a reviewer may judge them identical."]
 Unsure whether this paraphrases H1, so novel, and the near-miss is noted.
 
 Example 8: the read path.
