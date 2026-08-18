@@ -401,6 +401,18 @@ failure path only.
 **What.** Two coupled pieces. Provenance grows to capture full model I/O: the
 interpreter and archivist calls per consult (inputs and outputs), keyed by
 correlation ID alongside the verbatim consult input `requests` already stores.
+
+**Archivist `notes` are the highest-value field in that capture** (ENG-5, moved
+here 2026-08-18). They record every classification the model found hard:
+near-misses under err-toward-novel, ambiguous scope, refused atoms. Today they
+reach structlog and nothing else, count at INFO and contents at DEBUG. A
+near-miss note is the only per-consult evidence of err-toward-novel splitting
+evidence, so persisting them is what would let the doctrine question in the
+Gemini 3.7 entry be answered from the archive instead of from rate runs.
+They cannot ride `requests`: that row is written autocommit before reasoning
+starts, by design, so notes belong in the sibling table this entry already
+proposes. The prompt's address was corrected to the operator in the meantime;
+when capture lands, notes can honestly be addressed to a future oracle again.
 On top of it, a debug MCP app that renders the full trace per request: consult
 input, every model call, resolutions, ledger writes. Off by default; enabled
 explicitly via an env var (e.g. `LORE_DEBUG_APP`).
@@ -452,8 +464,9 @@ against their sites: CON-7 names `oracle_count` and the §4.8 conflict metrics
 as the channel separating a cancelled fusion from an untouched one; SCR-7 owns
 provenance's one hop from the oracle in IDEA.md and makes the quote-the-words
 norm an instruction in scribe.md; ENG-2 gives synthesis the input-only guard
-the ledger path already had. ENG-5 (notes addressed "to a future oracle" while
-only the count reaches INFO) is still the programmer's call.
+the ledger path already had. ENG-5 split: the prompt now addresses notes to the
+operators who actually read them, and the case for persisting them moved to the
+Debug UI entry, which already owns the sibling table they would live in.
 
 **Tests and theory.**
 
@@ -522,6 +535,6 @@ SCI-6, the SCI-2 gloss, and SCI-7.
    and no doc decides it.
 
 **Status:** open. Wording, the IDEA.md proposals, the indexical-present
-residual, and every ownership sentence but ENG-5 landed 2026-08-18; the prompt
-half of that batch is unmeasured. Remaining: ENG-5, the tests-and-theory
-family, and the five Scribe-chair questions.
+residual, and the ownership sentences all landed 2026-08-18; the prompt half of
+that batch is unmeasured. Remaining: the tests-and-theory family and the five
+Scribe-chair questions.
