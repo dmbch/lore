@@ -153,6 +153,8 @@ CCF is idempotent: `fuse([a, a]) = a`. This means 50 oracles each submitting the
 
 2. **Contradiction cancels.** When evidence is evenly split (P ≈ 0.5), uncertainty maximization yields ü = 1.0, b = 0, d = 0: the vacuous opinion. The system returns to "we don't know" rather than claiming false certainty about a tie.
 
+   The cancelled result is indistinguishable from an untouched one: both read (0, 0, 1), so the fused state alone cannot separate a fifty-oracle deadlock from a hypothesis nobody has attested. The distinct-oracle count `N_O` (carried on the read path as `oracle_count`) recovers the difference, and the conflict metrics of §4.8 (PD, CC, DC) grade it. Any surface reporting a vacuous state should carry the count beside it; a bare "we don't know" conflates a fight with a silence.
+
 **Source correlation.** ECBF assumes source independence, which oracles in an organization aren't, strictly speaking. Uncertainty maximization is not a defense: Eq. 3.27 preserves P, so correlated agreement compounds into the projected probability exactly as independent agreement would. The exposure is real and bounded by other mechanisms; see Known Residuals.
 
 **Multiple attestations from the same oracle** compound via ACBF. Temporal decay corrects *staleness*, on the half-life timescale: an older attestation fades toward vacuous while the fresh one enters at full strength. Repetition inside a half-life still compounds; the guard that does not move with time is maturity's distinct-oracle count, which one oracle cannot raise however often they repeat themselves. No special "latest-per-oracle" logic is needed.

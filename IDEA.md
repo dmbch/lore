@@ -71,6 +71,8 @@ Historical attestations are frozen. The ledger is never rewritten.
 
 Every `consult` call, read or write, is recorded. One row per request. Each row stores the full consult input verbatim across structured columns (`question`, `context`, `hypothesis`, `reasoning`, `confidence`), plus correlation ID, oracle ID, and timestamp. Storage is cheap; information is valuable.
 
+"Verbatim" is verbatim-of-the-Scribe. The fields are stored exactly as submitted, and what they hold is already the Scribe's rendering of the oracle's words; the oracle's own utterance never reaches Lore. The gap between what was said and what was submitted is therefore outside what provenance can audit, by construction rather than by omission. The Scribe's representation rules are the control, and quoting the oracle's operative words in `reasoning` is the cheap hedge.
+
 ---
 
 ## The Formalism
