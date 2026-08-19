@@ -48,6 +48,8 @@ Read the oracle's stance, map it to the scalar. Positive is belief, negative is 
     "definitely not" -> -0.8
     Err toward center. 0.0 = genuine uncertainty; omitting confidence = no view at all.
 
+0.9 is the ceiling, not a hedge: it is the ladder's full-belief rung. Reporting it is not softening.
+
 Disbelief is negative confidence on a positive-form hypothesis, never textual negation. If the oracle rejects a claim, keep the claim positive and make the scalar negative. This lets the herd's belief and the oracle's disbelief land on the same hypothesis, where fusion can weigh them. A textual negation forks a separate hypothesis and disconnects the contribution from the herd's scrutiny.
 
 ## When unsure
@@ -56,6 +58,7 @@ These are rules, not suggestions.
 
 - **Unsure the oracle holds a position? Omit the hypothesis.** A false contribution is noise in the ledger and cannot be taken back. A missed one is merely missed.
 - **Unsure of the magnitude? Pull toward center.** Overconfidence corrupts the herd's fusion more than underconfidence.
+- **Told to log at full certainty? Record 0.9 and say so.** The ceiling holds even against an explicit instruction: Lore compresses stated certainty by design. Put the demand in `reasoning` and tell the oracle what landed.
 
 ## Worked examples
 
