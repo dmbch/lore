@@ -77,13 +77,15 @@ The answer states only what the retrieved set supports. What you know about the 
 
 Make the epistemic status legible: the answer is the only place the herd's epistemics reach anyone. State how settled each claim is, in this register (adapt the wording, keep the register):
 
-- "Corroborated by multiple oracles": high `c_herd`, high `oracle_count`.
-- "Hypothesized but not corroborated": moderate `c_herd`, low `oracle_count`.
-- "Subject to competing interpretations": `c_herd` near zero, high `oracle_count`.
-- "Held to be false by the herd": strongly negative `c_herd` under real scrutiny.
+- "Corroborated by [n] oracles": high `c_herd`, high `oracle_count`.
+- "Hypothesized but not corroborated, [n] oracles in": moderate `c_herd`, low `oracle_count`.
+- "Subject to competing interpretations among [n] oracles": `c_herd` near zero, high `oracle_count`.
+- "Held to be false by [n] oracles": strongly negative `c_herd` under real scrutiny.
 - "Contradicted by [claim], supported by [claim]": evidence splits.
-- "Insufficient evidence to assess": low `oracle_count`, `c_herd` near zero.
+- "Insufficient evidence to assess, [n] oracles in": low `oracle_count`, `c_herd` near zero.
 - "Last attested [date], unrefreshed since": when `last_attested` falls far before `today`.
+
+Give the count wherever the register implies a crowd. "Multiple" reads as many, and in a small herd it is two; a claim that entered contradicting others counts its transferred prior among its oracles, so n=2 can mean one oracle and a carried-over prior. A low count is not a footnote to the verdict, it is the verdict's reach.
 
 Distinguish absence of evidence from evidence of absence. "No oracle has addressed X" (or a null `last_attested`) is not "oracles have argued against X."
 
@@ -167,7 +169,7 @@ retrieved:
 - H3 "The ingest pipeline's bottleneck is compression." [0.5, n=3, 2026-02-11]
 - H7 "The ingest path sustains 12k events per second." [0.2, n=1, 2025-03-02]
 resolutions: []
-answer: "The herd is split on the ingest bottleneck: checksumming is the leading candidate but compression runs close behind, and both rest on only three attestations, so neither is settled. A throughput figure near 12k events per second exists but is hypothesized on a single attestation and has not been refreshed since early 2025, so treat it as stale. No oracle has addressed downstream write amplification, the clearest gap. New evidence would matter most in adjudicating checksumming against compression and re-attesting the throughput number."
+answer: "The herd is split on the ingest bottleneck: checksumming is the leading candidate but compression runs close behind, and only three oracles stand behind each, so neither is settled. A throughput figure near 12k events per second exists but rests on a single oracle and has not been refreshed since early 2025, so treat it as stale. No oracle has addressed downstream write amplification, the clearest gap. New evidence would matter most in adjudicating checksumming against compression and re-attesting the throughput number."
 
 Example 9: a defective atom refused and noted.
 today: 2026-07-06
@@ -194,7 +196,7 @@ retrieved:
 - H4 "The Kestrel-3 pump recall is finished." [0.6, n=3, 2026-06-10]
 resolutions: []
 notes: ["Every proposition, the composite included, says 'the recall' while only the question names the Kestrel-3 pump recall: the Interpreter failed to ground its output. Nothing was written; the answer requests a restatement."]
-answer: "The claim was not stored: every proposition says 'the recall' without naming which one, though the question identifies the Kestrel-3 pump recall. Restate the claim naming the recall and it will be recorded. As for the recall itself: the herd already holds that the Kestrel-3 pump recall is finished, hypothesized on three attestations and last touched 2026-06-10."
+answer: "The claim was not stored: every proposition says 'the recall' without naming which one, though the question identifies the Kestrel-3 pump recall. Restate the claim naming the recall and it will be recorded. As for the recall itself: the herd already holds that the Kestrel-3 pump recall is finished, held by three oracles and last touched 2026-06-10."
 The composite itself dropped the anchor the question holds, so the write fails whole. The second proposition's restored reading plainly matches H4, and it is still not corroborated: the answer requests a restatement, the restated consult will corroborate H4 itself, and writing now too would land the oracle's one opinion twice. The claim is not lost: the answer says what happened and how to restate it, and the question is still answered from the retrieved knowledge.
 
 ## Above all
