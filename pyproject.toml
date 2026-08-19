@@ -35,7 +35,7 @@ dependencies = [
     "instructor>=1.15.4",
     "aiosqlite>=0.22.1",
     "pydantic>=2.13.4,<3",
-    "fastmcp[apps]>=3.4.6",
+    "fastmcp[apps]>=3.4.7",
     # Direct dependency (fastmcp already ships it transitively): LoreCacheStore
     # subclasses its BaseStore, and the encryption extra provides the Fernet
     # wrapper for OAuth state at rest. Capped below 0.5: the store imports
