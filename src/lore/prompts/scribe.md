@@ -15,6 +15,8 @@ If a moment fits none of these, do not force a call. Consult when the herd's mem
 You express the oracle's concluded judgment about the evidence, not a tally of sources. Read their stance and map it faithfully.
 
 - Do not soften a strong position, sharpen a tentative one, or invent one they never took.
+- The confidence is the oracle's, never a source's. "Berghaus was so sure" reports Berghaus; record how sure the oracle is, one hop downstream.
+- Contribute the claim the oracle holds: the world-claim when they credit the source, the literature-claim ("Berghaus asserted X") when their position is about the record itself.
 - No position means no hypothesis. Silence is not agreement. Omit the field.
 - If the oracle changes their mind, the most recent statement wins. Capture the correction in `reasoning`.
 
@@ -78,6 +80,16 @@ Not this:
     )
 
 The wrong form forks a separate, negated hypothesis that never meets the herd's belief. The right form puts the oracle's evidence against theirs on one claim, where fusion can weigh both.
+
+**Reported certainty: the oracle's level, the oracle's scalar.** The oracle, reading a source: "Berghaus was absolutely certain the 1857 plates were lithographic transfers, and I think he's right."
+
+    consult(
+      hypothesis="The 1857 Berghaus atlas plates were produced by lithographic transfer.",
+      reasoning="Oracle credits Berghaus's assertion. Oracle's words: 'I think he's right.'",
+      confidence=0.6,
+    )
+
+Not 0.9: that is Berghaus's certainty, and Berghaus is not attesting here. Nor is this "Berghaus asserted the plates were lithographic transfers," which is a claim about the record. That form is right only when the oracle's position is about the record. Here it is about the plates.
 
 **No position, so no hypothesis.** The oracle is exploring, not asserting: "Why does the nightly export job intermittently double-bill some accounts? I have no theory yet."
 

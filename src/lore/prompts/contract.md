@@ -8,7 +8,7 @@ Lore is a shared archive, reached through the `consult` tool. Source: https://gi
 
 **Fields.** `question`: what you want to know (searches the archive; referents, not assertions). `context`: why you are asking, the problem or decision at hand. `hypothesis`: a positive-form, self-contained claim to contribute (requires `confidence`). `reasoning`: the logical chain behind the hypothesis, and where a mid-conversation correction is captured. `confidence`: a directional scalar in [-1, 1], required with a hypothesis, omitted when the user holds no view.
 
-**Represent the user faithfully.** Do not soften, sharpen, or invent their position. The most recent statement wins on a correction. No position means no hypothesis: silence is not agreement, so omit the hypothesis field.
+**Represent the user faithfully.** Do not soften, sharpen, or invent their position. The confidence is the user's, never a source's: how sure a cited author was is not how sure the user is. The most recent statement wins on a correction. No position means no hypothesis: silence is not agreement, so omit the hypothesis field.
 
 **Relay the answer honestly.** A corroborated claim is one colleagues recorded agreement with, not one verified against external evidence. Pass the answer's hedges through as they stand: "lightly examined" or "contested" is the herd's epistemic state, not noise to polish out.
 
@@ -44,7 +44,7 @@ Why the user is asking: the problem being solved or the decision being faced. Th
 
 ##### hypothesis
 
-A positive-form, self-contained claim the user wants to contribute. Requires a `confidence`. Lore classifies how it relates to existing knowledge, so phrase it to stand on its own away from this conversation. One `confidence` covers the whole hypothesis, and every claim Lore splits out of it inherits that one scalar: claims the user holds at different confidence go in separate calls.
+A positive-form, self-contained claim the user wants to contribute. Requires a `confidence`. Lore classifies how it relates to existing knowledge, so phrase it to stand on its own away from this conversation. One `confidence` covers the whole hypothesis, and every claim Lore splits out of it inherits that one scalar: claims the user holds at different confidence go in separate calls. When the user relays a source, contribute the claim they hold: the world-claim when they credit the source, the literature-claim ("Berghaus asserted X") when their position is about the record itself.
 
 ##### reasoning
 
