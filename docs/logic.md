@@ -297,12 +297,21 @@ n_oracle_prior = COUNT(DISTINCT oracle_id)
                  WHERE hypothesis_id = X
                  AND timestamp < t_write
                  AND oracle_id != current_oracle_id
+                 AND c_oracle_raw != 0
 
 N_O = n_oracle_prior + 1    (including the current attestor)
 M   = N_O / (N_O + K)
 ```
 
 Where K = half-saturation constant (deployment parameter, default K = 1). The filter excludes the current oracle from the prior count, making `+1` unconditionally correct: a new oracle has no prior attestations to exclude; a returning oracle is excluded then re-added exactly once. No double-counting by construction.
+
+**Maturity counts commitment, not attendance.** A row whose `c_oracle_raw` is exactly 0 records examined inconclusiveness and leaves the count where it found it. M gates how hard a single voice may push, and what makes that safe on a scrutinized hypothesis is accumulated evidence to compound against; ECBF over vacuous opinions is vacuous, so counting shrugs would raise M while the counterweight stayed at zero, admitting the next attestation at 2/3 strength against nothing at all. The row is already worth nothing to its author (conviction 0 drops it from its own trust aggregate); it buys the next writer nothing for the same reason. The test is exact rather than tolerance-based: `confidence = 0.0` is the documented vacuous state at the interface, and a stated 1e-9 is a commitment, however small.
+
+`oracle_count` on the retrieved ledger view is the other count and keeps every attesting oracle, vacuous ones included. The two answer different questions: `oracle_count` reports who looked, which the answer register needs (five oracles who examined a claim without concluding is not the state of a claim nobody has opened), while `n_oracle_prior` gates how hard the next voice may push. Reporting counts attention; maturity counts commitment.
+
+**The witness rule does not filter, and the asymmetry is deliberate.** A vacuous row still admits its hypothesis to another oracle's trust scan (see Oracle Trust). The two rules have different jobs: maturity asks whether one voice may push hard here, the witness rule asks whether anyone else engaged at all. Against a vacuous witness the read-time reference is 0, so both blend legs see the same empty state and `effective_align = 1/2 + c · (1 − c) / 2`, maximal at 0.625 for c = 1/2. That is under the transfer-laundered ceiling (0.648) and under the honest conformist band, it is the fresh-row softness of Known Residuals reached through a second door, and it costs a second identity, so it lands on the sybil boundary rather than opening a surface of its own.
+
+**A transfer attestation is an ordinary prior oracle.** The consolidated transfer row on a contradicting novel counts toward the novel's `n_oracle_prior` for the oracle's own subsequent row. It is never vacuous (the transfer threshold gates it), and the oracle's row fuses against it, so the row's maturity and its `c_herd_prior` describe the same room. At K = 1 an oracle contributing a novel that contradicts a formed herd position therefore enters at M = 2/3 rather than 1/2. This is the same convention the trust scan's witness rule and the others-only evidence fetch already apply to `_transfer`.
 
 ```
 n_oracle_prior = 0 → N_O = 1, K = 1:  M = 1/2 = 0.50
@@ -316,6 +325,8 @@ n_oracle_prior = 9 → N_O = 10:         M = 10/11 ≈ 0.91
 - **Monotonically increasing, concave** (diminishing returns).
 - **K = 1** means "one phantom skeptic is always in the room."
 - **K = 0** makes maturity transparent: M = 1.0 for all N_O ≥ 1.
+
+Both filters are write-time. The column is immutable once written, so rows persisted under an earlier rule keep the count that produced them: changing what counts changes new rows only, and a ledger spanning such a change carries both semantics. That is the ordinary price of an append-only ledger, not a migration to run.
 
 `n_oracle_prior` is derivable from the ledger, and the Recorder derives it at write time against the transaction's attestation snapshot to compute M. It is *also* persisted on the row as a write-time snapshot: trust scans read the column instead of recomputing the count with a correlated subquery. The immutable ledger remains the source of truth; the column is a consistent-by-construction cache of what the Recorder saw.
 
@@ -362,8 +373,8 @@ Both signals are binomial specializations of PD: since `P = 0.5 + 0.5c`, we have
 The balance between write-time and read-time alignment is not a configured constant. It is derived per attestation from the same maturity saturation M that governs trust discounting:
 
 ```
-n_oracle_prior_i = distinct oracles with attestations on P_i before this row,
-                   excluding the current oracle X
+n_oracle_prior_i = distinct oracles with non-vacuous attestations on P_i
+                   before this row, excluding the current oracle X
 N_O_i            = n_oracle_prior_i + 1
 M_write_i        = N_O_i / (N_O_i + K)
 
@@ -722,7 +733,7 @@ If γ contradicts h₁ (`c_herd = +0.4`) and h₃ (`c_herd = −0.4`), the evide
 
 **Same-timestamp ordering.** The transfer and the oracle's attestation share `timestamp = t_now`. Ledger ordering by `(timestamp, id)` plus monotonic `id` ensure the transfer (inserted first) precedes the oracle's row. No `t_now − 1` fudge.
 
-**Maturity inflation accepted.** The `_transfer` oracle counts as a distinct oracle in future `n_oracle_prior` computations on h₂. This inflates M from (say) 1/2 to 2/3 for the next attestation. The inflation is in the helpful direction: higher M_write means more weight on write-time alignment, where the oracle's position is measured against the transfer's negative prior. Adding `WHERE oracle_id != '_transfer'` to both backends' trust scans would be complexity for a minor refinement. KISS.
+**Maturity inflation accepted.** The `_transfer` oracle counts as a distinct oracle in `n_oracle_prior` on h₂, starting with the contributing oracle's own row in the same transaction. This inflates M from 1/2 to 2/3. The inflation is in the helpful direction: higher M_write means more weight on write-time alignment, where the oracle's position is measured against the transfer's negative prior, which is the state their row actually fuses against. Adding `WHERE oracle_id != '_transfer'` to both backends' trust scans would be complexity for a minor refinement. KISS.
 
 **Bounded double-counting.** When oracles from h₁ later attest directly on h₂, evidence from the original contradiction overlaps with the transfer. Decay naturally mitigates: the transfer attestation ages toward vacuous as fresh attestations dominate via ECBF. The overlap is bounded and self-correcting.
 
