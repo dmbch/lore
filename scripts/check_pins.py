@@ -4,7 +4,8 @@ uv: mise.toml and the Dockerfile carry the same exact version, and that
 version satisfies pyproject's required-version range. python: the Dockerfile
 base image is authoritative; .python-version, workflow container images,
 requires-python, ruff's target-version, and pyright's pythonVersion must all
-agree with its tag.
+agree with its tag. The workflow scan only recognizes bare `python:` refs;
+registry-qualified aliases (docker.io/library/python) would slip past it.
 
 uv enforces required-version at runtime, but the Dockerfile stage only hits it
 during the image build on the release path, after the e2e spend. This static
@@ -37,16 +38,19 @@ def mise_pin() -> str:
 
 def dockerfile_pin() -> str:
     match = re.search(
-        r"^FROM ghcr\.io/astral-sh/uv:([^@\s]+)",
+        r"^FROM ghcr\.io/astral-sh/uv:(\S+)",
         (ROOT / "Dockerfile").read_text(),
         flags=re.MULTILINE,
     )
     if match is None:
         sys.exit("Dockerfile has no ghcr.io/astral-sh/uv stage")
-    return match.group(1)
+    version, _, digest = match.group(1).partition("@")
+    if not digest.startswith("sha256:"):
+        sys.exit(f"Dockerfile uv ref carries no digest: {match.group(1)}")
+    return version
 
 
-def dockerfile_python_refs() -> str:
+def dockerfile_python_ref() -> str:
     refs: list[str] = re.findall(
         r"^FROM python:(\S+)",
         (ROOT / "Dockerfile").read_text(),
@@ -63,8 +67,12 @@ def dockerfile_python_refs() -> str:
 
 def workflow_python_refs() -> list[tuple[str, str]]:
     refs: list[tuple[str, str]] = []
-    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
-        found: list[str] = re.findall(r"image:\s*(python:\S+)", workflow.read_text())
+    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+        found: list[str] = re.findall(
+            r"^\s*image:\s*(python:\S+)",
+            workflow.read_text(),
+            flags=re.MULTILINE,
+        )
         refs.extend((workflow.name, ref) for ref in found)
     return refs
 
@@ -85,14 +93,19 @@ def check_uv_pins() -> None:
 
 def check_python_pins() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    docker = dockerfile_python_refs()
+    docker = dockerfile_python_ref()
     expected_image = f"python:{docker}"
-    for workflow, image in workflow_python_refs():
+    workflow_refs = workflow_python_refs()
+    if not workflow_refs:
+        sys.exit("no workflow carries a python container image; tests must run in the image base")
+    for workflow, image in workflow_refs:
         if image != expected_image:
             sys.exit(
                 f"python pins drifted: {workflow} has {image}, Dockerfile has {expected_image}"
             )
     version = ref_version(docker)
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        sys.exit(f"Dockerfile python tag is not a patch-level pin: {version}")
     pinned = (ROOT / ".python-version").read_text().strip()
     if version != pinned:
         sys.exit(f"python pins drifted: Dockerfile tag {version}, .python-version {pinned}")
