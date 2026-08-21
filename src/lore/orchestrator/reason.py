@@ -48,6 +48,7 @@ async def reason(
         log.debug(
             "consult.reason.result",
             reasoning=reasoned.reasoning,
+            answer=reasoned.answer,
             resolutions=[r.model_dump() for r in reasoned.resolutions],
         )
         return reasoned

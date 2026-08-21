@@ -210,6 +210,36 @@ class TestConsultEmitsStructuredLogs:
         assert len(debug_events) == 1
         assert debug_events[0]["reasoning"] == sentinel
 
+    async def test_reason_result_log_event_carries_answer_at_debug(self) -> None:
+        """The answer is the only place the herd's epistemics reach anyone.
+
+        Rate analysis reads these traces offline and can otherwise see every
+        resolution and nothing of what the oracle was actually told. It sits
+        at the same level as the reasoning beside it, which is strictly more
+        content than the answer it explains.
+        """
+        sentinel = "sentinel answer text that should appear in debug logs"
+        with instrumented(
+            archivist_output=ArchivistOutput(
+                reasoning="reasoning the answer explains",
+                answer=sentinel,
+                resolutions=[],
+            ),
+        ) as (fixture, _, cap):
+            await fixture.orchestrator.consult(
+                oracle_id="oracle-1",
+                request=ConsultLoreRequest(question="What is X?"),
+                correlation_id="corr-1",
+            )
+
+        debug_events = [
+            e
+            for e in cap
+            if e.get("event") == "consult.reason.result" and e.get("log_level") == "debug"
+        ]
+        assert len(debug_events) == 1
+        assert debug_events[0]["answer"] == sentinel
+
     async def test_identity_match_emits_recorder_log_event(self) -> None:
         hypothesis_id = "550e8400-e29b-41d4-a716-446655440000"
         with instrumented(

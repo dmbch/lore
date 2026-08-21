@@ -15,7 +15,7 @@ Given "$ARGUMENTS" (`<artifacts-dir> [<baseline-dir>]`), produced by `mise run r
 
 2. **Group the traces.** Each run wrote its own `trace-run<n>.jsonl`: Lore's structlog events at debug level. Group lines by `correlation_id` within each file; each group is one consult. The stages that matter:
    - `consult.interpret.result`: normalized `question`, atomic `propositions`, retrieval `keywords`.
-   - `consult.reason.result`: the Archivist's `reasoning` and `resolutions` (each names `corroborates`, `contributes`, or both null, plus a `contradicts` list).
+   - `consult.reason.result`: the Archivist's `reasoning`, the `answer` the oracle was given, and `resolutions` (each names `corroborates`, `contributes`, or both null, plus a `contradicts` list). The answer is the only surface carrying the epistemic register (settledness, oracle counts, staleness), so it is where answer-side prompt changes show up at all.
    - `consult.note_contents`: the Archivist's `notes` on ambiguous propositions.
    - `consult.enrich.result`: the retrieved neighborhood (`id`, `c_herd`, `oracle_count`, `score`), context for judging target choices.
 
