@@ -44,6 +44,12 @@ makes it acceptable here is that no behavioral claim is being made. The edits
 are doctrinal and this run is a regression check, so a delta would price a
 baseline for metrics nobody says moved.
 
+The archive moved under this run. `golden-rebuild` produced a corpus differing
+from the committed one in a single row of 28, "Hypertext Transfer Protocol ...
+Transport Layer Security" resampled to "HTTP ... TLS", so recall figures do not
+compare across it. Rebuilds redraw content, not just ids; the archive is a
+sampled artifact and the entry that says so is in TODO.md.
+
 Two fixes landed off the back of it: the answer now rides
 `consult.reason.result`, and every rate dir now carries `manifest.json`.
 Both postdate this run, so this is the last entry resting on the
