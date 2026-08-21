@@ -89,7 +89,10 @@ the rate log at `rate.jsonl` and one stage trace per run at
 `consult.reason.result`, note contents) joined per consult by
 `correlation_id`. They land in a fresh `lore-rate-*` tempdir whose path the
 runner prints; `--artifacts DIR` places them deliberately instead. Trace
-files carry hypothesis texts, so mind which machine that tempdir is on. The
+files carry hypothesis texts and the answers built from them, so mind which
+machine that tempdir is on. The split is by level, not by field: INFO
+counts and hashes content (`resolution.contribute`), DEBUG carries it, and
+the trace sink runs at DEBUG. The
 `/rate-analyze` skill is the consumer: the offline sniff test over atom
 counts, classification kinds, and divergent outputs across runs.
 
