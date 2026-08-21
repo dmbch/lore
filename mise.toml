@@ -32,17 +32,18 @@ run = "uv run pyright"
 [tasks.lint]
 run = "uv run ruff check . && uv run ruff format --check ."
 
-# Plain python, not uv run: the check must still run when the local uv itself
-# fails required-version, which is the very drift being reported.
-[tasks."check:uv-pin"]
-run = "python scripts/check_uv_pin.py"
+# Covers the uv and python pins. Plain python, not uv run: the check must
+# still run when the local uv itself fails required-version, which is the
+# very drift being reported.
+[tasks."check:pins"]
+run = "python scripts/check_pins.py"
 
 # Layer-boundary enforcement; the graph lives in tach.toml.
 [tasks.tach]
 run = "uv run tach check"
 
 [tasks.check]
-depends = ["test", "types", "lint", "check:uv-pin", "tach"]
+depends = ["test", "types", "lint", "check:pins", "tach"]
 
 # Mirrored by the e2e job in .github/workflows/release.yml; keep the flags in sync.
 [tasks.e2e]
