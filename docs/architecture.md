@@ -10,7 +10,7 @@ See [logic.md](logic.md) for the formalism. See [IDEA.md](../IDEA.md) for the do
 
 ## Technology Choices
 
-Python 3.14+ · uv · ruff · pyright · hatchling. All configuration in `pyproject.toml`. Python is the lingua franca of the AI/ML ecosystem: embeddings, LLM clients, vector databases are Python-first. uv and ruff are Rust-fast. Pyright strict mode catches type errors before runtime. Runtime performance is acceptable for an I/O-bound system.
+Python 3.14+ · uv · ruff · pyright · hatchling. All configuration in `pyproject.toml`. The Docker base image is authoritative for the interpreter: `scripts/check_pins.py` polices `.python-version`, the workflow container images, and the tool configs against it, and CI tests run inside the image base. Python is the lingua franca of the AI/ML ecosystem: embeddings, LLM clients, vector databases are Python-first. uv and ruff are Rust-fast. Pyright strict mode catches type errors before runtime. Runtime performance is acceptable for an I/O-bound system.
 
 No ORM. Raw SQL for relational operations, vector extensions (pgvector, sqlite-vec) for similarity search. No abstraction layer between the code and the database.
 

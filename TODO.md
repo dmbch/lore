@@ -546,3 +546,22 @@ live at their sites: logic.md for the formalism, the prompts for the rest.
 **Status:** open; three tests, two metered and one integration. The register
 clause that landed 2026-08-21 is unmeasured, and the batch's selection could
 not have seen it in any case.
+
+---
+
+## Local interpreter bundles newer SQLite/OpenSSL than the image
+
+**Found:** 2026-08-21, python-pin build.
+
+**What.** macOS cannot run Debian CPython, so local dev uses a uv-managed pbs
+interpreter at version parity with the image. pbs bundles newer libraries than
+the image's Debian CPython: SQLite 3.53.1 vs 3.46.1, OpenSSL 3.5.7 vs 3.5.6
+(measured 2026-08-19).
+
+**Why it matters.** A bug that depends on the bundled SQLite or OpenSSL
+version can pass locally and fail in the image. CI runs inside the image base,
+so the prod bytes are covered; local remains version parity only.
+
+**Trigger.** Revisit only if a sqlite-version-sensitive bug appears.
+
+**Status:** accepted; no action planned.
