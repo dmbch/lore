@@ -8,59 +8,6 @@ in [docs/measurements.md](docs/measurements.md). Landed work lives in git.
 
 ---
 
-## Formalism docs diverge from the shipped algebra
-
-**Found:** 2026-08-16, dead-instrument sweep of the epistemics layer.
-
-**Why it matters.** logic.md is the canonical reference every operator
-implementation is checked against. Where it describes behavior the algebra
-cannot produce, the next prior-art check verifies against fiction.
-
-**The K = 0 dogmatic hazard.** The per-row trust ceiling derives to
-`1 - 1/(2(1+K))` for K >= 1 and `1/2 + 4/27` at K = 0, so `t_oracle = 1.0`
-is unreachable at any finite K and the documented hazard describes a state
-the pipeline cannot reach; the informative-commitment gate binds first, at
-every K. The dogmatic-fusion complex (Case II, `_dogmatic_average`, the
-mixed partition) is likewise unreachable from pipeline data at any
-configuration, not just at K >= 1 as the doc states. Both paragraphs predate
-the gate. Needs a logician pass to confirm the derivation before anything is
-rewritten.
-
-The `n_prior` bullet closed 2026-08-18: nothing derived it, so IDEA.md's
-derivables list dropped it and both backends' SQL comments now point at
-`n_oracle_prior`. The third bullet became its own entry below.
-
-**Status:** open; not started.
-
----
-
-## `n_oracle_prior` is 0 on a novel that carries a transfer row
-
-**Found:** 2026-08-16, dead-instrument sweep. Split out of the entry above
-2026-08-18: the fix is a decision about behavior, not a doc rewrite.
-
-**What.** `orchestrator/record.py` writes the `_transfer` row on a
-contradicting novel, then hardcodes `n_oracle_prior=0` for the oracle's own
-attestation on that same novel. The existing-hypothesis path counts distinct
-oracles via `_count_distinct_oracles`, which would count `_transfer`, and
-both `repositories/protocols.py` ("an ordinary includable oracle here") and
-`math/service.py` ("the synthetic `_transfer` included") state the convention
-the novel path ignores.
-
-**Why it matters.** At K = 1 the dissenting oracle enters at M = 1/2 rather
-than 2/3, so a contrarian's attestation on their own novel is discounted
-harder than the stated convention implies. The column is write-time and
-immutable, so rows already written keep whichever semantics produced them; a
-change applies to new rows only.
-
-**Options.** Count `_transfer` (one line, matches the convention both other
-sites state) or keep the exclusion and say why at those two sites. Neither
-doc decides it today.
-
-**Status:** open; needs a decision, not a derivation.
-
----
-
 ## Evaluation harness: retrieval recall
 
 **Found:** 2026-07-19, TODO sweep; carried from the prompt-audit (2026-06-21)
@@ -107,6 +54,7 @@ observed and none yet pinned:
   point value, as a Step 1 classification case: assert that a strictly weaker
   or stronger proposition contributes with the near-miss noted. The prompt now
   carries the rule; the fixture keeps it.
+
 **Scope boundary.** The Scribe representation rules (no-soften, no-sharpen,
 most-recent-wins) execute client-side and are structurally unattestable
 in-repo. The harness covers Interpreter and Archivist only; that limit is
@@ -402,6 +350,16 @@ failure path only.
 interpreter and archivist calls per consult (inputs and outputs), keyed by
 correlation ID alongside the verbatim consult input `requests` already stores.
 
+**An optional utterance column** (Q1 from the audit residual, moved here
+2026-08-19). Provenance stores the Scribe's rendering, so the gap between what
+the oracle said and what was submitted is unauditable by construction. A column
+holding the oracle's own words would close it. This is the larger of the two
+capture problems here and does not ride along with the other: model I/O is
+server-side and free to capture, while an utterance column needs the client to
+send words that never leave it today. That makes it an interface change with a
+privacy story to tell, not a schema addition. The cheap hedge already shipped:
+scribe.md instructs quoting the oracle's operative words in `reasoning`.
+
 **Archivist `notes` are the highest-value field in that capture** (ENG-5, moved
 here 2026-08-18). They record every classification the model found hard:
 near-misses under err-toward-novel, ambiguous scope, refused atoms. Today they
@@ -448,43 +406,23 @@ Verdict: releasable with the six S2 findings fixed; zero S1 findings survived.
 The S2 set landed via PR #92. AUDIT.md is gone, so this entry is the only
 record of what remains.
 
-Items carry a quoted anchor rather than a line number: the original line
-references rotted within days of being written. Grep the anchor.
+Everything the panel raised has landed except three tests. The wording fixes,
+ownership sentences, IDEA.md proposals, the indexical-present residual, and the
+documentation half of tests-and-theory landed 2026-08-18; the Scribe-chair
+questions settled 2026-08-19; the prompt half measured clean 2026-08-21 at k=5
+(docs/measurements.md). Git holds which finding went where, and the decisions
+live at their sites: logic.md for the formalism, the prompts for the rest.
 
-**Wording fixes: all landed 2026-08-18** (commits `docs: close the audit
-residual's wording and ownership fixes` and `feat(prompts): close the audit
-residual's prompt-facing wording`). SCI-1, SCI-2, SCI-7, SCI-9/ENG-7, CON-1,
-CON-2/LIN-9, CON-4, CON-5/LIN-8, LIN-7, LIN-10, SCR-2, SCR-5, SCR-9, SCR-10,
-SCR-11. The prompt half changes live behavior and is unmeasured: it wants a
-golden rebuild plus a rate pass on the decomposition and shapes suites.
+**Remaining:**
 
-**Ownership sentences: all landed 2026-08-18.** ENG-1, ENG-4/CON-8, CON-6, and
-SCI-6 took the text this entry drafted. SCR-7, CON-7, and ENG-2 were authored
-against their sites: CON-7 names `oracle_count` and the §4.8 conflict metrics
-as the channel separating a cancelled fusion from an untouched one; SCR-7 owns
-provenance's one hop from the oracle in IDEA.md and makes the quote-the-words
-norm an instruction in scribe.md; ENG-2 gives synthesis the input-only guard
-the ledger path already had. ENG-5 split: the prompt now addresses notes to the
-operators who actually read them, and the case for persisting them moved to the
-Debug UI entry, which already owns the sibling table they would live in.
-
-**Tests and theory.** The documentation half landed 2026-08-18: LOG-3 (the
-future-timestamp clamp, both sites, owned as a commitment in logic.md's decay
-boundary cases), LOG-4 (test_decay.py's header now identifies Def. 14.6 with a
-time-varying discount rather than calling it custom), LOG-5 (the opposed
-dogmatic pair now has its own fusion test), LOG-7 (the Opinion constructor's
-clamp), LOG-8 (the K=inf analytical device owned in the test that uses it),
-LOG-9 ("conviction" disambiguated against the decay prose), SCI-8/LOG-10 (the
-Monte-Carlo table annotated as a dated, unrerunnable observation), and ENG-5
-(above). Remaining:
-
-- **LOG-6.** The full-penalty extreme of the informative-commitment table
-  (signal 1, align 0) is unattested; punishment asymmetry is half-tested. The
-  nearest existing test lands at align ~0.35. One test, but first settle
-  whether `align = 0` is reachable from pipeline data at all: it needs the herd
-  to land fully opposite, and K >= 1 keeps `|c_herd| < 1`. If it is unreachable
-  the test still pins the pure function's documented contract, and the docstring
-  should say which it is. Same shape as the K = 0 hazard in the formalism entry.
+- **The answer register has no judge criterion** (found 2026-08-21, measuring
+  the prompt batch). The register reports settledness, oracle counts, and
+  staleness, and nothing asserts any of it: the rate suites read no answer at
+  all, and the e2e judges cover acknowledgement and conflict only. Three
+  register edits have now shipped unobserved. Pair the fixture with LOG-11's,
+  which wants the same shape: a settled claim beside a thinly attested one,
+  judge asserts the answer separates them by count as well as by confidence.
+  Metered: e2e lane.
 - **LOG-11.** "Surfaces uncertainty clusters" (IDEA.md Stage 3, read path) has
   no test or judge criterion, and no e2e test mentions the frontier at all. One
   e2e case: a settled plus a contested hypothesis, judge asserts the contested
@@ -495,35 +433,6 @@ Monte-Carlo table annotated as a dated, unrerunnable observation), and ENG-5
   integration test; pin time (infinite half-life, or read at the write
   timestamp), else decay makes the comparison legitimately unequal.
 
-**The indexical-present residual** (SCI-4 plus LIN-3, merged by the critic)
-landed 2026-08-18 in docs/logic.md's Known Residuals, as drafted.
-
-**IDEA.md proposals** all landed 2026-08-18 with programmer approval: LIN-6
-(the Interface section now names both tools), ENG-1, ENG-4/CON-8, CON-6,
-SCI-6, the SCI-2 gloss, and SCI-7.
-
-**Open questions**, carried from the Scribe chair, for the programmer:
-
-1. Whose words survive? Provenance stores the Scribe's rendering; the oracle's
-   utterance exists nowhere, and Lore cannot audit the difference even in
-   principle. Is a verbatim-quote norm in `reasoning` enough, or does
-   provenance want an optional utterance column someday?
-2. Is "I'm certain" at 0.9 doctrine-mandated softening? The schema accepts 1.0
-   and the pipeline digests dogmatic input by design; no doc owns the tension
-   with no-soften. What does the Scribe do with "log it at full certainty,
-   that's an order"?
-3. Should vacuous attestations count as scrutiny? A 0.0 row raises maturity and
-   witnesses trust scans while carrying zero evidence: genuine examined
-   inconclusiveness, or a hole?
-4. Can the Scribe calibrate "multiple"? In a herd of two, "multiple" is one
-   colleague, once. Should herd cardinality reach the answer register?
-5. Whose confidence is reported confidence? "Berghaus was so sure" admits two
-   honest transcriptions at different levels, a world-claim or a
-   literature-claim; the level choice changes what the herd later retrieves,
-   and no doc decides it.
-
-**Status:** open. Wording, the IDEA.md proposals, the indexical-present
-residual, the ownership sentences, and the documentation half of tests-and-
-theory all landed 2026-08-18; the prompt part of that batch is unmeasured.
-Remaining: LOG-6, LOG-11, the read-after-write test, and the five Scribe-chair
-questions.
+**Status:** open; three tests, two metered and one integration. The register
+clause that landed 2026-08-21 is unmeasured, and the batch's selection could
+not have seen it in any case.
