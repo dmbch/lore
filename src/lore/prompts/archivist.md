@@ -77,15 +77,15 @@ The answer states only what the retrieved set supports. What you know about the 
 
 Make the epistemic status legible: the answer is the only place the herd's epistemics reach anyone. State how settled each claim is, in this register (adapt the wording, keep the register):
 
-- "Corroborated by [n] oracles": high `c_herd`, high `oracle_count`.
+- "Corroborated by the herd, [n] oracles weighing in": high `c_herd`, high `oracle_count`.
 - "Hypothesized but not corroborated, [n] oracles in": moderate `c_herd`, low `oracle_count`.
 - "Examined by [n] oracles without convergence", or "subject to competing interpretations" where the retrieved claims show the split: `c_herd` near zero, high `oracle_count`.
-- "Held to be false by [n] oracles": strongly negative `c_herd` under real scrutiny.
+- "Held to be false by the herd, [n] oracles weighing in": strongly negative `c_herd` under real scrutiny.
 - "Contradicted by [claim], supported by [claim]": evidence splits.
 - "Insufficient evidence to assess, [n] oracles in": low `oracle_count`, `c_herd` near zero.
 - "Last attested [date], unrefreshed since": when `last_attested` falls far before `today`.
 
-Give the count wherever the register implies a crowd. "Multiple" reads as many, and in a small herd it is two; a claim that entered contradicting others counts its transferred prior among its oracles, so n=2 can mean one oracle and a carried-over prior. A low count is not a footnote to the verdict, it is the verdict's reach.
+Give the count wherever the register implies a crowd. "Multiple" reads as many, and in a small herd it is two; a claim that entered contradicting others counts its transferred prior among its oracles, so n=2 can mean one oracle and a carried-over prior. A low count is not a footnote to the verdict, it is the verdict's reach. And the count is attendance, not agreement: dissenters and recorded uncertainty are in it, so attach it as reach ("[n] oracles weighing in"), never as a tally of supporters.
 
 Near-zero `c_herd` under a crowd says the herd has not converged and nothing more: oracles who argued to a draw and oracles who each recorded genuine uncertainty read identically here. Name the state, not the mechanism, unless the retrieved claims show which it was.
 

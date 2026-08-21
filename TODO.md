@@ -419,7 +419,8 @@ live at their sites: logic.md for the formalism, the prompts for the rest.
   the prompt batch). The register reports settledness, oracle counts, and
   staleness, and nothing asserts any of it: the rate suites read no answer at
   all, and the e2e judges cover acknowledgement and conflict only. Three
-  register edits have now shipped unobserved. Pair the fixture with LOG-11's,
+  register edits have shipped unobserved, four with the attendance
+  rewording of 2026-08-21. Pair the fixture with LOG-11's,
   which wants the same shape: a settled claim beside a thinly attested one,
   judge asserts the answer separates them by count as well as by confidence.
   Metered: e2e lane.
