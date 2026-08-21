@@ -7,13 +7,23 @@ permissions:
   contents: read
 
 jobs:
+  # All three jobs run inside the image base, so CI tests the interpreter the
+  # image ships. The ref must match the Dockerfile, policed by
+  # scripts/check_pins.py. UV_PYTHON_PREFERENCE=only-system makes uv take the
+  # container's Debian CPython over pyproject's only-managed (env beats
+  # project config). The `uv python find` step logs which interpreter won.
   lint:
     runs-on: ubuntu-latest
+    container:
+      image: python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
+    env:
+      UV_PYTHON_PREFERENCE: only-system
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
+      - run: uv python find
       - run: uv sync
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -22,16 +32,23 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
+    container:
+      image: python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
+    env:
+      UV_PYTHON_PREFERENCE: only-system
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
+      - run: uv python find
       - run: uv sync
       - run: uv run pyright
 
   test:
     runs-on: ubuntu-latest
+    container:
+      image: python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
     services:
       postgres:
         image: pgvector/pgvector:pg18
@@ -39,19 +56,20 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      LORE_TEST_POSTGRES_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+      UV_PYTHON_PREFERENCE: only-system
+      # Service DNS on the job network; a containerized job needs no port map.
+      LORE_TEST_POSTGRES_DSN: postgresql://postgres:postgres@postgres:5432/postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
+      - run: uv python find
       - run: uv sync
       - run: uv run pytest
