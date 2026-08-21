@@ -6,6 +6,49 @@ prints own the raw receipts; this file owns the interpreted result. Newest
 first. Numbers compare only within one entry unless the entry says
 otherwise: archives, metrics, and prompts drift between sessions.
 
+## 2026-08-21: the audit-residual prompt batch
+
+`mise run rate -- tests/e2e/test_interpreter_decomposition.py
+tests/e2e/test_consult_shapes.py`, after `golden-rebuild` and `e2e` both came
+back green: 27 tests, 5 runs, 135 executions, zero failures. Every probe 5/5,
+so per-test detail is uniform. k=5 meets the protocol floor. Six prompt
+commits rode it, the `feat(prompts)` set from "close the audit residual's
+prompt-facing wording" through "name the oracle count where the register
+implies a crowd", against the last pre-batch prompt revision, "docs: close
+the audit residual's wording and ownership fixes". Subjects, not hashes:
+this repo lands by rebase-and-merge, so hashes do not survive landing.
+
+What it settles: nothing in the batch regressed decomposition or write shapes.
+Across five runs the four traced consults agreed on atom counts, classification
+kinds, corroborates targets, and contradicts lists, and enrichment was
+identical throughout (`c_herd` 0.175, `oracle_count` 1 on every target). Two
+text divergences, both benign. Run 4 dropped an "also" from a balsamic atom.
+Run 3 left "HTTP" unnormalized where the other four expanded it: a real miss
+of the Interpreter's acronym rule at 1-in-5, absorbed whole by retrieval
+because the keyword lane carried both surface forms. It slipped on a fixture
+that does not assert normalization; the one that does passed 5/5. The
+`shapes-neg-paraphrase` note count moved `[0,0,1,0,1]`, both notes recording
+the same most-exact-match tiebreak. Notes are discretionary, so that is a
+discretion swing, not a classification flip.
+
+What it cannot settle, which is the batch's hole and not the run's: this
+selection cannot see an answer. The Scribe changes execute client-side and are
+unattestable in-repo. The answer-register change is observable in principle,
+but neither rate suite reads an answer, and the wider e2e lane judges answers
+only for acknowledgement and conflict, never for cardinality. The register edit
+therefore ships unobserved, and the instrument that would see it does not exist
+yet.
+
+No delta was run. A candidate rate alone proves nothing, and that stands; what
+makes it acceptable here is that no behavioral claim is being made. The edits
+are doctrinal and this run is a regression check, so a delta would price a
+baseline for metrics nobody says moved.
+
+Two fixes landed off the back of it: the answer now rides
+`consult.reason.result`, and every rate dir now carries `manifest.json`.
+Both postdate this run, so this is the last entry resting on the
+operator's account of what changed rather than on fingerprints.
+
 ## 2026-08-17: recall after the litellm bump
 
 `mise run recall` on the rebased branch, an hour after the baseline below
