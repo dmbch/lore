@@ -25,6 +25,8 @@ Given "$ARGUMENTS" (`<artifacts-dir> [<baseline-dir>]`), produced by `mise run r
 
 4. **Baseline delta.** With a second directory, run the same tally there and report the delta per probe: pass-rate movement and stage-stability changes. A candidate rate alone proves nothing; the delta is the measurement (docs/testing.md).
 
+   First diff the two `manifest.json` files and say what actually differs: commit, model pins, and the fingerprints of every prompt, config, and the golden archive. Name the inputs that moved before reading any delta, because a delta across two changed prompts attributes to whichever one you had in mind. If more moved than the change under test, say the comparison is confounded rather than reporting a number. A dir without a manifest predates it; fall back to the operator's account of what changed, and say the entry rests on that.
+
 5. **Never trigger runs.** Analysis is offline; rate runs are metered live spend and the programmer's alone (`.claude/rules/llm-spend.md`). At k = 5 a one-run difference is noise: when a rate is ambiguous, recommend the programmer re-measure with `--runs 10`, and stop there.
 
 ## Reference

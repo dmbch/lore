@@ -84,10 +84,15 @@ rate alone proves nothing either: measure the delta by running the old prompt
 against the same fixtures.
 
 Every rate run is paid; its artifacts are the receipts and always persist:
-the rate log at `rate.jsonl` and one stage trace per run at
+the rate log at `rate.jsonl`, one stage trace per run at
 `trace-run<n>.jsonl`, the consult debug events (`consult.interpret.result`,
 `consult.reason.result`, note contents) joined per consult by
-`correlation_id`. They land in a fresh `lore-rate-*` tempdir whose path the
+`correlation_id`, and `manifest.json`. The manifest is what makes a receipt
+self-describing: commit, working-tree cleanliness, model pin per vendor role,
+and a digest of every prompt, config, and the golden archive. It is written
+before the first run, so an interrupted measurement still says what produced
+it. Two artifact dirs whose fingerprints differ are not a delta on the thing
+you changed; they are a delta on everything that moved. They land in a fresh `lore-rate-*` tempdir whose path the
 runner prints; `--artifacts DIR` places them deliberately instead. Trace
 files carry hypothesis texts and the answers built from them, so mind which
 machine that tempdir is on. The split is by level, not by field: INFO
