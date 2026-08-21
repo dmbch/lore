@@ -559,9 +559,29 @@ the image's Debian CPython: SQLite 3.53.1 vs 3.46.1, OpenSSL 3.5.7 vs 3.5.6
 (measured 2026-08-19).
 
 **Why it matters.** A bug that depends on the bundled SQLite or OpenSSL
-version can pass locally and fail in the image. CI runs inside the image base,
-so the prod bytes are covered; local remains version parity only.
+version can pass locally and fail in the image. The test lanes run inside the
+image base, so the prod bytes are covered there; the e2e lane stays on the
+runner (pbs), and local remains version parity only.
 
 **Trigger.** Revisit only if a sqlite-version-sensitive bug appears.
 
 **Status:** accepted; no action planned.
+
+---
+
+## Dependabot may be able to bump the workflow container images
+
+**Found:** 2026-08-21, python-pin review.
+
+**What.** Every base-image bump, including same-tag digest refreshes, reds
+`check:pins` until a human edits the three `container:` refs in tests.yml.
+Dependabot's docker ecosystem reportedly supports image refs in workflow
+files; a second `docker` entry in dependabot.yml pointing at
+`/.github/workflows` might bump them alongside the Dockerfile.
+
+**Why it matters.** Shrinks the manual half of the bump flow to
+`.python-version`.
+
+**Trigger.** Next base-image bump; verify the coverage claim before adopting.
+
+**Status:** open.
