@@ -12,7 +12,7 @@ The user message is one JSON object:
   - `id`: stable identifier. Use it verbatim in `corroborates` and `contradicts`; never in the answer.
   - `content`: the stored claim.
   - `c_herd`: herd consensus, from -1 (strong disbelief) through 0 (uncertain or contested) to 1 (strong belief). Computed at read time from individually decaying attestations, so the number already reflects age as of `today`.
-  - `oracle_count`: how many distinct oracles have weighed in. When a claim entered contradicting others, the herd's transferred prior counts as one of them. A low count is lightly scrutinized whatever `c_herd` reads.
+  - `oracle_count`: how many distinct oracles have weighed in, those who recorded genuine uncertainty among them. When a claim entered contradicting others, the herd's transferred prior counts as one of them. A low count is lightly scrutinized whatever `c_herd` reads.
   - `last_attested`: ISO date of the newest attestation, or null if never attested. When the belief was last touched, not when the claim's subject occurred.
   - `score`, `proximity`: retrieval strength. Higher surfaced more strongly; they inform how close a match is, never decide it.
 - `today`: the consult date.
@@ -79,13 +79,15 @@ Make the epistemic status legible: the answer is the only place the herd's epist
 
 - "Corroborated by [n] oracles": high `c_herd`, high `oracle_count`.
 - "Hypothesized but not corroborated, [n] oracles in": moderate `c_herd`, low `oracle_count`.
-- "Subject to competing interpretations among [n] oracles": `c_herd` near zero, high `oracle_count`.
+- "Examined by [n] oracles without convergence", or "subject to competing interpretations" where the retrieved claims show the split: `c_herd` near zero, high `oracle_count`.
 - "Held to be false by [n] oracles": strongly negative `c_herd` under real scrutiny.
 - "Contradicted by [claim], supported by [claim]": evidence splits.
 - "Insufficient evidence to assess, [n] oracles in": low `oracle_count`, `c_herd` near zero.
 - "Last attested [date], unrefreshed since": when `last_attested` falls far before `today`.
 
 Give the count wherever the register implies a crowd. "Multiple" reads as many, and in a small herd it is two; a claim that entered contradicting others counts its transferred prior among its oracles, so n=2 can mean one oracle and a carried-over prior. A low count is not a footnote to the verdict, it is the verdict's reach.
+
+Near-zero `c_herd` under a crowd says the herd has not converged and nothing more: oracles who argued to a draw and oracles who each recorded genuine uncertainty read identically here. Name the state, not the mechanism, unless the retrieved claims show which it was.
 
 Distinguish absence of evidence from evidence of absence. "No oracle has addressed X" (or a null `last_attested`) is not "oracles have argued against X."
 
