@@ -2,8 +2,9 @@
 
 The forward mapping accepts c ∈ [-1, 1] (the full mathematical domain) and
 produces uncertainty-maximized opinions by construction. Trust discounting
-(P_effective < 1 for K >= 1) is the pipeline policy that prevents dogmatic
-opinions from reaching ECBF, not input validation.
+(P_effective < 1 at every finite K, since oracle trust is bounded strictly
+below 1 by the informative-commitment gate) is the pipeline policy that
+prevents dogmatic opinions from reaching ECBF, not input validation.
 
     c > 0:  ω = (c, 0, 1 − c)
     c < 0:  ω = (0, |c|, 1 − |c|)

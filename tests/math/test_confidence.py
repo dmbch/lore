@@ -6,8 +6,9 @@ mapping (c → Opinion) produces uncertainty-maximized opinions by construction.
 The inverse mapping (Opinion → c) projects through P: c = b − d.
 
 The mapping function is pure math: it maps scalars to opinions across the full
-[-1, 1] domain. Trust discounting (P_effective < 1 for K >= 1) is the pipeline
-policy that prevents dogmatic opinions from reaching ECBF, not input validation.
+[-1, 1] domain. Trust discounting (P_effective < 1 at every finite K) is the
+pipeline policy that prevents dogmatic opinions from reaching ECBF, not input
+validation.
 
 See docs/logic.md, "Scalar Confidence Mapping."
 """
@@ -75,9 +76,9 @@ class TestToOpinionHandCalculated:
 class TestToOpinionDogmaticBoundary:
     """c = +/-1.0 produces dogmatic opinions: the mathematical boundary.
 
-    Trust discounting (P_effective < 1 for K >= 1) is the pipeline policy
-    that prevents dogmatic opinions from reaching ECBF. The mapping function
-    itself is pure math over [-1, 1].
+    Trust discounting (P_effective < 1 at every finite K) is the pipeline
+    policy that prevents dogmatic opinions from reaching ECBF. The mapping
+    function itself is pure math over [-1, 1].
     """
 
     def test_to_opinion_one_produces_dogmatic_belief(self) -> None:

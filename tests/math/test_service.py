@@ -30,7 +30,8 @@ _BASE_ENV = {"DATABASE_URL": "sqlite:///test.db"}
 # --- Strategies ---
 
 confidence_strategy = st.floats(min_value=-1.0, max_value=1.0)
-# Discounted values are always non-dogmatic: P_effective < 1 for K >= 1.
+# Discounted values are always non-dogmatic: the trust ceiling keeps
+# P_effective < 1 at every finite K (docs/logic.md, Practical Trust Ceiling).
 # Bound of 0.99 models realistic pipeline output: even with high trust
 # (t_oracle ≈ 0.9) and mature hypotheses (M ≈ 0.9), P_effective ≈ 0.81.
 discounted_strategy = st.floats(min_value=-0.99, max_value=0.99)
@@ -106,15 +107,16 @@ class TestPrepareAttestationHandCalculated:
         assert abs(result.c_oracle_discounted - 0.8) < EPSILON
         assert abs(result.c_herd - 11.0 / 13.0) < EPSILON
 
-    def test_k_zero_dogmatic_input_produces_dogmatic_herd(self) -> None:
-        """K=0 is an explicit deployer opt-in to transparent maturity.
+    def test_prepare_attestation_applies_no_trust_floor_of_its_own(self) -> None:
+        """A caller-supplied t_oracle=1.0 with K=0 gives P_effective=1.0:
+        the discount is transparent and a dogmatic input (c=1.0) passes
+        through to a dogmatic herd.
 
-        With K=0, M=1.0 always. With perfect trust t_oracle=1.0,
-        P_effective=1.0 and discount is transparent. A dogmatic input
-        (c=1.0) passes through unmodified → dogmatic herd.
-
-        This is the known safety boundary: K >= 1 (default) prevents this
-        by ensuring P_effective < 1.
+        The pipeline never supplies that value: `compute_oracle_trust` is
+        bounded by T(K) < 1 at every finite K (TestTrustCeiling), so the
+        undogmatic property belongs to the composition, not to this
+        signature. docs/logic.md ("Undogmatism as a Pipeline Property")
+        names this exact bypass; this test pins that it exists.
         """
         svc = MathService(c_half_life=_NO_DECAY_HL, maturity_k=0, t_half_life=_NO_DECAY_HL)
         result = svc.prepare_attestation(
@@ -1465,6 +1467,131 @@ class TestComputeOracleTrust:
         }
         result = svc.compute_oracle_trust(rows=rows, herd_evidence=evidence, t_now=t_now)
         assert abs(result - 0.74) < EPSILON
+
+
+def _trust_ceiling(k: float) -> float:
+    """Supremum of per-row effective alignment, hence of t_oracle, at K.
+
+    Derived in docs/logic.md, Practical Trust Ceiling: maximise
+    ``0.5 + 0.5·c(1-p)(1 - M|c-p|)`` over the reachable box, at the smallest
+    reachable maturity ``M* = 1/(1+K)``. Two branches meeting at K = 1.
+    """
+    if k >= 1.0:
+        return 1.0 - 1.0 / (2.0 * (1.0 + k))
+    return 0.5 + (2.0 + k) ** 3 / (54.0 * (1.0 + k))
+
+
+# --- the derived trust ceiling ---
+class TestTrustCeiling:
+    """t_oracle is bounded strictly below 1 at every finite K.
+
+    This is what makes the pipeline undogmatic: P_effective = M·t_oracle
+    then cannot reach 1, so no discounted opinion is dogmatic and ECBF
+    never sees one. The bound is the informative-commitment gate's doing,
+    not the maturity saturation's, which is why it survives K = 0.
+    """
+
+    @pytest.mark.parametrize("k", [0.0, 0.5, 1.0, 2.0, 10.0])
+    @given(
+        c=confidence_strategy,
+        prior=confidence_strategy,
+        reference=confidence_strategy,
+        n_oracle_prior=st.integers(min_value=0, max_value=20),
+    )
+    def test_trust_never_exceeds_the_derived_ceiling(
+        self, k: float, c: float, prior: float, reference: float, n_oracle_prior: int
+    ) -> None:
+        """Sampled over the whole box, including states the ledger cannot hold.
+
+        The bound is unconditional: it assumes nothing about `prior` and
+        `reference` being interior, so it cannot be circular when used to
+        argue that stored values stay interior.
+        """
+        svc = MathService(c_half_life=float("inf"), t_half_life=_NO_DECAY_HL, maturity_k=k)
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=c,
+                timestamp=1000,
+                c_herd_prior=prior,
+                n_oracle_prior=n_oracle_prior,
+            )
+        ]
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=reference), t_now=1000
+        )
+        assert result <= _trust_ceiling(k) + PROP_TOL
+
+    def test_k_zero_attains_its_ceiling_exactly(self) -> None:
+        """K = 0 is the one configuration whose ceiling is a maximum.
+
+        Two ordinary rows reach it. Oracle A opens a fresh hypothesis at
+        c = 2/3 with cold-start trust 0.5; at K = 0, M = 1, so the row
+        discounts to 1/3 and the stored c_herd is 1/3 exactly. Oracle X
+        then writes c = 2/3 against that prior, witnessed by A:
+
+          M_write   = 1 (K = 0), so align = align_write, the read leg
+                      carries no weight and the reference is irrelevant
+          align     = 1 - 0.5·|2/3 - 1/3| = 5/6
+          info      = 1 - 1/3 = 2/3 ; conviction = 2/3 ; signal = 4/9
+          effective = 4/9·5/6 + 5/9·0.5 = 1/2 + 4/27
+
+        Both inputs are values the pipeline produces, which is why this
+        one is attained where K >= 1 only approaches its supremum (that
+        needs a dogmatic reference the ledger never holds). The constant
+        is the same 1/2 + 4/27 the transfer-laundered residual tops out
+        at, for the same algebraic reason: both legs see one reference.
+        """
+        svc = MathService(c_half_life=float("inf"), t_half_life=_NO_DECAY_HL, maturity_k=0.0)
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=2.0 / 3.0,
+                timestamp=1000,
+                c_herd_prior=1.0 / 3.0,
+                n_oracle_prior=1,
+            )
+        ]
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=0.9), t_now=1000
+        )
+        assert abs(result - (0.5 + 4.0 / 27.0)) < EPSILON
+        assert abs(result - _trust_ceiling(0.0)) < EPSILON
+
+    @pytest.mark.parametrize("k", [1.0, 2.0, 10.0])
+    def test_k_at_least_one_meets_its_ceiling_at_the_box_corner(self, k: float) -> None:
+        """The K >= 1 supremum, evaluated at its corner: c = 1, vacuous
+        prior, dogmatic reference r = 1.
+
+        The corner is analytical: the ledger never holds r = ±1 (the same
+        device the full-penalty test uses at the opposite corner), so the
+        pipeline only approaches this value as corroboration drives r → 1.
+        The equality is what makes the quoted bound falsifiable: a looser
+        T(K) would leave the property test above passing and this one
+        failing.
+
+          M_write   = 1/(1+K) (fresh row)
+          align     = M·(1 - 0.5·|1-0|) + (1-M)·(1 - 0.5·|1-1|) = 1 - M/2
+          signal    = |c|·(1-|p|) = 1
+          effective = 1·(1 - M/2) + 0·0.5 = 1 - 1/(2(1+K)) = T(K)
+
+        At K = 1 this is 0.75, the value both branch formulas give:
+        continuity pinned where they meet.
+        """
+        svc = MathService(c_half_life=float("inf"), t_half_life=_NO_DECAY_HL, maturity_k=k)
+        rows = [
+            TrustSignal(
+                hypothesis_id="h1",
+                c_oracle_raw=1.0,
+                timestamp=1000,
+                c_herd_prior=0.0,
+                n_oracle_prior=0,
+            )
+        ]
+        result = svc.compute_oracle_trust(
+            rows=rows, herd_evidence=_evidence(t_now=1000, h1=1.0), t_now=1000
+        )
+        assert abs(result - _trust_ceiling(k)) < EPSILON
 
 
 # --- build_math factory ---
