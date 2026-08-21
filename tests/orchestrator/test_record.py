@@ -531,8 +531,15 @@ class TestRecorderIsDictBacked:
         assert hasattr(recorder, "__dict__")
 
 
-def _attestation_for_oracle(*, hypothesis_id: str, oracle_id: str) -> AttestationRecord:
-    """A storage-valid AttestationRecord whose oracle_id is the only thing that matters."""
+def _attestation_for_oracle(
+    *, hypothesis_id: str, oracle_id: str, c_oracle_raw: float = 0.6
+) -> AttestationRecord:
+    """A storage-valid AttestationRecord whose oracle_id and stance matter.
+
+    ``c_oracle_raw`` defaults to a committed value: only rows carrying a
+    stance count toward maturity, so a vacuous default would silently make
+    every prior room read as empty.
+    """
     return AttestationRecord.model_construct(
         id="660e8400-e29b-41d4-a716-446655440000",
         hypothesis_id=hypothesis_id,
@@ -540,9 +547,9 @@ def _attestation_for_oracle(*, hypothesis_id: str, oracle_id: str) -> Attestatio
         correlation_id="corr-prior",
         timestamp=_T_NOW,
         t_oracle=0.5,
-        c_oracle_raw=0.0,
-        c_oracle_discounted=0.0,
-        c_herd=0.0,
+        c_oracle_raw=c_oracle_raw,
+        c_oracle_discounted=c_oracle_raw / 2,
+        c_herd=c_oracle_raw / 2,
         n_oracle_prior=0,
     )
 
@@ -600,6 +607,57 @@ class TestRecorderPassesDistinctOracleCountToAppend:
         # Excluding current (oracle-1): {oracle-a, oracle-b} → 2.
         assert len(attestations.appended) == 1
         assert attestations.appended[0].n_oracle_prior == 2
+
+    async def test_vacuous_attestation_does_not_raise_maturity(self) -> None:
+        """A 0.0 row is examined inconclusiveness, not scrutiny the next
+        writer can lean on.
+
+        Maturity gates how hard one voice may push, and what makes that safe
+        on a crowded hypothesis is accumulated evidence to compound against.
+        ECBF over vacuous opinions is vacuous, so counting shrugs would raise
+        M while the counterweight stays exactly zero.
+        """
+        existing_id = "550e8400-e29b-41d4-a716-446655440097"
+        existing = [
+            _attestation_for_oracle(
+                hypothesis_id=existing_id, oracle_id="oracle-shrug", c_oracle_raw=0.0
+            ),
+            _attestation_for_oracle(
+                hypothesis_id=existing_id, oracle_id="oracle-committed", c_oracle_raw=-0.4
+            ),
+        ]
+
+        attestations = _StubAttestations()
+        repos = Repositories(
+            hypotheses=_StubHypotheses(),
+            attestations=attestations,
+            requests=_NoopRequests(),
+            cache=StubCache(),
+        )
+        context = WriteContext(
+            oracle_id="oracle-1",
+            correlation_id=_CORRELATION_ID,
+            confidence=0.7,
+            t_now=_T_NOW,
+        )
+        math_service = MathService(c_half_life=86400.0, maturity_k=1.0, t_half_life=86400.0)
+        recorder = Recorder(
+            repos=repos,
+            math=math_service,
+            reasoned=_archivist_output(Resolution(corroborates=existing_id)),
+            attestation_map={existing_id: _ledger_view(existing)},
+            novel_embeddings={},
+            context=context,
+            t_oracle=0.5,
+            settings=_settings_with_threshold(),
+        )
+
+        await recorder.dispatch()
+
+        # Two distinct prior oracles, one of them vacuous: only the committed
+        # one counts.
+        assert len(attestations.appended) == 1
+        assert attestations.appended[0].n_oracle_prior == 1
 
     async def test_attest_existing_returns_zero_when_no_prior_attestations(self) -> None:
         """First attester on a hypothesis: n_oracle_prior = 0, regardless of self-exclusion."""

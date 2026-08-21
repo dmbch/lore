@@ -98,7 +98,10 @@ class SqliteAttestationsRepository:
             # carrier as one distinct voice, the same policy maturity and
             # the witness rule take (docs/logic.md: formally another
             # oracle); a transfer touches the belief, so MAX(timestamp)
-            # spans every row too.
+            # spans every row too. Vacuous rows count here and not in
+            # maturity: this reports who looked, `n_oracle_prior` gates how
+            # hard the next voice may push (docs/logic.md, Hypothesis
+            # Maturity).
             cursor = await self._conn.execute(
                 f"""SELECT hypothesis_id, COUNT(DISTINCT oracle_id) AS n,
                        MAX(timestamp) AS last

@@ -94,11 +94,12 @@ class AttestationsRepository(Protocol):
     async def append(self, record: AttestationRecord) -> None:
         """Append an attestation to the immutable ledger.
 
-        ``record.n_oracle_prior`` is the distinct count of prior attesters
-        on the hypothesis at write time, excluding the current oracle: a
-        snapshot the Recorder computes against the transaction's attestation
-        map. Stored on the row so trust scans read the column rather than
-        recomputing the count with a correlated subquery.
+        ``record.n_oracle_prior`` is the distinct count of prior non-vacuous
+        attesters (``c_oracle_raw != 0``) on the hypothesis at write time,
+        excluding the current oracle: a snapshot the Recorder computes
+        against the transaction's attestation map. Stored on the row so
+        trust scans read the column rather than recomputing the count with
+        a correlated subquery.
         """
         ...
 

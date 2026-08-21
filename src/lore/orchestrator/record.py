@@ -108,7 +108,20 @@ def _to_evidence(records: list[AttestationRecord]) -> list[EvidenceInput]:
 
 
 def _count_distinct_oracles(*, records: list[AttestationRecord], exclude: str) -> int:
-    return len({a.oracle_id for a in records} - {exclude})
+    """Distinct oracles who took a stance, ``exclude`` removed.
+
+    Vacuous rows do not count. Maturity gates how hard one voice may push,
+    and what makes that safe on a scrutinized hypothesis is accumulated
+    evidence to compound against; ECBF over vacuous opinions is vacuous, so
+    counting shrugs would raise M while the counterweight stays zero. A 0.0
+    row already earns its author nothing (conviction 0 drops it from its own
+    trust aggregate); it buys the next writer nothing either.
+
+    The test is exact, not tolerance-based: ``confidence = 0.0`` is the
+    documented vacuous state at the interface, and a stated 1e-9 is a
+    commitment, however small.
+    """
+    return len({a.oracle_id for a in records if a.c_oracle_raw != 0.0} - {exclude})
 
 
 def _latest_row(records: list[AttestationRecord]) -> AttestationRecord | None:
