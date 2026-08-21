@@ -70,6 +70,11 @@ dev = [
 # scripts/check_pins.py verifies falls inside the range. Bump the ceiling
 # in lockstep when the exact pin crosses a minor.
 required-version = ">=0.11,<0.13"
+# System, homebrew, and mise interpreters on PATH must not satisfy the
+# python pin; only uv-managed pbs builds do. Containerized CI jobs override
+# with UV_PYTHON_PREFERENCE=only-system to use the container's Debian
+# CPython (env beats project config in uv's precedence).
+python-preference = "only-managed"
 
 [tool.ruff]
 line-length = 100
