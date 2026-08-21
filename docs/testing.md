@@ -46,9 +46,18 @@ mutants by name.
 
 ## The golden archive
 
-`tests/e2e/fixtures/golden.db.gz` stands in for eleven live seed consults in the
-aggregation suite, and it bakes write-time ledger math. Rebuild triggers: corpus,
-prompt, model, or epistemics and trust-math changes.
+`tests/e2e/fixtures/golden.db.gz` stands in for the 28 live seed consults in
+`tests/e2e/corpus.py`, and it bakes write-time ledger math. Rebuild triggers:
+corpus, prompt, model, or epistemics and trust-math changes.
+
+A rebuild redraws content, not only ids and embeddings. Seeding runs the real
+Interpreter, whose acronym normalization is unreliable, so which rows keep a
+short form is sampled fresh each time: the 2026-08-21 rebuild flipped one row
+from "Hypertext Transfer Protocol ... Transport Layer Security" to "HTTP ...
+TLS" and left the rest alone. The archive is a sampled artifact used as a
+fixture. Treat a rebuild as a new baseline rather than a refresh of the old
+one, and read `manifest.json` in a rate dir to tell which archive a number was
+taken against.
 
 ```bash
 mise run golden-rebuild

@@ -25,15 +25,20 @@ they do not predict the next one.
 
 - **Even out the crowding.** Only two of eleven queries drew any competition
   in the first contested run: the rest win uncontested, so their ranks would
-  not move until a regression is severe. The axis is distractors per cluster,
-  not more clusters.
+  not move until a regression is severe. Entity clusters are not the shortfall
+  (2026-08-21 read of the archive: Database B/C 4, planets 4, HTTP/gRPC 4,
+  Harborview 3, Constitution 3, academies 3), so the axis is content proximity
+  rather than distractors per cluster. "Database B is built on PostgreSQL" and
+  "Database B serves a read replica from Frankfurt" share an entity and compete
+  for nothing. Near-paraphrase distractors are what would move a rank.
 - **The short-form-archive edge.** The surface-form keyword rule protects
-  archives that store abbreviations verbatim, and the golden corpus does not
-  pin one: seeding runs the same normalizer that expands them. A direct-write
-  fixture could pin it, at the cost of content that never passes through the
-  normalizer, which is the loop this eval exists to measure. Coverage waits
-  for organic corpus growth; revisit the query labels when a live archive
-  stores short forms.
+  archives that store abbreviations verbatim. The corpus does hold one
+  ("Internal remote procedure call traffic in the HTTP service is gRPC over
+  HTTP/2"), but by accident: the seeding normalizer expands acronyms
+  unreliably, so which rows keep a short form is drawn fresh on every rebuild.
+  A coincidence is not a pin. A direct-write fixture would pin it, at the cost
+  of content that never passes through the normalizer, which is the loop this
+  eval exists to measure.
 
 **Fixture candidates** for growing the prompt suites, each a behavior already
 observed and none yet pinned:
@@ -60,8 +65,42 @@ most-recent-wins) execute client-side and are structurally unattestable
 in-repo. The harness covers Interpreter and Archivist only; that limit is
 accepted rather than unstated.
 
-**Status:** harness landed 2026-08-12; the short-form-archive edge and the
-fixture candidates stay open.
+**Status:** harness landed 2026-08-12; the crowding axis, the
+short-form-archive edge, and the fixture candidates stay open.
+
+---
+
+## The golden archive is sampled, not fixed
+
+**Found:** 2026-08-21, comparing the committed archive against an uncommitted
+rebuild while auditing the recall entry.
+
+**What.** The two differed in exactly one row of 28: "The Hypertext Transfer
+Protocol service authenticates inbound requests with mutual Transport Layer
+Security" became "The HTTP service authenticates inbound requests with mutual
+TLS". Seeding runs the real Interpreter, and its acronym normalization misses
+at a measurable rate (1 in 5 on the shapes fixture, same run). So a rebuild
+resamples what the corpus asserts, and every downstream number is quoted
+against whichever sample happened to land.
+
+**Why it matters.** The archive is treated as a fixture and behaves as a draw.
+Recall ranks are already known to be a property of the archive; this says the
+archive is not stable under its own rebuild command, which is the mechanism
+behind measurements.md's rule that numbers compare only within one entry. It
+also means a fixture can silently acquire or lose the property a test relies
+on: the short-form-archive edge in the recall entry exists today only because
+one row kept its acronym.
+
+**Options.** Accept and fingerprint, which is the status quo now that rate dirs
+carry `manifest.json`: cheap, and it matches the argument that the eval should
+measure the real loop rather than a frozen one. Or pin the archive: seed
+through a deterministic path for the rows a test depends on, keeping live
+seeding for the rest, which buys stability at the cost of content that never
+passes through the normalizer. Or tighten the normalizer first and re-ask,
+since the drift is a symptom of the acronym rule missing at all.
+
+**Status:** open; the fingerprint half landed 2026-08-21, the accept-or-pin
+call is not made.
 
 ---
 
