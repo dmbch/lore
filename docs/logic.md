@@ -10,7 +10,7 @@ All operators and constructs are drawn from Jøsang's Subjective Logic (2016) un
 
 Two scalar prefixes carry distinct semantics throughout this document and the codebase:
 
-- **`c_`: confidence** in [-1, 1]. Directional certainty with sign. Oracle input (`c_oracle_raw`), discounted opinion (`c_oracle_discounted`), herd consensus (`c_herd`). Mapped to/from BDU opinions inside `lore.math`. The forward mapping accepts the full mathematical domain [-1, 1]; trust discounting (P_effective < 1 for K ≥ 1) guarantees all pipeline values remain in (-1, 1) exclusive.
+- **`c_`: confidence** in [-1, 1]. Directional certainty with sign. Oracle input (`c_oracle_raw`), discounted opinion (`c_oracle_discounted`), herd consensus (`c_herd`). Mapped to/from BDU opinions inside `lore.math`. The forward mapping accepts the full mathematical domain [-1, 1]; trust discounting (P_effective < 1 at every finite K) guarantees all pipeline values remain in (-1, 1) exclusive.
 - **`t_`: trust** in [0, 1]. Alignment probability. Enters Jøsang's discount operator (Def. 14.6) as a factor of P_effective (see Trust Discounting). Not a confidence scalar: no negative trust, no mapping to BDU.
 
 **`K`** is the maturity half-saturation constant. The formula `M = N_O / (N_O + K)` is a saturation function (rectangular hyperbola): `K` is the standard symbol for the half-saturation parameter.
@@ -65,7 +65,7 @@ c = 0:  ω = (0, 0, 1)         (vacuous, pure ignorance)
 
 **Proof of uncertainty maximization.** For c > 0: P = 0.5 + 0.5c. Uncertainty maximization (Eq. 3.27) yields ü = 2 · min(P, 1 − P). Since P > 0.5, min(P, 1 − P) = 1 − P = 0.5 − 0.5c = (1 − c)/2, so ü = 1 − c. Then b̈ = P − 0.5ü = (0.5 + 0.5c) − 0.5(1 − c) = c, d̈ = 0. This matches the forward mapping. Symmetric for c < 0.
 
-**Endpoints.** `c = ±1.0` produces dogmatic opinions `(1, 0, 0)` and `(0, 1, 0)`. These are valid in the mapping's mathematical domain. The trust pipeline prevents dogmatic opinions from reaching ECBF: trust discounting with P_effective < 1 (guaranteed when K ≥ 1) strictly reduces `|c|`, and ECBF with non-dogmatic inputs cannot produce dogmatic outputs. The undogmatic constraint is a pipeline property, not an input restriction. Values outside `[-1, 1]` are rejected: they produce invalid opinions (`b > 1` or `d > 1`).
+**Endpoints.** `c = ±1.0` produces dogmatic opinions `(1, 0, 0)` and `(0, 1, 0)`. These are valid in the mapping's mathematical domain. The trust pipeline prevents dogmatic opinions from reaching ECBF: trust discounting with P_effective < 1 (guaranteed at every finite K) strictly reduces `|c|`, and ECBF with non-dogmatic inputs cannot produce dogmatic outputs. The undogmatic constraint is a pipeline property, not an input restriction. Values outside `[-1, 1]` are rejected: they produce invalid opinions (`b > 1` or `d > 1`).
 
 ### Inverse Mapping: Opinion → c
 
@@ -102,7 +102,7 @@ u_⊕ = (u_A · u_B) / κ
 
 **Case II.** When all opinions are dogmatic (u = 0): the result is their average with equal weights (γ_i = 1/N, generalizing Eq. 12.15). This is the limit case: formally, γ_A = lim u_B/(u_A + u_B) as both approach zero. The implementation must handle this explicitly to avoid division by zero.
 
-**Mixed-dogmatic partition.** When some inputs are dogmatic and the rest are non-dogmatic, the equal-weight N-ary mean runs over the dogmatic subset only. The non-dogmatic minority is excluded; its ``u_B/(u_A + u_B)`` weight collapses to zero in the same limit that drives Case II. The implementation follows Aggregatio's ``cumulativeCollectionFuse`` partitioning, whose own source cites Jøsang, Wang & Zhang (FUSION 2017, DOI 10.23919/ICIF.2017.8009820), Eqs. 16-17; in the book's terms the exclusion is Case I's dogmatic limit. Default Lore tuning keeps ``K ≥ 1``, which prevents dogmatic intermediates from ever reaching ECBF; the partition is the formal contract for ``K = 0`` deployments and any future code path that produces dogmatic discounted opinions.
+**Mixed-dogmatic partition.** When some inputs are dogmatic and the rest are non-dogmatic, the equal-weight N-ary mean runs over the dogmatic subset only. The non-dogmatic minority is excluded; its ``u_B/(u_A + u_B)`` weight collapses to zero in the same limit that drives Case II. The implementation follows Aggregatio's ``cumulativeCollectionFuse`` partitioning, whose own source cites Jøsang, Wang & Zhang (FUSION 2017, DOI 10.23919/ICIF.2017.8009820), Eqs. 16-17; in the book's terms the exclusion is Case I's dogmatic limit. No Lore tuning produces a dogmatic intermediate: the trust ceiling keeps ``P_effective < 1`` at every finite K (see Practical Trust Ceiling), so this partition is unreachable from pipeline data at any configuration. It is the formal contract for the underflow branch above, for direct ``fuse()`` callers, and for any future code path that produces dogmatic discounted opinions.
 
 **Algebraic underflow detection.** The dogmatic predicate above extends the routing to opinions whose ``u`` is small enough that ``u · u`` would underflow to zero in IEEE-754 doubles (anything below the ``2^-1074`` knee). The routing predicate `_u_in_underflow_regime` compares ``2 · log₂(u)`` to the minimum-positive-double exponent rather than testing ``u * u == 0.0`` directly, so the decision is independent of FTZ/DAZ FP-environment flags and fast-math contexts that flush subnormals platform-specifically. The boundary classifier on ``Opinion`` (``is_dogmatic`` using ``EPSILON``) is intentionally distinct from this routing predicate: ``Opinion.is_dogmatic`` is a user-facing tolerance for "treat this as dogmatic"; the routing predicate identifies the exact ``u`` range where Case I's algebra emits an order-dependent ``u = 0`` intermediate. ``_acbf_pair``'s Case II guard remains an exact ``u == 0.0`` check: Eq. 12.14 is well-defined for any ``u > 0`` and the algebraic helper only redirects inputs whose pairwise reduction would otherwise corrupt the result.
 
@@ -266,7 +266,7 @@ Direction preserved; magnitude reduced.
 
 **Proof.** For c > 0, source opinion is (c, 0, 1 − c). Def. 14.6 gives (P_eff · c, 0, 1 − P_eff · c). Inverse mapping: b − d = P_eff · c. Symmetric for c < 0. The output is uncertainty-maximized (min(b, d) = 0 is preserved by the proof above).
 
-**Magnitude reduction.** |c_oracle_discounted| = |P_effective · c_oracle_raw| ≤ |c_oracle_raw|. Trust discounting never amplifies; it can only reduce magnitude. When K ≥ 1: P_effective < 1.0, so |c_oracle_discounted| < |c_oracle_raw| strictly for c ≠ 0 (the vacuous input is the fixed point: 0 maps to 0). Even if the oracle submits c = ±1.0, the discounted value is strictly interior to (-1, 1).
+**Magnitude reduction.** |c_oracle_discounted| = |P_effective · c_oracle_raw| ≤ |c_oracle_raw|. Trust discounting never amplifies; it can only reduce magnitude. P_effective < 1.0 at every finite K, so |c_oracle_discounted| < |c_oracle_raw| strictly for c ≠ 0 (the vacuous input is the fixed point: 0 maps to 0). Even if the oracle submits c = ±1.0, the discounted value is strictly interior to (-1, 1).
 
 **M and t_oracle have no underlying opinion structure.** They are scalars in [0, 1] interpreted as projected probabilities of implicit trust edges (following the structure of Def. 14.7 / Eq. 14.13). Trust revision operators (Jøsang §14.5) cannot apply to these edges; they are novel compositions, not direct instantiations of agent-to-agent referral trust.
 
@@ -282,9 +282,9 @@ Where M is hypothesis maturity (see below) and t_oracle is oracle trust (see bel
 
 ### Graceful Degradation
 
-When K = 0: M = 1.0 for all N_O ≥ 1. With perfect alignment t_oracle = 1.0, P_effective = 1.0 and the discount is fully transparent: dogmatic opinions pass through undiscounted. This is an explicit deployer opt-in: K = 0 disables the maturity safeguard. ECBF with dogmatic inputs can produce dogmatic outputs. Deployers who set K = 0 accept this trade-off.
+When K = 0: M = 1.0 for all N_O ≥ 1, so the maturity factor stops contributing and P_effective = t_oracle. The discount does not become transparent. Oracle trust is bounded strictly below 1 at every finite K by the informative-commitment gate, and K = 0 carries the *lowest* ceiling of any configuration, 1/2 + 4/27 ≈ 0.648 (see Practical Trust Ceiling). What K = 0 gives up is the maturity safeguard's own contribution, not the undogmatic guarantee: a first attestation on a fresh hypothesis enters at P_effective ≤ 0.648 instead of the ≤ 0.375 K = 1 allows, roughly 1.7 times the strength, and prophet protection goes with it. That is the trade-off deployers accept.
 
-When K ≥ 1 (default): M < 1.0 always, so P_effective < 1.0 strictly. Trust discounting reduces every opinion toward vacuous. Even c = ±1.0 inputs become strictly interior to (-1, 1) after discount. ECBF with non-dogmatic inputs cannot produce dogmatic outputs: the ACBF formula preserves u > 0 when all input uncertainties are positive (u_⊕ = u_A · u_B / κ > 0), and uncertainty maximization preserves the projected probability. The undogmatic constraint is a pipeline property of K ≥ 1, not an input restriction.
+When K ≥ 1 (default): M < 1.0 always, so P_effective < 1.0 for a second and independent reason. Trust discounting reduces every opinion toward vacuous. Even c = ±1.0 inputs become strictly interior to (-1, 1) after discount. ECBF with non-dogmatic inputs cannot produce dogmatic outputs: the ACBF formula preserves u > 0 when all input uncertainties are positive (u_⊕ = u_A · u_B / κ > 0), and uncertainty maximization preserves the projected probability. The undogmatic constraint is a pipeline property at every K, not an input restriction and not a privilege of K ≥ 1.
 
 ---
 
@@ -324,7 +324,7 @@ n_oracle_prior = 9 → N_O = 10:         M = 10/11 ≈ 0.91
 - **No deadlock:** M > 0 for all N_O ≥ 1. The first attestation always contributes.
 - **Monotonically increasing, concave** (diminishing returns).
 - **K = 1** means "one phantom skeptic is always in the room."
-- **K = 0** makes maturity transparent: M = 1.0 for all N_O ≥ 1.
+- **K = 0** makes maturity transparent: M = 1.0 for all N_O ≥ 1. It does not make the discount transparent; oracle trust still binds (see Practical Trust Ceiling).
 
 Both filters are write-time. The column is immutable once written, so rows persisted under an earlier rule keep the count that produced them: changing what counts changes new rows only, and a ledger spanning such a change carries both semantics. That is the ordinary price of an append-only ledger, not a migration to run.
 
@@ -394,7 +394,7 @@ M_write_i uses exactly the same `N_O = n_oracle_prior + 1` rule and the same K a
 
 Fresh hypothesis: read-time holds half the weight, its K = 1 ceiling, which caps the write-time penalty against the vacuous prior at half; K > 1 shifts fresh rows further toward read-time. Mature hypothesis: write-time dominates → the oracle is judged by the herd's state when they spoke, which has become an informative reference.
 
-**K = 0 degeneracy.** When K = 0: M_write = 1.0 for all N_O ≥ 1, so `align_i = align_write_i`, pure write-time. This is consistent with the discount operator's K = 0 behavior ("maturity transparent"): both the discount and the trust blend become transparent together. An explicit deployer opt-in.
+**K = 0 degeneracy.** When K = 0: M_write = 1.0 for all N_O ≥ 1, so `align_i = align_write_i`, pure write-time. This is consistent with the discount operator's K = 0 behavior ("maturity transparent"): both the discount and the trust blend become transparent together. An explicit deployer opt-in, and load-bearing: dropping the read leg is exactly why K = 0 carries the lowest trust ceiling of any configuration. A row can no longer be rescued from its write-time distance to the prior by where the herd later landed.
 
 ### The Informative-Commitment Gate (Anti-Farming)
 
@@ -867,7 +867,7 @@ The fix is to make the blend adaptive per attestation, derived from the same mat
 
 ### Info Weighting over Flat Alignment
 
-The original trust formula treated every alignment event identically: an oracle agreeing with a near-dogmatic herd earned the same credit as an oracle agreeing with an uncertain one. This opened a bandwagoning attack: an oracle who rubber-stamps settled hypotheses earns perfect alignment for zero informational contribution. Exactly zero is the dogmatic limit: `info = 1 − |c_herd_prior|` reaches 0 only at `|c_herd_prior| = 1`, which K >= 1 keeps out of reach in any herd the pipeline itself builds. A settled herd leaves a small residual info; the gate shrinks the credit rather than erasing it.
+The original trust formula treated every alignment event identically: an oracle agreeing with a near-dogmatic herd earned the same credit as an oracle agreeing with an uncertain one. This opened a bandwagoning attack: an oracle who rubber-stamps settled hypotheses earns perfect alignment for zero informational contribution. Exactly zero is the dogmatic limit: `info = 1 − |c_herd_prior|` reaches 0 only at `|c_herd_prior| = 1`, which no finite K lets the pipeline build. A settled herd leaves a small residual info; the gate shrinks the credit rather than erasing it.
 
 A first attempt used `info_i = 1 − |c_herd_prior_i|` as a *row weight* inside a conviction-weighted average: `t_oracle = Σ(align · conv · info · w) / Σ(conv · info · w)`. This was mathematically unsound. Because info appeared symmetrically in numerator and denominator, a pure bandwagoner (every `align_i = 1`) still earned `t_oracle = 1` regardless of info values; the weight cancelled. The defense only fired in the strict limit where every `info_i` was exactly zero (triggering a zero-denominator fallback), which never occurs for merely-settled herds in practice.
 
@@ -911,7 +911,9 @@ The scalar `c ∈ [-1, 1]` is the universal epistemic representation outside `lo
 
 **All stored opinions are uncertainty-maximized.** Oracle input is uncertainty-maximized by construction (the forward mapping). Trust discounting preserves uncertainty maximization (see Trust Discounting). ECBF output is uncertainty-maximized by definition (step 2). Decay preserves uncertainty maximization (it multiplies b and d by the same factor; if one starts at zero, it stays at zero). No pre-maximization intermediate is ever stored.
 
-**Undogmatism as a pipeline property.** With K ≥ 1 (default), trust discounting guarantees P_effective < 1.0, which strictly reduces every oracle input toward vacuous. ECBF with non-dogmatic inputs cannot produce dogmatic outputs: the ACBF formula preserves u > 0 when all input uncertainties are positive, and uncertainty maximization preserves the projected probability. The system is structurally undogmatic not by input clamping but by the algebraic properties of the trust-discount-then-fuse pipeline. With K = 0, maturity is transparent and this guarantee does not hold: an explicit deployer opt-in (see Graceful Degradation).
+**Undogmatism as a pipeline property.** Trust discounting guarantees P_effective < 1.0 at every finite K, which strictly reduces every oracle input toward vacuous. ECBF with non-dogmatic inputs cannot produce dogmatic outputs: the ACBF formula preserves u > 0 when all input uncertainties are positive, and uncertainty maximization preserves the projected probability. The system is structurally undogmatic not by input clamping but by the algebraic properties of the trust-discount-then-fuse pipeline. Two independent bounds hold it: `t_oracle ≤ T(K) < 1` from the informative-commitment gate at every K, and `M < 1` from the maturity saturation at K ≥ 1. K = 0 gives up the second, not the first (see Practical Trust Ceiling).
+
+The induction runs over the whole ledger and needs one caveat named. The synthetic `_transfer` row stores `t_oracle = 1.0`, which is a label rather than a multiplier: the transfer path never calls the discount operator, and its scalar is a fused `c_herd` that is already strictly interior. The property is a property of the composition (`compute_oracle_trust` feeding `prepare_attestation`), not of either signature: `prepare_attestation` validates only `t_oracle ∈ [0, 1]`, so a future caller passing 1.0 directly, or an out-of-band write of `c = ±1` past the type layer, reintroduces dogmatism at once. Representation has its own limit: `c_herd = 1 − ü` rounds to exactly 1.0 in IEEE double once ü falls near 5e-17, which takes on the order of 10^16 same-direction attestations on one hypothesis. The algebra is exact; the double is not.
 
 ---
 
@@ -933,7 +935,28 @@ where `⟨signal⟩_cw = Σ(signal_i · conviction_i · weight_i) / Σ(convictio
 - **Honest conformists** on mature fluid herds: `⟨conviction · info⟩ ≈ 0.35`, ceiling ≈ 0.65–0.70.
 - **Bandwagoners** on settled herds: `info → 0`, ceiling → 0.5 at any conviction.
 
-Reaching 1.0 requires `signal = 1` and `align = 1` on the same row: full conviction, a fully uncertain herd, and perfect agreement with where the witnesses land, and the maturity blend forbids the last two from coexisting at K ≥ 1. The trust metric is, at its core, a measure of how much uncertainty the oracle has committed to resolving. Climbing the ceiling requires not just being right, but being confidently right about things the herd was uncertain about.
+Reaching 1.0 requires `signal = 1` and `align = 1` on the same row: full conviction, a fully uncertain herd, and perfect agreement with where the witnesses land, and the maturity blend forbids the last two from coexisting at any finite K. The trust metric is, at its core, a measure of how much uncertainty the oracle has committed to resolving. Climbing the ceiling requires not just being right, but being confidently right about things the herd was uncertain about.
+
+**The configuration ceiling.** The path-dependent bound above is the tight one for a given oracle's history. Maximizing over every row the algebra admits collapses it to a closed form in K alone. Writing the per-row score in full,
+
+```
+effective_align = 1/2 + |c|(1 − |p|)·(1 − M|c − p| − (1 − M)|c − r|) / 2
+```
+
+over `(c, p, r) ∈ [−1, 1]³` with `M = M_write`, the maximum sits at the corner `c = 1, p = 0, r = c` when M ≤ 1/2 and at the interior point `c = (1 + M)/(3M)`, `p = (M(1 + c) − 1)/(2M)` when M ≥ 1/2. The bound over all rows takes the smallest maturity any row can carry, `M* = 1/(1 + K)` at N_O = 1:
+
+```
+T(K) = 1/2 + (2 + K)³ / (54(1 + K))     for 0 ≤ K ≤ 1
+T(K) = 1 − 1/(2(1 + K))                 for K ≥ 1
+```
+
+Both give 3/4 at K = 1; T is continuous and strictly increasing. T(0) = 1/2 + 4/27 ≈ 0.648, T(1) = 0.75, T(2) ≈ 0.833, T(10) ≈ 0.954. Since `t_oracle` is a non-negative weighted average of per-row scores it inherits the row bound, and the empty and zero-denominator branches return 0.5, under T(K) everywhere. The mirror is the floor, `inf effective_align = M/2`, i.e. `1/(2(1 + K))` for K ≥ 1: the 0.25 at K = 1 already quoted for the informative troll.
+
+Two consequences. **`t_oracle = 1.0` is unreachable at every finite K**, so `P_effective = M · t_oracle < 1` strictly and no discounted opinion is ever dogmatic. The undogmatic property is the informative-commitment gate's, not the maturity saturation's (see Undogmatism as a Pipeline Property). And **K = 0 carries the lowest ceiling, not the highest**: M_write = 1 collapses the blend to pure write-time and removes the read leg that could rescue a row from its distance to the prior. K = 0 relocates the safeguard into the alignment blend rather than disabling it, and the relocated version binds harder.
+
+The K ≥ 1 bound is a supremum, never a value: its corner needs a dogmatic reference `r = ±1`, which the ledger never holds, though N corroborating rows drive `r → 1` asymptotically, so 0.75 is the right number to quote at K = 1. The K = 0 bound is attained exactly, by two ordinary rows: an opening attestation at c = 2/3 (cold-start trust 0.5, M = 1, stored `c_herd = 1/3`), then a second oracle writing c = 2/3 against that prior. `TestTrustCeiling` in `tests/math/test_service.py` pins the bound across K and the K = 0 equality.
+
+**The same constant twice.** T(0) = 1/2 + 4/27 is numerically the transfer-laundered witness's fixed point below. Not a coincidence: a laundered row has `p = r`, which makes `align` M-independent, so its optimization is the M = 1 case of this one. The vacuous-witness bound (0.625 at `p = r = 0`, see Hypothesis Maturity) is the same identity a third time.
 
 ### Trust Dynamics Clusters
 
@@ -1014,9 +1037,9 @@ An attacker times attestations to exploit decay, submitting insincere attestatio
 
 ### K = 0 Deployment Mode
 
-When K = 0: maturity is transparent (M = 1.0 for all N_O ≥ 1). With perfect alignment t_oracle = 1.0, P_effective = 1.0: every opinion retains its full strength. Dogmatic inputs (c = ±1.0) pass through trust discounting undiscounted and can produce dogmatic ECBF outputs.
+When K = 0: maturity is transparent (M = 1.0 for all N_O ≥ 1), so P_effective = t_oracle. Every opinion retains whatever strength the oracle's trust affords it, which is at most T(0) = 1/2 + 4/27 ≈ 0.648. Dogmatic inputs (c = ±1.0) still discount to |c| ≤ 0.648, and ECBF never sees a dogmatic input.
 
-**This is an explicit deployer opt-in.** K = 0 means "I am disabling the maturity safeguard on purpose." It removes the algebraic guarantee that prevents dogmatic opinions. Deployers who set K = 0 must accept that the system's undogmatic property depends entirely on oracles voluntarily submitting |c| < 1. K ≥ 1 (default) is the recommended deployment mode; the maturity saturation function is the binding undogmatic constraint alongside trust discounting.
+**This is an explicit deployer opt-in, and its cost is quantitative.** K = 0 means "I am disabling the maturity safeguard on purpose." What that buys an attacker is strength, not dogmatism: a first attestation on a fresh hypothesis lands at up to 0.648 rather than the 0.375 K = 1 permits, so confidence bombing is roughly 1.7 times as loud and the fresh-hypothesis maturity ramp is gone. What it does not remove is the undogmatic guarantee, which the informative-commitment gate holds independently at every finite K (see Practical Trust Ceiling). K = 0 also collapses the write/read blend to pure write-time, which costs prophet protection and, in the same stroke, gives K = 0 the lowest trust ceiling of any configuration. K ≥ 1 (default) remains the recommended deployment mode.
 
 ### Known Residuals
 
@@ -1024,7 +1047,7 @@ Bounded weaknesses the current algebra accepts, documented rather than hidden:
 
 - **Fresh-row softness.** A committed-and-wrong attestation on a fresh hypothesis can still land slightly above base rate: at `c = 0.5` fully contradicted by the eventual herd (`c_herd_now = −0.5`), the write leg against the vacuous prior grants `align_write = 0.75`, blending to `align = 0.625` and `effective_align = 0.5625`. The write leg grants `1 − 0.5 · conviction` regardless of outcome, and half of it survives the K = 1 blend; that unearned alignment is the price of not punishing prophets for being "far from nothing". K > 1 shrinks it by shifting fresh rows further toward read-time.
 - **The caution tax.** An honest oracle who hedges is capped at `0.5 + conviction / 2` even under perfect vindication. Accepted deliberately: any calibration that exempts honest hedging also reopens the scattershot vector, since the algebra cannot distinguish humility from farming.
-- **Transfer-laundered witness.** A single oracle can witness their own novel through the transfer machinery by contradicting their own solo claim; the laundered fixed point tops out at `t* = 1/2 + 4/27 ≈ 0.65` (see the attack subsection). Accepted for now: bounded, expensive in junk hypotheses, and detectable in the ledger.
+- **Transfer-laundered witness.** A single oracle can witness their own novel through the transfer machinery by contradicting their own solo claim; the laundered fixed point tops out at `t* = 1/2 + 4/27 ≈ 0.65` (see the attack subsection), the same constant as the K = 0 configuration ceiling and for the same algebraic reason. Accepted for now: bounded, expensive in junk hypotheses, and detectable in the ledger.
 - **Sparse-herd freeze.** Until oracles answer each other's hypotheses, every row is unwitnessed and every trust score idles at 0.5. A single-oracle or siloed deployment gets base-rate trust indefinitely; attestations still land (at quarter strength), so the archive functions while the trust signal waits for cross-engagement.
 - **Correlated corroboration.** ECBF's inner ACBF accumulates evidence from agreeing sources whether or not they are independent; correlated agreement pushes the projected probability P exactly as independent agreement would. Uncertainty maximization (Eq. 3.27) preserves P while redistributing mass toward uncertainty, so it cannot deflate compounded agreement. The real bounds are distinct-oracle maturity M, trust discounting, and decay; tightly coupled herds should raise K.
 - **Retroactivity.** t_oracle is recomputed from the ledger on every scan; nothing stores a live trust score. Changing the trust algebra therefore shifts every oracle's effective score at their next write. The per-row `t_oracle` values persisted on old attestations are historical record of what the discount was at write time, not current state, and are never rewritten.

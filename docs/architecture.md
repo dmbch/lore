@@ -94,7 +94,7 @@ Wires use cases. Receives repositories and providers as Protocol-typed arguments
 
 Coherent units of behavior the orchestrator delegates to. The math service (fusion, decay, confidence mapping, trust discounting, maturity) is the canonical case: pure functions, sync, no I/O or Protocols, data in, data out. Other services may coordinate I/O when the role calls for it; purity is a property of the operation, not a layer-wide rule.
 
-`Opinion` (the BDU triple) is internal to `lore.math`. The math/orchestrator boundary uses scalar confidences `c ∈ [-1, 1]` and domain types from `lore.domain`. The math service accepts the full mathematical domain; trust discounting (P_effective < 1 for K ≥ 1) ensures pipeline values remain in (-1, 1) exclusive. It accepts domain types, does the algebra internally with `Opinion`, and returns domain types with scalars.
+`Opinion` (the BDU triple) is internal to `lore.math`. The math/orchestrator boundary uses scalar confidences `c ∈ [-1, 1]` and domain types from `lore.domain`. The math service accepts the full mathematical domain; trust discounting (P_effective < 1 at every finite K) ensures pipeline values remain in (-1, 1) exclusive. It accepts domain types, does the algebra internally with `Opinion`, and returns domain types with scalars.
 
 ### Repositories
 

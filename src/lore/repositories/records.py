@@ -111,9 +111,10 @@ class AttestationRecord(DataModel):
     timestamp: NonNegativeInt
     t_oracle: UnitInterval
     # Storage bounds: [-1, 1], the mathematical domain for a confidence scalar.
-    # Trust discounting (P_effective < 1 for K >= 1) is the pipeline policy that
-    # prevents dogmatic opinions from reaching ECBF. The storage layer only rejects
-    # values outside the mathematical domain.
+    # Trust discounting (P_effective < 1 at every finite K) is the pipeline
+    # policy that prevents dogmatic opinions from reaching ECBF. The storage
+    # layer only rejects values outside the mathematical domain, so an
+    # out-of-band write of +/-1 is admissible here and breaks that policy.
     c_oracle_raw: SignedUnitInterval
     c_oracle_discounted: SignedUnitInterval
     c_herd: SignedUnitInterval
