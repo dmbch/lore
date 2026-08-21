@@ -60,6 +60,7 @@ dev = [
     "pytest-xdist>=3.8.0",
     "tach>=0.35.0",
     "mutmut>=3.7.0",
+    "packaging>=26.2",
 ]
 
 [tool.uv]
