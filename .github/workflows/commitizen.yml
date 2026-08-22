@@ -3,6 +3,8 @@ on: [pull_request]
 permissions:
   contents: read
 jobs:
+  # Required check in the Main Protection ruleset; renaming the job wedges
+  # the merge gate until the ruleset is updated.
   commitizen:
     runs-on: ubuntu-latest
     steps:
