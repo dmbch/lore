@@ -6,6 +6,9 @@ on:
 permissions:
   contents: read
 
+# Job names below are required-check contexts in the Main Protection ruleset,
+# reported as `tests / <job>` via the caller job in ci.yml. Renaming one (or
+# the caller) wedges the merge gate until the ruleset is updated.
 jobs:
   # All three jobs run inside the image base, so CI tests the interpreter the
   # image ships. The ref must match the Dockerfile, policed by

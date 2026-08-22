@@ -5,10 +5,13 @@ on:
 permissions:
   contents: read
 jobs:
+  # The job name is the `tests /` prefix of the ruleset's required contexts;
+  # renaming it wedges the merge gate until the ruleset is updated.
   tests:
     uses: ./.github/workflows/tests.yml
   # Fails the PR if it introduces a dependency with a known vulnerability,
-  # via the dependency graph diff (which reads uv.lock).
+  # via the dependency graph diff (which reads uv.lock). Required check;
+  # same rename hazard as above.
   dependency-review:
     runs-on: ubuntu-latest
     steps:
