@@ -31,6 +31,8 @@ import litellm
 import structlog
 from opentelemetry import trace as otel_trace
 
+__all__ = ["configure_telemetry", "start_span"]
+
 _VALID_LOG_LEVELS: frozenset[str] = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 _configure_lock = threading.Lock()
 _configured = False

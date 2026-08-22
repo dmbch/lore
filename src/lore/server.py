@@ -33,6 +33,8 @@ from lore.repositories import (
 )
 from lore.telemetry import configure_telemetry
 
+__all__ = ["server", "system"]
+
 
 async def _check_ready(cell: PoolCell) -> None:
     """/ready probe over the shared pool cell.
