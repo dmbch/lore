@@ -46,6 +46,8 @@ jobs:
           enable-cache: true
       - run: uv python find | grep '^/usr/local/bin/'
       - run: uv sync
+      # pyright runs on node, which links libatomic; slim ships without it.
+      - run: apt-get update && apt-get install -y --no-install-recommends libatomic1
       - run: uv run pyright
 
   test:
