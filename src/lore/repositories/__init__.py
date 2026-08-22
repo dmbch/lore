@@ -24,6 +24,7 @@ from lore.repositories.records import (
     HypothesisResult,
     LedgerView,
     RequestRecord,
+    generate_id,
 )
 
 __all__ = [
@@ -48,6 +49,7 @@ __all__ = [
     "SqliteConfig",
     "check_health",
     "connect",
+    "generate_id",
     "make_probe",
     "run_migrations",
     "sweep_cache_loop",

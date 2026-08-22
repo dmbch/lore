@@ -21,8 +21,7 @@ from starlette.responses import JSONResponse, Response
 from lore.adapter._contract import CONSULT_TOOL, ServerContract, load_server_contract
 from lore.adapter.middleware import OracleIdentityMiddleware
 from lore.adapter.observatory import build_observatory
-from lore.domain import ConsultLoreRequest, ConsultLoreResponse
-from lore.domain.errors import StorageError
+from lore.domain import ConsultLoreRequest, ConsultLoreResponse, StorageError
 from lore.orchestrator import Orchestrator
 from lore.prompts import load_prompt
 

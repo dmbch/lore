@@ -14,8 +14,7 @@ from lore.domain import (
     WriteContext,
 )
 from lore.math import MathService
-from lore.repositories import AttestationRecord, DecayWindow, LedgerView, Repositories
-from lore.repositories.records import generate_id
+from lore.repositories import AttestationRecord, DecayWindow, LedgerView, Repositories, generate_id
 from lore.telemetry import start_span
 
 if TYPE_CHECKING:
