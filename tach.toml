@@ -67,8 +67,11 @@ depends_on = ["lore.providers.config"]
 path = "lore.repositories"
 depends_on = ["lore.repositories.config"]
 
+# Runtime consumers of settings are the composition roots; layers see
+# LoreSettings under TYPE_CHECKING only (the rule stated above).
 [[modules]]
 path = "lore.config"
+visibility = ["lore.server", "lore.__main__"]
 depends_on = [
     "lore.adapter.config",
     "lore.math.config",
@@ -85,8 +88,10 @@ depends_on = ["lore.math", "lore.prompts", "lore.repositories", "lore.telemetry"
 path = "lore.adapter"
 depends_on = ["lore.adapter.config", "lore.orchestrator", "lore.prompts"]
 
+# No layer imports the composition root (docs/architecture.md, Bootstrap).
 [[modules]]
 path = "lore.server"
+visibility = ["lore.__main__"]
 depends_on = [
     "lore.adapter",
     "lore.config",
