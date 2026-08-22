@@ -12,8 +12,8 @@ cid=$(docker run -d --rm \
   -p 8000:8000 "$IMAGE")
 trap 'docker kill "$cid" 2>/dev/null || true' EXIT
 for _ in $(seq 1 30); do
-  curl -fsS localhost:8000/health >/dev/null 2>&1 \
-    && curl -fsS localhost:8000/ready >/dev/null 2>&1 && ok=1 && break
+  curl -fsS --max-time 2 localhost:8000/health >/dev/null 2>&1 \
+    && curl -fsS --max-time 2 localhost:8000/ready >/dev/null 2>&1 && ok=1 && break
   sleep 1
 done
 [[ "${ok:-}" == 1 ]] || { echo "FAIL: server did not come up"; docker logs "$cid"; exit 1; }
