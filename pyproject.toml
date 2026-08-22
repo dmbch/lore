@@ -80,7 +80,9 @@ python-preference = "only-managed"
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-exclude = [".claude/worktrees", "references"]
+# extend-, not plain exclude: the default list (.venv, site-packages, ...) must
+# survive. gitignore does not cover CI: the container checkout has no .git.
+extend-exclude = [".claude/worktrees", "references"]
 
 [tool.ruff.lint]
 select = [
