@@ -4,8 +4,10 @@ uv: mise.toml and the Dockerfile carry the same exact version, and that
 version satisfies pyproject's required-version range. python: the Dockerfile
 base image is authoritative; .python-version, workflow container images,
 requires-python, ruff's target-version, and pyright's pythonVersion must all
-agree with its tag. The workflow scan only recognizes bare `python:` refs;
-registry-qualified aliases (docker.io/library/python) would slip past it.
+agree with its tag. The workflow scan recognizes bare `python:` refs and YAML
+anchor definitions (`image: &name python:...`); YAML aliases (`image: *name`)
+are invisible to it, which is safe because an alias cannot differ from its
+anchor. Registry-qualified refs (docker.io/library/python) would slip past.
 
 uv enforces required-version at runtime, but the Dockerfile stage only hits it
 during the image build on the release path, after the e2e spend. This static
@@ -69,7 +71,7 @@ def workflow_python_refs() -> list[tuple[str, str]]:
     refs: list[tuple[str, str]] = []
     for workflow in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
         found: list[str] = re.findall(
-            r"^\s*image:\s*(python:\S+)",
+            r"^\s*image:\s*(?:&\S+\s+)?(python:\S+)",
             workflow.read_text(),
             flags=re.MULTILINE,
         )
