@@ -9,6 +9,16 @@ jobs:
   # renaming it wedges the merge gate until the ruleset is updated.
   tests:
     uses: ./.github/workflows/tests.yml
+  # PR twin of release.yml's smoke: build the image and prove it boots and
+  # serves. No key: smoke.sh falls back to a dummy, and /health + /ready
+  # reach no model. Catches image-build breakage before merge instead of on
+  # the release path.
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -t lore:pr .
+      - run: tests/container/smoke.sh lore:pr
   # Fails the PR if it introduces a dependency with a known vulnerability,
   # via the dependency graph diff (which reads uv.lock). Required check;
   # same rename hazard as above.
