@@ -1,62 +1,75 @@
-# Enforces lore's one-way hexagonal imports (see docs/architecture.md).
-# Edges are the real import graph, populated by `tach sync` and checked by
-# `tach check --exact`; a new import that breaks the layer direction fails
-# the check, and so does a declared edge no import uses anymore.
-#
-# Each layer-owned config partial (`lore.<layer>.config`) is its own module,
-# so lore.config composes config shapes without a grant on any layer proper.
-# For the adapter this also guards the one inverted edge: lore.config
-# reaching upward admits only the partial, never the adapter itself.
+# Lore's one-way hexagonal import graph (see docs/architecture.md).
+# `tach check` (mise run tach) enforces three rules:
+#   edges: depends_on is the real import graph, exactly (`exact`); an import
+#     outside it fails the gate, and so does a grant no import uses.
+#   root-routing: the single interface admits only top-level members, so no
+#     module reaches past another's package root.
+#   utilities: the two ground modules are importable everywhere without a
+#     declared edge.
+# `tach sync` edits depends_on surgically and preserves the rest of the file.
+# The one destructive path is the deprecated `strict = true` migration, which
+# rewrites wholesale and drops hand-written interfaces; avoid it.
+
 source_roots = ["src"]
+exact = true
+forbid_circular_dependencies = true
 
+# Load-bearing default, stated: layers annotate with `lore.config` types under
+# TYPE_CHECKING only, and tach must not see those imports, or the composition
+# edges would read as cycles.
+ignore_type_checking_imports = true
+
+# A tach-ignore is held to the same bar as a noqa: live, and with a reason.
+[rules]
+unused_ignore_directives = "error"
+require_ignore_directive_reasons = "error"
+
+# A cross-module import names a top-level member of the imported module,
+# never a dotted path into its internals.
+[[interfaces]]
+expose = ["[^.]+"]
+
+# Ground: model mechanics (lore._pydantic) and shared vocabulary (lore.domain).
 [[modules]]
-path = "lore._pydantic"
+paths = ["lore._pydantic", "lore.domain"]
 depends_on = []
-
-[[modules]]
-path = "lore.domain"
-depends_on = ["lore._pydantic"]
+utility = true
 
 [[modules]]
 path = "lore.telemetry"
 depends_on = []
 
+# The layer-owned config partials: leaf shapes lore.config composes, so the
+# config module never needs a grant on any layer proper.
 [[modules]]
-path = "lore.math.config"
-depends_on = ["lore._pydantic"]
+paths = [
+    "lore.adapter.config",
+    "lore.math.config",
+    "lore.prompts.config",
+    "lore.providers.config",
+    "lore.repositories.config",
+]
+depends_on = []
 
 [[modules]]
 path = "lore.math"
-depends_on = ["lore.domain", "lore.math.config"]
-
-[[modules]]
-path = "lore.prompts.config"
-depends_on = ["lore._pydantic"]
+depends_on = ["lore.math.config"]
 
 [[modules]]
 path = "lore.prompts"
 depends_on = ["lore.prompts.config"]
 
 [[modules]]
-path = "lore.repositories.config"
-depends_on = ["lore._pydantic"]
+path = "lore.providers"
+depends_on = ["lore.providers.config"]
 
 [[modules]]
 path = "lore.repositories"
-depends_on = ["lore.domain", "lore._pydantic", "lore.repositories.config"]
-
-[[modules]]
-path = "lore.providers.config"
-depends_on = ["lore._pydantic"]
-
-[[modules]]
-path = "lore.providers"
-depends_on = ["lore.domain", "lore.providers.config"]
+depends_on = ["lore.repositories.config"]
 
 [[modules]]
 path = "lore.config"
 depends_on = [
-    "lore._pydantic",
     "lore.adapter.config",
     "lore.math.config",
     "lore.prompts.config",
@@ -66,20 +79,24 @@ depends_on = [
 
 [[modules]]
 path = "lore.orchestrator"
-depends_on = ["lore.prompts", "lore.math", "lore.repositories", "lore.domain", "lore.telemetry"]
-
-[[modules]]
-path = "lore.adapter.config"
-depends_on = ["lore._pydantic"]
+depends_on = ["lore.math", "lore.prompts", "lore.repositories", "lore.telemetry"]
 
 [[modules]]
 path = "lore.adapter"
-depends_on = ["lore.adapter.config", "lore.orchestrator", "lore.domain", "lore._pydantic", "lore.prompts"]
+depends_on = ["lore.adapter.config", "lore.orchestrator", "lore.prompts"]
 
 [[modules]]
 path = "lore.server"
-depends_on = ["lore.adapter", "lore.config", "lore.orchestrator", "lore.providers", "lore.domain", "lore.repositories", "lore.math", "lore.telemetry"]
+depends_on = [
+    "lore.adapter",
+    "lore.config",
+    "lore.math",
+    "lore.orchestrator",
+    "lore.providers",
+    "lore.repositories",
+    "lore.telemetry",
+]
 
 [[modules]]
 path = "lore.__main__"
-depends_on = ["lore.server", "lore.config"]
+depends_on = ["lore.config", "lore.server"]
