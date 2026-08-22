@@ -585,3 +585,23 @@ files; a second `docker` entry in dependabot.yml pointing at
 **Trigger.** Next base-image bump; verify the coverage claim before adopting.
 
 **Status:** open.
+
+---
+
+## PR CI never builds the image
+
+**Found:** 2026-08-22, the only-managed escape. `python-preference =
+"only-managed"` broke `uv sync` inside the image build; every PR lane was
+green because only the release path's smoke job runs `docker build`. The
+failure landed on main, exactly the class the pin work exists to move into
+PR CI.
+
+**Options.** A build-only job in tests.yml (`docker build`, no smoke.sh, no
+key: the Dockerfile stages complete or they don't), ~1-2 min with GHA layer
+cache. Or accept that image-build regressions surface post-merge and rely on
+smoke blocking the tag, at the cost of a red main while the fix lands.
+
+**Trigger.** Decide at the next Dockerfile-adjacent change; a second
+post-merge red decides it by itself.
+
+**Status:** open.
