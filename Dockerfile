@@ -11,7 +11,8 @@ COPY --from=uv /uv /usr/local/bin/uv
 ENV UV_PROJECT_ENVIRONMENT=/opt/lore \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    UV_PYTHON_DOWNLOADS=never
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON_PREFERENCE=only-system
 WORKDIR /src
 
 # Dependency layer first: resolve from the lockfile without the project, so a
