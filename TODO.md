@@ -569,39 +569,21 @@ runner (pbs), and local remains version parity only.
 
 ---
 
-## Dependabot may be able to bump the workflow container images
+## Dependabot cannot bump the workflow container images
 
-**Found:** 2026-08-21, python-pin review.
+**Found:** 2026-08-21, python-pin review; investigated 2026-08-22.
 
-**What.** Every base-image bump, including same-tag digest refreshes, reds
-`check:pins` until a human edits the three `container:` refs in tests.yml.
-Dependabot's docker ecosystem reportedly supports image refs in workflow
-files; a second `docker` entry in dependabot.yml pointing at
-`/.github/workflows` might bump them alongside the Dockerfile.
+**What.** The docker updater parses Dockerfiles and compose files only;
+workflow YAML support is dependabot/dependabot-core#5819, open, labeled
+new-ecosystem. If it ever ships, use one update entry with
+`directories: ["/", "/.github/workflows"]` and a cross-directory group so
+both files move in a single PR; two separate PRs would each red
+`check:pins`, worse than the manual sync.
 
-**Why it matters.** Shrinks the manual half of the bump flow to
-`.python-version`.
+**Why it barely matters now.** The tests.yml refs collapsed to one YAML
+anchor (2026-08-22), so the manual half of a bump is one workflow line plus
+`.python-version`, both policed.
 
-**Trigger.** Next base-image bump; verify the coverage claim before adopting.
+**Trigger.** dependabot-core#5819 ships.
 
-**Status:** open.
-
----
-
-## PR CI never builds the image
-
-**Found:** 2026-08-22, the only-managed escape. `python-preference =
-"only-managed"` broke `uv sync` inside the image build; every PR lane was
-green because only the release path's smoke job runs `docker build`. The
-failure landed on main, exactly the class the pin work exists to move into
-PR CI.
-
-**Options.** A build-only job in tests.yml (`docker build`, no smoke.sh, no
-key: the Dockerfile stages complete or they don't), ~1-2 min with GHA layer
-cache. Or accept that image-build regressions surface post-merge and rely on
-smoke blocking the tag, at the cost of a red main while the fix lands.
-
-**Trigger.** Decide at the next Dockerfile-adjacent change; a second
-post-merge red decides it by itself.
-
-**Status:** open.
+**Status:** blocked upstream.
