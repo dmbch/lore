@@ -16,10 +16,13 @@ jobs:
   # container's Debian CPython over pyproject's only-managed (env beats
   # project config); UV_PYTHON_DOWNLOADS=never mirrors the Dockerfile. The
   # `uv python find` step fails the job unless the container interpreter won.
+  # The image is defined once as a YAML anchor (&python-image) and aliased
+  # (*python-image) below: aliases resolve to the same scalar, so the three
+  # jobs cannot drift apart, and a bump edits one line.
   lint:
     runs-on: ubuntu-latest
     container:
-      image: python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
+      image: &python-image python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
     env:
       UV_PYTHON_PREFERENCE: only-system
       UV_PYTHON_DOWNLOADS: never
@@ -38,7 +41,7 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     container:
-      image: python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
+      image: *python-image
     env:
       UV_PYTHON_PREFERENCE: only-system
       UV_PYTHON_DOWNLOADS: never
@@ -56,7 +59,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
+      image: *python-image
     services:
       postgres:
         image: pgvector/pgvector:pg18
