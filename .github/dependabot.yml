@@ -8,7 +8,9 @@ updates:
   - package-ecosystem: uv
     directory: /
     schedule:
-      interval: weekly
+      # Daily so the cooldown below is the only latency; weekly stacked up
+      # to a week of dead time on top of the quarantine.
+      interval: daily
     commit-message:
       prefix: fix
       prefix-development: chore
@@ -58,7 +60,9 @@ updates:
   - package-ecosystem: docker
     directory: /
     schedule:
-      interval: weekly
+      # Daily: no cooldown here (see below), so any check delay is a
+      # straight delay on an OS CVE fix.
+      interval: daily
     commit-message:
       prefix: fix
       include: scope
