@@ -40,7 +40,7 @@ run = "python scripts/check_pins.py"
 
 # Layer-boundary enforcement; the graph lives in tach.toml.
 [tasks.tach]
-run = "uv run tach check"
+run = "uv run tach check --exact"
 
 [tasks.check]
 depends = ["test", "types", "lint", "check:pins", "tach"]
