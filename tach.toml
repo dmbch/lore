@@ -2,21 +2,24 @@
 # `tach check` (mise run tach) enforces three rules:
 #   edges: depends_on is the real import graph, exactly (`exact`); an import
 #     outside it fails the gate, and so does a grant no import uses.
-#   root-routing: the single interface admits only top-level members, so no
-#     module reaches past another's package root.
+#   root-routing: the single interface admits only public top-level members,
+#     so no from-import names a symbol inside another module's internals;
+#     module-object imports of public-named submodules remain until the
+#     underscore renames land.
 #   utilities: the two ground modules are importable everywhere without a
 #     declared edge.
 # `tach sync` edits depends_on surgically and preserves the rest of the file.
-# The one destructive path is the deprecated `strict = true` migration, which
-# rewrites wholesale and drops hand-written interfaces; avoid it.
+# The destructive path is parse-time auto-migration, which rewrites the file
+# wholesale and drops hand-written interfaces; the deprecated `strict = true`
+# is the trigger to avoid.
 
 source_roots = ["src"]
 exact = true
 forbid_circular_dependencies = true
 
 # Load-bearing default, stated: layers annotate with `lore.config` types under
-# TYPE_CHECKING only, and tach must not see those imports, or the composition
-# edges would read as cycles.
+# TYPE_CHECKING only, and tach must not see those imports, or each one would
+# read as an undeclared dependency and a visibility violation.
 ignore_type_checking_imports = true
 
 # A tach-ignore is held to the same bar as a noqa: live, and with a reason.
@@ -24,12 +27,14 @@ ignore_type_checking_imports = true
 unused_ignore_directives = "error"
 require_ignore_directive_reasons = "error"
 
-# A cross-module import names a top-level member of the imported module,
-# never a dotted path into its internals.
+# A cross-module import names a public top-level member of the imported
+# module, never an underscore name or a dotted path into its internals.
 [[interfaces]]
-expose = ["[^.]+"]
+expose = ["[^._][^.]*"]
 
 # Ground: model mechanics (lore._pydantic) and shared vocabulary (lore.domain).
+# The ground is itself ordered (domain imports _pydantic), an edge tach cannot
+# see: utilities are importable everywhere, and edges into them go untracked.
 [[modules]]
 paths = ["lore._pydantic", "lore.domain"]
 depends_on = []
