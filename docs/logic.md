@@ -196,7 +196,7 @@ where Δt = t_now − t_attestation (integer seconds)
 - Δt = 0: opinion unchanged (e⁰ = 1).
 - Δt → ∞: opinion approaches vacuous (0, 0, 1).
 - λ = 0: time-independent (no decay).
-- Δt < 0 (attestation timestamped after `t_now`): clamped to 0, so a future-dated row reads as undecayed rather than sharpened. The `decay` operator itself rejects negative `t`; the clamp lives at both call sites that compute an age, `math/hypothesis.py` and `math/service.py`. The commitment is that clock skew and future-dating cost the herd nothing beyond a row that has not started aging: the alternative, letting a negative Δt amplify belief past its stated value, would make a wrong clock an evidence multiplier.
+- Δt < 0 (attestation timestamped after `t_now`): clamped to 0, so a future-dated row reads as undecayed rather than sharpened. The `decay` operator itself rejects negative `t`; the clamp lives at both call sites that compute an age, `math/_hypothesis.py` and `math/_service.py`. The commitment is that clock skew and future-dating cost the herd nothing beyond a row that has not started aging: the alternative, letting a negative Δt amplify belief past its stated value, would make a wrong clock an evidence multiplier.
 
 **Monotonicity:** uncertainty monotonically increases between attestations. Belief and disbelief monotonically decrease. Knowledge that nobody re-encounters returns to "we don't know."
 

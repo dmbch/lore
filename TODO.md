@@ -290,7 +290,7 @@ layer single-sourced in practice while the config layer advertises choice.
   (haiku fast, sonnet reasoning) or `nova-2-lite` both roles, whichever JSON
   mode proves out.
 
-**Files:** `src/lore/providers/completion.py` (instructor mode),
+**Files:** `src/lore/providers/_completion.py` (instructor mode),
 `src/lore/config/vendors/` (removed tomls in git history),
 `tests/e2e/conftest.py` (`require_gemini`, golden).
 
@@ -330,7 +330,7 @@ adding the third.
 - **Tier 2, legibility.** Hypothesis detail with belief trajectory (every
   attestation row snapshots `c_herd`, so the series is already stored and needs
   no new math). Controversies on conflict metrics PD/CC/DC from
-  `lore.math.conflict`, which no read path or renderer currently references;
+  `lore.math._conflict`, which no read path or renderer currently references;
   the ledger stores no resolution labels, so "contradicts activity" is not
   derivable and the conflict signal is the better definition anyway. Hybrid
   search, the navigation primitive every view links through.
