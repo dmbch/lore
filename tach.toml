@@ -3,9 +3,7 @@
 #   edges: depends_on is the real import graph, exactly (`exact`); an import
 #     outside it fails the gate, and so does a grant no import uses.
 #   root-routing: the single interface admits only public top-level members,
-#     so no from-import names a symbol inside another module's internals;
-#     module-object imports of public-named submodules remain until the
-#     underscore renames land.
+#     so no module reaches past another's package root.
 #   utilities: the two ground modules are importable everywhere without a
 #     declared edge.
 # `tach sync` edits depends_on surgically and preserves the rest of the file.

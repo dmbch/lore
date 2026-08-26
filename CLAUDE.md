@@ -53,7 +53,7 @@ All function parameters after `self`/`cls` are keyword-only. Two exceptions: sin
 
 Additional carve-outs:
 - The first positional argument may stay positional when a keyword would only echo what the verb in the function or method name already says: e.g. `embed(text)`, `find_by_id(id)`, `find_by_hypotheses(hypothesis_ids)`, `Recorder._corroborate(self, corroborates, *, contradicts)`. Subsequent parameters stay keyword-only regardless (e.g. `embed(text, *, task_type_key=...)`).
-- Math binary operators in `lore.math.conflict` and private fusion helpers (`compute_projected_distance(a, b)`, `_acbf_pair(a, b)`, etc.) stay positional: `a, b` carries no information.
+- Math binary operators in `lore.math._conflict` and private fusion helpers (`compute_projected_distance(a, b)`, `_acbf_pair(a, b)`, etc.) stay positional: `a, b` carries no information.
 
 ## Critical Thinking
 

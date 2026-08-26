@@ -15,8 +15,8 @@ duplication it saves.
 
 Every structural change lands twice:
 
-- `src/lore/repositories/sqlite/migrations/`
-- `src/lore/repositories/postgres/migrations/`
+- `src/lore/repositories/_sqlite/migrations/`
+- `src/lore/repositories/_postgres/migrations/`
 
 Same tables, same columns, same logical types, same primary keys, same indexes,
 same unique constraints, same foreign keys. Files apply in lexicographic order
