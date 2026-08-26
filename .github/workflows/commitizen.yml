@@ -11,6 +11,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { fetch-depth: 0 }
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with: { enable-cache: true }
+        with:
+          version: "0.12.5"
+          enable-cache: true
       - run: uv sync --only-group dev
       - run: uv run --no-sync cz check --rev-range ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}

@@ -1,7 +1,10 @@
 """Check the toolchain pins agree.
 
-uv: mise.toml and the Dockerfile carry the same exact version, and that
-version satisfies pyproject's required-version range. python: the Dockerfile
+uv: mise.toml, the Dockerfile, and every workflow setup-uv step carry the
+same exact version, and that version satisfies pyproject's required-version
+range. The setup-uv scan expects `version:` as the first with: key of each
+step; a step in any other shape fails the count assertion instead of
+slipping past unpinned. python: the Dockerfile
 base image is authoritative; .python-version, workflow container images,
 requires-python, ruff's target-version, and pyright's pythonVersion must all
 agree with its tag. The workflow scan recognizes bare `python:` refs and YAML
@@ -52,6 +55,24 @@ def dockerfile_pin() -> str:
     return version
 
 
+def workflow_uv_pins() -> list[tuple[str, str]]:
+    pins: list[tuple[str, str]] = []
+    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+        text = workflow.read_text()
+        found: list[str] = re.findall(
+            r'astral-sh/setup-uv@[^\n]*\n\s*with:\n\s*version: "([^"]+)"',
+            text,
+        )
+        steps = text.count("astral-sh/setup-uv@")
+        if len(found) != steps:
+            sys.exit(
+                f"{workflow.name}: {steps} setup-uv steps, {len(found)} pinned; "
+                'every setup-uv step pins uv with version: "<exact>" as the first with: key'
+            )
+        pins.extend((workflow.name, pin) for pin in found)
+    return pins
+
+
 def dockerfile_python_ref() -> str:
     refs: list[str] = re.findall(
         r"^FROM python:(\S+)",
@@ -88,6 +109,12 @@ def check_uv_pins() -> None:
     mise, docker = mise_pin(), dockerfile_pin()
     if mise != docker:
         sys.exit(f"uv pins drifted: mise.toml {mise}, Dockerfile {docker}")
+    workflow_pins = workflow_uv_pins()
+    if not workflow_pins:
+        sys.exit("no workflow provisions uv via setup-uv; the CI pin scan has nothing to police")
+    for workflow, pin in workflow_pins:
+        if pin != mise:
+            sys.exit(f"uv pins drifted: {workflow} setup-uv {pin}, mise.toml {mise}")
     allowed = pyproject_range()
     if not allowed.contains(mise):
         sys.exit(f"uv pin {mise} is outside pyproject required-version {allowed}")
