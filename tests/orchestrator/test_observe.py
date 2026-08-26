@@ -20,7 +20,7 @@ from pydantic import ValidationError
 
 from lore.domain import ArchivistOutput, DomainInvariantError, FrontierEntry
 from lore.orchestrator import Orchestrator
-from lore.orchestrator.observe import FRONTIER_LIMIT, frontier
+from lore.orchestrator._observe import FRONTIER_LIMIT, frontier
 from lore.providers import Providers
 from lore.repositories import (
     AttestationRecord,
@@ -265,7 +265,7 @@ async def test_orchestrator_frontier_wraps_internal_validation_error_as_domain_e
     operators and the payload off the wire.
     """
     monkeypatch.setattr(
-        "lore.orchestrator.observe.FrontierEntry",
+        "lore.orchestrator._observe.FrontierEntry",
         raise_internal_validation_error,
     )
     orchestrator = Orchestrator(

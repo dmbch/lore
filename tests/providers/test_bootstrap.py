@@ -9,7 +9,7 @@ import pytest
 from lore.config import LoreSettings, load_settings
 from lore.domain import InferenceError
 from lore.providers import CompletionProvider, EmbeddingModelConfig, EmbeddingProvider
-from lore.providers.bootstrap import build_providers, resolve_dimensions
+from lore.providers._bootstrap import build_providers, resolve_dimensions
 
 # Complete TOML with all three model roles: a valid base for model_copy.
 _COMPLETE_TOML = Path(__file__).parent.parent / "fixtures" / "lore_complete.toml"
@@ -44,7 +44,7 @@ class TestConfiguredPassthrough:
         assert result == 1536
 
     def test_resolve_dimensions_configured_does_not_call_get_model_info(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             resolve_dimensions(_settings(model="any-model", dimensions=1536))
 
             mock_get_model_info.assert_not_called()
@@ -57,7 +57,7 @@ class TestConfiguredPassthrough:
 
 class TestResolvedFromModelInfo:
     def test_resolve_dimensions_none_configured_returns_model_vector_size(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.return_value = {"output_vector_size": 768}
 
             result = resolve_dimensions(_settings(model="text-embedding-3-small", dimensions=None))
@@ -65,7 +65,7 @@ class TestResolvedFromModelInfo:
             assert result == 768
 
     def test_resolve_dimensions_none_configured_calls_get_model_info(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.return_value = {"output_vector_size": 1536}
 
             resolve_dimensions(_settings(model="gemini/gemini-embedding-001", dimensions=None))
@@ -80,7 +80,7 @@ class TestResolvedFromModelInfo:
 
 class TestModelUnknown:
     def test_resolve_dimensions_model_unknown_raises_inference_error(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.side_effect = ValueError("model not found")
 
             with pytest.raises(InferenceError):
@@ -89,7 +89,7 @@ class TestModelUnknown:
     def test_resolve_dimensions_bare_exception_raises_inference_error(self) -> None:
         # LiteLLM raises a bare Exception for unmapped models, not
         # ValueError/KeyError: the wrapper must surface a typed domain error.
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.side_effect = Exception("Model X isn't mapped yet")
 
             with pytest.raises(InferenceError):
@@ -98,7 +98,7 @@ class TestModelUnknown:
 
 class TestSizeMissing:
     def test_resolve_dimensions_size_missing_raises_inference_error(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.return_value = {}
 
             with pytest.raises(InferenceError):
@@ -107,7 +107,7 @@ class TestSizeMissing:
 
 class TestSizeNone:
     def test_resolve_dimensions_size_none_raises_inference_error(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.return_value = {"output_vector_size": None}
 
             with pytest.raises(InferenceError):
@@ -116,14 +116,14 @@ class TestSizeNone:
 
 class TestSizeInvalid:
     def test_resolve_dimensions_size_zero_raises_inference_error(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.return_value = {"output_vector_size": 0}
 
             with pytest.raises(InferenceError):
                 resolve_dimensions(_settings(model="text-embedding-3-small", dimensions=None))
 
     def test_resolve_dimensions_size_negative_raises_inference_error(self) -> None:
-        with patch("lore.providers.bootstrap.litellm.get_model_info") as mock_get_model_info:
+        with patch("lore.providers._bootstrap.litellm.get_model_info") as mock_get_model_info:
             mock_get_model_info.return_value = {"output_vector_size": -256}
 
             with pytest.raises(InferenceError):

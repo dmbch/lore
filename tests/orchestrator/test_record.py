@@ -28,8 +28,8 @@ from lore.domain import (
     WriteContext,
 )
 from lore.math import MathService
-from lore.math.opinion import EPSILON
-from lore.orchestrator.record import Recorder, record
+from lore.math._opinion import EPSILON
+from lore.orchestrator._record import Recorder, record
 from lore.repositories import (
     AttestationRecord,
     DecayWindow,

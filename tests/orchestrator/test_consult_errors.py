@@ -18,7 +18,7 @@ class TestConsultInternalValidationErrorPosture:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
-            "lore.orchestrator.orchestrator.ConsultLoreResponse",
+            "lore.orchestrator._orchestrator.ConsultLoreResponse",
             raise_internal_validation_error,
         )
         fixture = make_orchestrator()
@@ -35,7 +35,7 @@ class TestConsultInternalValidationErrorPosture:
     ) -> None:
         """Operators keep the diagnostic through the exception chain."""
         monkeypatch.setattr(
-            "lore.orchestrator.orchestrator.ConsultLoreResponse",
+            "lore.orchestrator._orchestrator.ConsultLoreResponse",
             raise_internal_validation_error,
         )
         fixture = make_orchestrator()
@@ -53,7 +53,7 @@ class TestConsultInternalValidationErrorPosture:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
-            "lore.orchestrator.orchestrator.ConsultLoreResponse",
+            "lore.orchestrator._orchestrator.ConsultLoreResponse",
             raise_internal_validation_error,
         )
         fixture = make_orchestrator()

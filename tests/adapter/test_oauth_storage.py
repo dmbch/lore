@@ -21,7 +21,7 @@ from key_value.aio.wrappers.encryption.fernet import FernetEncryptionWrapper
 from pydantic import SecretStr
 
 from lore.adapter import OidcConfig
-from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 from lore.config import LoreSettings
 from lore.repositories import LoreCacheStore, PoolCell, RepositoryPool, connect, run_migrations
 from tests.repositories._orchestrator_fixtures import make_settings
@@ -62,7 +62,7 @@ def _oauth_storage(settings: LoreSettings, *, pool_cell: PoolCell) -> AsyncKeyVa
     pinned by ``test_build_auth_wraps_the_storage_into_client_storage``
     in ``test_mcp.py``.
     """
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with patch("lore.adapter._mcp.OIDCProxy") as mock_proxy:
         _build_auth(settings, storage=LoreCacheStore(pool_cell=pool_cell))
     storage = mock_proxy.call_args.kwargs["client_storage"]
     assert isinstance(storage, FernetEncryptionWrapper)

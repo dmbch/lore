@@ -12,7 +12,7 @@ import pytest
 
 from lore.domain import StorageError
 from lore.repositories import RepositoryPool, connect
-from lore.repositories.sqlite.pool import SqlitePool
+from lore.repositories._sqlite.pool import SqlitePool
 from tests.repositories.conftest import SCHEMA_DIM, make_settings
 
 
@@ -50,7 +50,7 @@ class TestStoreFailureRollsBackViaOuterTransaction:
             raise ValueError(msg)
 
         monkeypatch.setattr(
-            "lore.repositories.sqlite.hypotheses.sqlite_vec.serialize_float32", _boom
+            "lore.repositories._sqlite.hypotheses.sqlite_vec.serialize_float32", _boom
         )
 
         with pytest.raises(StorageError, match="injected serialization failure"):

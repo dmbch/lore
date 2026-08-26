@@ -3,7 +3,7 @@
 import sqlite3
 
 from lore.domain import DuplicateRecord, IntegrityViolation, StorageError
-from lore.repositories.sqlite._errors import classify_integrity_error
+from lore.repositories._sqlite._errors import classify_integrity_error
 
 
 class TestClassifyIntegrityError:

@@ -38,20 +38,20 @@ from lore.repositories import (
     RequestRecord,
     RequestRepository,
     SqliteConfig,
+    _records,
     connect,
-    records,
     run_migrations,
 )
-from lore.repositories.postgres.attestations import PostgresAttestationsRepository
-from lore.repositories.postgres.cache import PostgresCacheRepository
-from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository
-from lore.repositories.postgres.pool import PostgresPool
-from lore.repositories.postgres.requests import PostgresRequestRepository
-from lore.repositories.sqlite.attestations import SqliteAttestationsRepository
-from lore.repositories.sqlite.cache import SqliteCacheRepository
-from lore.repositories.sqlite.hypotheses import SqliteHypothesisRepository
-from lore.repositories.sqlite.pool import SqlitePool
-from lore.repositories.sqlite.requests import SqliteRequestRepository
+from lore.repositories._postgres.attestations import PostgresAttestationsRepository
+from lore.repositories._postgres.cache import PostgresCacheRepository
+from lore.repositories._postgres.hypotheses import PostgresHypothesisRepository
+from lore.repositories._postgres.pool import PostgresPool
+from lore.repositories._postgres.requests import PostgresRequestRepository
+from lore.repositories._sqlite.attestations import SqliteAttestationsRepository
+from lore.repositories._sqlite.cache import SqliteCacheRepository
+from lore.repositories._sqlite.hypotheses import SqliteHypothesisRepository
+from lore.repositories._sqlite.pool import SqlitePool
+from lore.repositories._sqlite.requests import SqliteRequestRepository
 from tests.repositories._orchestrator_fixtures import make_settings as _make_settings
 
 # Test PostgresConfig: defaults from PLAN.md locked positions, used wherever
@@ -367,12 +367,12 @@ async def append_attestation(
     control. The split keeps the helper under PLR0913 and out of the way
     of the math that the trust tests are actually about.
     """
-    # Qualified access through ``records.generate_id`` so the monkeypatch in
+    # Qualified access through ``_records.generate_id`` so the monkeypatch in
     # ``test_two_backend_parity._force_fixed_id`` (which patches
-    # ``lore.repositories.records.generate_id``) reaches this call site.
+    # ``lore.repositories._records.generate_id``) reaches this call site.
     await repo.append(
         AttestationRecord(
-            id=records.generate_id(),
+            id=_records.generate_id(),
             hypothesis_id=hypothesis_id,
             oracle_id=oracle_id,
             correlation_id="00000000-0000-0000-0000-000000000099",

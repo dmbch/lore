@@ -26,9 +26,9 @@ import pytest
 from fastmcp import FastMCP
 from starlette.testclient import TestClient
 
-from lore.adapter.mcp import create_server
+from lore.adapter._mcp import create_server
 from lore.config import LoreSettings, load_settings
-from lore.domain.errors import StorageError
+from lore.domain import StorageError
 from lore.orchestrator import Orchestrator
 
 _COMPLETE_TOML = Path(__file__).parents[1] / "fixtures" / "lore_complete.toml"

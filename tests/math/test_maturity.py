@@ -8,8 +8,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from lore.math.maturity import compute_maturity
-from lore.math.opinion import EPSILON
+from lore.math._maturity import compute_maturity
+from lore.math._opinion import EPSILON
 
 from .conftest import PROP_TOL
 

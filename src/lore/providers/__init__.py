@@ -1,8 +1,8 @@
-from lore.providers.bootstrap import build_providers, resolve_dimensions
-from lore.providers.completion import CompletionProvider
+from lore.providers._bootstrap import build_providers, resolve_dimensions
+from lore.providers._completion import CompletionProvider
+from lore.providers._embedding import EmbeddingProvider
+from lore.providers._protocols import Completer, Embedder, Providers, TaskTypeKey
 from lore.providers.config import EmbeddingModelConfig, ModelConfig, TaskTypeConfig
-from lore.providers.embedding import EmbeddingProvider
-from lore.providers.protocols import Completer, Embedder, Providers, TaskTypeKey
 
 __all__ = [
     "Completer",

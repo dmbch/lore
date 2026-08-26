@@ -42,7 +42,7 @@ from pydantic import SecretStr
 
 from lore import telemetry as telemetry_module
 from lore.adapter import OidcConfig
-from lore.adapter.mcp import create_server
+from lore.adapter._mcp import create_server
 from lore.config import load_settings
 from lore.orchestrator import Orchestrator
 
@@ -128,7 +128,7 @@ def test_oidc_client_secret_does_not_leak_to_logs_or_spans(
     # observe what create_server writes to telemetry around the construction.
     with (
         structlog.testing.capture_logs() as captured_logs,
-        patch("lore.adapter.mcp.OIDCProxy") as mock_proxy,
+        patch("lore.adapter._mcp.OIDCProxy") as mock_proxy,
     ):
         mock_proxy.return_value = MagicMock()
         server = create_server(settings=settings, system=_noop_system)

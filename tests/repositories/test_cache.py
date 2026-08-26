@@ -17,9 +17,9 @@ from pydantic import ValidationError
 
 from lore.domain import StorageError
 from lore.repositories import connect
-from lore.repositories.postgres.cache import PostgresCacheRepository
-from lore.repositories.protocols import CacheRepository, RepositoryPool
-from lore.repositories.records import CacheEntry
+from lore.repositories._postgres.cache import PostgresCacheRepository
+from lore.repositories._protocols import CacheRepository, RepositoryPool
+from lore.repositories._records import CacheEntry
 from tests.repositories._orchestrator_fixtures import make_settings
 from tests.repositories.conftest import BackendFixture
 

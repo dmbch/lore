@@ -3,8 +3,8 @@
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
+from lore.prompts._parser import parse
 from lore.prompts.config import PromptsConfig
-from lore.prompts.parser import parse
 
 __all__ = [
     "PromptsConfig",

@@ -17,10 +17,10 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from lore.math.confidence import to_confidence, to_opinion, to_uncertainty
-from lore.math.fusion import fuse
-from lore.math.opinion import EPSILON, VACUOUS, Opinion
-from lore.math.service import MathService
+from lore.math._confidence import to_confidence, to_opinion, to_uncertainty
+from lore.math._fusion import fuse
+from lore.math._opinion import EPSILON, VACUOUS, Opinion
+from lore.math._service import MathService
 
 from .conftest import PROP_TOL, opinion_strategy
 

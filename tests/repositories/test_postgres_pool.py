@@ -10,10 +10,10 @@ from psycopg_pool import AsyncConnectionPool
 
 from lore.domain import RetryableTransactionError, StorageError
 from lore.repositories import AttestationRecord, PostgresConfig, RequestRecord
-from lore.repositories.postgres.connection import create_pool
-from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository
-from lore.repositories.postgres.pool import PostgresPool
-from lore.repositories.records import generate_id
+from lore.repositories._postgres.connection import create_pool
+from lore.repositories._postgres.hypotheses import PostgresHypothesisRepository
+from lore.repositories._postgres.pool import PostgresPool
+from lore.repositories._records import generate_id
 from tests.repositories.conftest import SCHEMA_DIM, TEST_POSTGRES_CONFIG
 
 
@@ -311,7 +311,7 @@ class TestCreatePoolThreadsConfig:
     async def test_postgres_pool_create_threads_config_to_create_pool(self, pg_dsn: str) -> None:
         config = PostgresConfig(min_size=1, max_size=4, timeout=2.0, max_waiting=8)
         with patch(
-            "lore.repositories.postgres.pool.create_pool",
+            "lore.repositories._postgres.pool.create_pool",
             wraps=create_pool,
         ) as spy:
             pool = await PostgresPool.create(dsn=pg_dsn, config=config)

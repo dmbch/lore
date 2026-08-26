@@ -1,5 +1,5 @@
 """Orchestrator package: re-exports for stable public API."""
 
-from .orchestrator import Orchestrator
+from ._orchestrator import Orchestrator
 
 __all__ = ["Orchestrator"]

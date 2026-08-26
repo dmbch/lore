@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from lore.domain.types import (
+from lore.domain._types import (
     ArchivistOutput,
     InterpreterOutput,
 )

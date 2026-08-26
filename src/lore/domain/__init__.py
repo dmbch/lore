@@ -4,7 +4,7 @@ Leaf dependency among the layers. Every layer may import from here; this
 package imports nothing but ``lore._pydantic``, layer zero beneath every layer.
 """
 
-from lore.domain.errors import (
+from lore.domain._errors import (
     ArchivistResolutionError,
     DomainInvariantError,
     DuplicateRecord,
@@ -13,7 +13,7 @@ from lore.domain.errors import (
     RetryableTransactionError,
     StorageError,
 )
-from lore.domain.types import (
+from lore.domain._types import (
     LOCAL_ORACLE,
     TRANSFER_ORACLE,
     ArchivistInput,

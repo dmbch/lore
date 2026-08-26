@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from lore.repositories.sqlite.connection import connect
+from lore.repositories._sqlite.connection import connect
 
 
 class TestConnectExtensionLoadFailure:
@@ -26,7 +26,7 @@ class TestConnectExtensionLoadFailure:
         # ``sqlite_vec.loadable_path``. Aim a known-missing file at it;
         # SQLite's loader raises ``sqlite3.OperationalError``.
         monkeypatch.setattr(
-            "lore.repositories.sqlite.connection.sqlite_vec.loadable_path",
+            "lore.repositories._sqlite.connection.sqlite_vec.loadable_path",
             lambda: "/nonexistent/path/to/vec.dylib",
         )
 
