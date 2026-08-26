@@ -17,14 +17,14 @@ import math
 
 import pytest
 
-from lore.math.service import MathService
+from lore.math import MathService
 from lore.repositories import AttestationRecord, DecayWindow
-from lore.repositories.protocols import (
+from lore.repositories._protocols import (
     AttestationsRepository,
     HypothesisRepository,
     RequestRepository,
 )
-from lore.repositories.records import generate_id
+from lore.repositories._records import generate_id
 from tests.repositories.conftest import (
     EPSILON,
     seed_hypothesis,

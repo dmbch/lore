@@ -18,17 +18,17 @@ import structlog
 
 from lore.domain import StorageError
 from lore.repositories import PostgresConfig, SqliteConfig, check_health, run_migrations
-from lore.repositories.migrate import read_migrations
+from lore.repositories._migrate import read_migrations
 from tests.repositories.conftest import drop_pg_tables, make_settings
 
-_SQLITE_MIGRATIONS_PACKAGE = "lore.repositories.sqlite.migrations"
-_POSTGRES_MIGRATIONS_PACKAGE = "lore.repositories.postgres.migrations"
+_SQLITE_MIGRATIONS_PACKAGE = "lore.repositories._sqlite.migrations"
+_POSTGRES_MIGRATIONS_PACKAGE = "lore.repositories._postgres.migrations"
 
 # --- run_migrations: routing ---
 
 
 class TestRunMigrationsRouting:
-    @patch("lore.repositories.sqlite.bootstrap.run_migrations")
+    @patch("lore.repositories._sqlite.bootstrap.run_migrations")
     def test_run_migrations_sqlite_dsn_routes_to_sqlite(self, mock_sqlite: MagicMock) -> None:
         dsn = "sqlite:///tmp/test.db"
         run_migrations(settings=make_settings(dsn=dsn), embedding_dim=1024)
@@ -36,13 +36,13 @@ class TestRunMigrationsRouting:
             dsn=dsn, embedding_dim=1024, fulltext_config="porter unicode61"
         )
 
-    @patch("lore.repositories.postgres.bootstrap.run_migrations")
+    @patch("lore.repositories._postgres.bootstrap.run_migrations")
     def test_run_migrations_postgresql_dsn_routes_to_postgres(self, mock_pg: MagicMock) -> None:
         dsn = "postgresql://localhost/db"
         run_migrations(settings=make_settings(dsn=dsn), embedding_dim=1024)
         mock_pg.assert_called_once_with(dsn=dsn, embedding_dim=1024, fulltext_config="english")
 
-    @patch("lore.repositories.postgres.bootstrap.run_migrations")
+    @patch("lore.repositories._postgres.bootstrap.run_migrations")
     def test_run_migrations_postgres_scheme_routes_to_postgres(self, mock_pg: MagicMock) -> None:
         dsn = "postgres://localhost/db"
         run_migrations(settings=make_settings(dsn=dsn), embedding_dim=1024)
@@ -484,7 +484,7 @@ class TestCheckHealthPostgres:
 
 
 class TestCheckHealthRouting:
-    @patch("lore.repositories.postgres.bootstrap.check_health")
+    @patch("lore.repositories._postgres.bootstrap.check_health")
     def test_check_health_postgres_dsn_routes_to_postgres(self, mock_pg: MagicMock) -> None:
         dsn = "postgresql://localhost/db"
         check_health(settings=make_settings(dsn=dsn, embedding_model="model"), embedding_dim=1024)

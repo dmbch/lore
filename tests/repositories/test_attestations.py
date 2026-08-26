@@ -8,12 +8,12 @@ import pytest
 
 from lore.domain import TRANSFER_ORACLE, EvidenceInput, IntegrityViolation, StorageError
 from lore.repositories import AttestationRecord, DecayWindow
-from lore.repositories.protocols import (
+from lore.repositories._protocols import (
     AttestationsRepository,
     HypothesisRepository,
     RequestRepository,
 )
-from lore.repositories.records import generate_id
+from lore.repositories._records import generate_id
 from tests.repositories.conftest import NO_DECAY_TRUST_HL as _NO_DECAY_HL
 from tests.repositories.conftest import seed_hypothesis, seed_request
 

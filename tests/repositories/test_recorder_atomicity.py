@@ -41,7 +41,7 @@ from lore.repositories import (
     Repositories,
     RepositoryPool,
 )
-from lore.repositories.records import generate_id
+from lore.repositories._records import generate_id
 from tests.repositories._orchestrator_fixtures import (
     FixedEmbedder,
     StubCompletion,

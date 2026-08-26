@@ -15,13 +15,12 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from prefab_ui.components import DataTable
 
-from lore.adapter.observatory import build_observatory
-from lore.adapter.observatory.tools import (
+from lore.adapter._observatory import build_observatory
+from lore.adapter._observatory.tools import (
     _frontier,  # pyright: ignore[reportPrivateUsage]
     _observe,  # pyright: ignore[reportPrivateUsage]
 )
-from lore.domain import FrontierEntry
-from lore.domain.errors import StorageError
+from lore.domain import FrontierEntry, StorageError
 from lore.orchestrator import Orchestrator
 
 # Stand-in for the contract's observe blurb: injected into build_observatory the

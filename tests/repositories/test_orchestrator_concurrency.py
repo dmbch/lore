@@ -19,8 +19,8 @@ from lore.domain import (
 from lore.orchestrator import Orchestrator
 from lore.providers import Providers, TaskTypeKey
 from lore.repositories import AttestationRecord, RequestRecord
-from lore.repositories.postgres.pool import PostgresPool
-from lore.repositories.records import generate_id
+from lore.repositories._postgres.pool import PostgresPool
+from lore.repositories._records import generate_id
 from tests.orchestrator.conftest import (
     StubCompletion,
     make_interpreter_output,

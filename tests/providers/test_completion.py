@@ -14,7 +14,7 @@ from pydantic import BaseModel, ValidationError
 
 from lore.domain import InferenceError
 from lore.providers import ModelConfig
-from lore.providers.completion import CompletionProvider
+from lore.providers._completion import CompletionProvider
 
 
 class _DummyResponse(BaseModel):
@@ -36,7 +36,7 @@ def _make_provider(
     """Build a CompletionProvider with patched Instructor and wired mock_create."""
     mock_client = MagicMock()
     mock_client.chat.completions.create = mock_create
-    with patch("lore.providers.completion.instructor") as mock_instructor:
+    with patch("lore.providers._completion.instructor") as mock_instructor:
         mock_instructor.from_provider.return_value = mock_client
         provider = CompletionProvider(config)
         yield provider, _CompletionHarness(mock_instructor, mock_create)

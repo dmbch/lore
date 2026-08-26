@@ -8,12 +8,12 @@ import psycopg
 import pytest
 
 from lore.domain import StorageError
-from lore.repositories.protocols import (
+from lore.repositories._protocols import (
     AttestationsRepository,
     HypothesisRepository,
     RequestRepository,
 )
-from lore.repositories.records import AttestationRecord, RequestRecord, generate_id
+from lore.repositories._records import AttestationRecord, RequestRecord, generate_id
 from tests.repositories.conftest import BackendFixture, seed_hypothesis
 
 

@@ -1,4 +1,4 @@
-"""Tests for lore.adapter.mcp: FastMCP server and tool registration."""
+"""Tests for lore.adapter._mcp: FastMCP server and tool registration."""
 
 import logging
 import os
@@ -18,14 +18,13 @@ from mcp.types import TextResourceContents
 from pydantic import SecretStr
 
 from lore.adapter import OidcConfig
-from lore.adapter._contract import (  # pyright: ignore[reportPrivateUsage]
+from lore.adapter._contract import (
     CONSULT_TOOL,
     load_server_contract,
 )
-from lore.adapter.mcp import create_server
+from lore.adapter._mcp import create_server
 from lore.config import LoreSettings, load_settings
-from lore.domain import ConsultLoreRequest, ConsultLoreResponse
-from lore.domain.errors import StorageError
+from lore.domain import ConsultLoreRequest, ConsultLoreResponse, StorageError
 from lore.orchestrator import Orchestrator
 from lore.prompts import load_prompt
 
@@ -83,7 +82,7 @@ def server(settings: LoreSettings) -> FastMCP[Orchestrator]:
 def test_bundled_logo_returns_png_data_uri() -> None:
     import base64
 
-    from lore.adapter.mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
 
     uri = _bundled_logo()
     assert uri.startswith("data:image/png;base64,")
@@ -204,7 +203,7 @@ def test_create_server_uses_configured_icon_url(settings: LoreSettings) -> None:
 
 
 def test_create_server_falls_back_to_bundled_logo(settings: LoreSettings) -> None:
-    from lore.adapter.mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _bundled_logo  # pyright: ignore[reportPrivateUsage]
 
     # settings has icon_url=None by default (fixture uses base TOML).
     assert settings.server.icon_url is None  # sanity-check the fixture state
@@ -281,7 +280,7 @@ async def test_tool_extracts_oracle_id_from_access_token(
     """When an access token is present, oracle_id comes from the 'sub' claim."""
     fake_token = MagicMock()
     fake_token.claims = {"sub": "oracle-42"}
-    with patch("lore.adapter.middleware.get_access_token", return_value=fake_token):
+    with patch("lore.adapter._middleware.get_access_token", return_value=fake_token):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
     call_args = mock_orchestrator.consult.call_args
     oracle_id = call_args.kwargs["oracle_id"]
@@ -306,7 +305,7 @@ async def test_oracle_identity_does_not_outlive_its_tool_call(
     fake_token = MagicMock()
     fake_token.claims = {"sub": "oracle-42"}
     async with Client(wired_server) as client:
-        with patch("lore.adapter.middleware.get_access_token", return_value=fake_token):
+        with patch("lore.adapter._middleware.get_access_token", return_value=fake_token):
             await client.call_tool("consult", {"question": "who am I?"})
         contents = await client.read_resource("state://oracle-id")
 
@@ -351,7 +350,7 @@ async def test_correlation_id_uses_trace_id_when_otel_active(
         is_remote=False,
         trace_flags=TraceFlags(0x01),
     )
-    with patch("lore.adapter.mcp.otel_trace.get_current_span", return_value=NonRecordingSpan(ctx)):
+    with patch("lore.adapter._mcp.otel_trace.get_current_span", return_value=NonRecordingSpan(ctx)):
         await _call_tool(wired_server, "consult", {"question": "what?"})
 
     call_args = mock_orchestrator.consult.call_args
@@ -398,7 +397,7 @@ async def test_consult_auth_failure_is_constant_message(
     fake_token = MagicMock()
     fake_token.claims = {"aud": "some-audience"}
     with (
-        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
+        patch("lore.adapter._middleware.get_access_token", return_value=fake_token),
         pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
@@ -467,7 +466,7 @@ async def test_consult_diagnostic_survives_in_fastmcp_log(
 
 def test_server_with_oidc_configures_auth(settings: LoreSettings) -> None:
     sentinel = MagicMock()
-    with patch("lore.adapter.mcp._build_auth", return_value=sentinel):
+    with patch("lore.adapter._mcp._build_auth", return_value=sentinel):
         oidc_server = create_server(settings=settings, system=_noop_system)
     assert oidc_server.auth is sentinel
 
@@ -477,13 +476,13 @@ def test_server_without_oidc_has_no_auth(server: FastMCP[Orchestrator]) -> None:
 
 
 def test_build_auth_returns_none_without_oidc(settings: LoreSettings) -> None:
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
     assert _build_auth(settings) is None
 
 
 def test_build_auth_returns_none_without_base_url(settings: LoreSettings) -> None:
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
     assert _build_auth(_with_oidc(settings, base_url=None)) is None
 
@@ -495,10 +494,10 @@ def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -
     structurally. Per-kwarg tests below cover the trust-grading additions
     (`required_scopes`, `verify_id_token`, `extra_authorize_params`).
     """
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
     oidc_settings = _with_oidc(settings)
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with patch("lore.adapter._mcp.OIDCProxy") as mock_proxy:
         result = _build_auth(oidc_settings)
     kwargs = mock_proxy.call_args.kwargs
     assert kwargs["config_url"] == "https://auth.example.com/.well-known/openid-configuration"
@@ -510,9 +509,9 @@ def test_build_auth_forwards_oidc_credentials_to_proxy(settings: LoreSettings) -
 
 def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None:
     """openid is hardcoded at the OIDCProxy boundary: the minimum OIDC guarantees an id_token."""
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with patch("lore.adapter._mcp.OIDCProxy") as mock_proxy:
         _build_auth(_with_oidc(settings))
     assert mock_proxy.call_args.kwargs["required_scopes"] == ["openid"]
 
@@ -521,12 +520,12 @@ def test_build_auth_passes_openid_required_scope(settings: LoreSettings) -> None
 def test_build_auth_forwards_verify_id_token_from_auth_section(
     settings: LoreSettings, *, verify: bool
 ) -> None:
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
     oidc_settings = _with_oidc(settings).model_copy(
         update={"auth": settings.auth.model_copy(update={"verify_id_token": verify})}
     )
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with patch("lore.adapter._mcp.OIDCProxy") as mock_proxy:
         _build_auth(oidc_settings)
     assert mock_proxy.call_args.kwargs["verify_id_token"] is verify
 
@@ -535,10 +534,10 @@ def test_build_auth_forwards_extra_authorize_params_from_settings(
     settings: LoreSettings,
 ) -> None:
     """Non-empty extra_authorize_params flows through verbatim (e.g. Google's hd=)."""
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
     oidc_settings = _with_oidc(settings, extra_authorize_params={"hd": "example.com"})
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with patch("lore.adapter._mcp.OIDCProxy") as mock_proxy:
         _build_auth(oidc_settings)
     assert mock_proxy.call_args.kwargs["extra_authorize_params"] == {"hd": "example.com"}
 
@@ -556,10 +555,10 @@ def test_build_auth_wraps_the_storage_into_client_storage(
     from key_value.aio.stores.memory import MemoryStore
     from key_value.aio.wrappers.encryption.fernet import FernetEncryptionWrapper
 
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
     store = MemoryStore()
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with patch("lore.adapter._mcp.OIDCProxy") as mock_proxy:
         _build_auth(_with_oidc(settings), storage=store)
     forwarded = mock_proxy.call_args.kwargs["client_storage"]
     assert isinstance(forwarded, FernetEncryptionWrapper)
@@ -573,25 +572,25 @@ def test_build_auth_without_oidc_spends_no_encryption(settings: LoreSettings) ->
     """
     from key_value.aio.stores.memory import MemoryStore
 
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    with patch("lore.adapter.mcp.FernetEncryptionWrapper") as mock_wrapper:
+    with patch("lore.adapter._mcp.FernetEncryptionWrapper") as mock_wrapper:
         assert _build_auth(settings, storage=MemoryStore()) is None
     mock_wrapper.assert_not_called()
 
 
 def test_build_auth_defaults_client_storage_to_none(settings: LoreSettings) -> None:
     """None reaches OIDCProxy, whose own code path builds the file-store default."""
-    from lore.adapter.mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
+    from lore.adapter._mcp import _build_auth  # pyright: ignore[reportPrivateUsage]
 
-    with patch("lore.adapter.mcp.OIDCProxy") as mock_proxy:
+    with patch("lore.adapter._mcp.OIDCProxy") as mock_proxy:
         _build_auth(_with_oidc(settings))
     assert mock_proxy.call_args.kwargs["client_storage"] is None
 
 
 def test_create_server_forwards_storage_to_build_auth(settings: LoreSettings) -> None:
     storage = MagicMock()
-    with patch("lore.adapter.mcp._build_auth", return_value=None) as mock_build:
+    with patch("lore.adapter._mcp._build_auth", return_value=None) as mock_build:
         create_server(settings=settings, system=_noop_system, storage=storage)
     assert mock_build.call_args.kwargs["storage"] is storage
 
@@ -624,7 +623,7 @@ async def test_token_with_non_string_sub_claim_raises_tool_error(
     fake_token = MagicMock()
     fake_token.claims = {"sub": 12345}
     with (
-        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
+        patch("lore.adapter._middleware.get_access_token", return_value=fake_token),
         pytest.raises(ToolError, match="authentication failed"),
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
@@ -690,7 +689,7 @@ async def test_synthetic_namespace_sub_rejected(
     fake_token = MagicMock()
     fake_token.claims = {"sub": sub}
     with (
-        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
+        patch("lore.adapter._middleware.get_access_token", return_value=fake_token),
         pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
@@ -706,7 +705,7 @@ async def test_empty_sub_rejected(
     fake_token = MagicMock()
     fake_token.claims = {"sub": ""}
     with (
-        patch("lore.adapter.middleware.get_access_token", return_value=fake_token),
+        patch("lore.adapter._middleware.get_access_token", return_value=fake_token),
         pytest.raises(ToolError) as exc_info,
     ):
         await _call_tool(wired_server, "consult", {"question": "who am I?"})
@@ -726,7 +725,7 @@ async def test_consult_without_identity_state_fails_masked(
     """
     from fastmcp.server.middleware import Middleware
 
-    with patch("lore.adapter.mcp.OracleIdentityMiddleware", return_value=Middleware()):
+    with patch("lore.adapter._mcp.OracleIdentityMiddleware", return_value=Middleware()):
         srv = create_server(settings=settings, system=partial(_noop_system, mock_orchestrator))
     with pytest.raises(ToolError) as exc_info:
         await _call_tool(srv, "consult", {"question": "who am I?"})

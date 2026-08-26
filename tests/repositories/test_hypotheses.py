@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 
 from lore.domain import StorageError
-from lore.repositories.protocols import HypothesisRepository
+from lore.repositories._protocols import HypothesisRepository
 
 # Must match the dimension used by session-scoped migrations in conftest.
 _VECTOR_DIM: int = 1024

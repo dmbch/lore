@@ -4,7 +4,7 @@ from datetime import date
 
 from prefab_ui.components import DataTable
 
-from lore.adapter.observatory.render import (
+from lore.adapter._observatory.render import (
     _format_last_attested,  # pyright: ignore[reportPrivateUsage]
     render_frontier,
 )

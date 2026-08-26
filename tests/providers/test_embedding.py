@@ -8,7 +8,7 @@ from litellm.types.utils import Embedding, EmbeddingResponse
 
 from lore.domain import InferenceError
 from lore.providers import EmbeddingModelConfig, TaskTypeConfig
-from lore.providers.embedding import EmbeddingProvider
+from lore.providers._embedding import EmbeddingProvider
 
 
 def _make_batch_response(embeddings: list[list[float]]) -> EmbeddingResponse:
@@ -31,7 +31,7 @@ class TestEmbedManyHappyPath:
         provider = EmbeddingProvider(config)
         expected = [[0.1], [0.2], [0.3]]
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response(expected),
             )
@@ -43,7 +43,7 @@ class TestEmbedManyHappyPath:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )
@@ -58,7 +58,7 @@ class TestEmbedManyHappyPath:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock()
             result = await provider.embed_many([])
 
@@ -76,7 +76,7 @@ class TestEmbedManyDimensions:
         config = EmbeddingModelConfig(model="text-embedding-3-small", dimensions=256)
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1, 0.2]]),
             )
@@ -100,7 +100,7 @@ class TestEmbedManyTaskType:
         )
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1], [0.2]]),
             )
@@ -119,7 +119,7 @@ class TestEmbedManyTaskType:
         )
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )
@@ -136,7 +136,7 @@ class TestEmbedManyTaskType:
         )
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )
@@ -149,7 +149,7 @@ class TestEmbedManyTaskType:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )
@@ -169,7 +169,7 @@ class TestEmbedManyOmittedOptionals:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )
@@ -189,7 +189,7 @@ class TestEmbedManyErrorMapping:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 side_effect=openai.OpenAIError("rate limited"),
             )
@@ -206,7 +206,7 @@ class TestEmbedManyErrorMapping:
         config = EmbeddingModelConfig(model="text-embedding-3-small")
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )
@@ -218,7 +218,7 @@ class TestEmbedManyErrorMapping:
         provider = EmbeddingProvider(config)
         original = openai.OpenAIError("timeout")
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(side_effect=original)
             with pytest.raises(InferenceError) as exc_info:
                 await provider.embed_many(["test"])
@@ -245,7 +245,7 @@ class TestEmbedManyPassThroughExtras:
         )
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )
@@ -259,7 +259,7 @@ class TestEmbedManyPassThroughExtras:
         config = EmbeddingModelConfig(model="text-embedding-3-small", dimensions=256)
         provider = EmbeddingProvider(config)
 
-        with patch("lore.providers.embedding.litellm") as mock_litellm:
+        with patch("lore.providers._embedding.litellm") as mock_litellm:
             mock_litellm.aembedding = AsyncMock(
                 return_value=_make_batch_response([[0.1]]),
             )

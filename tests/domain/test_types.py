@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from lore.domain.types import (
+from lore.domain._types import (
     ArchivistInput,
     ArchivistOutput,
     ConsultLoreRequest,

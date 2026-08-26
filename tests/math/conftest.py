@@ -6,7 +6,7 @@ Tolerance constants control how tightly we compare floating-point results.
 
 from hypothesis import strategies as st
 
-from lore.math.opinion import Opinion
+from lore.math._opinion import Opinion
 
 # --- Hypothesis strategies ---
 

@@ -18,8 +18,8 @@ import pytest
 
 from lore.domain import DuplicateRecord, IntegrityViolation, StorageError
 from lore.repositories import AttestationRecord, RepositoryPool
-from lore.repositories.records import generate_id
-from lore.repositories.sqlite.pool import SqlitePool
+from lore.repositories._records import generate_id
+from lore.repositories._sqlite.pool import SqlitePool
 from tests.repositories.conftest import (
     NO_DECAY_TRUST_HL,
     SCHEMA_DIM,
@@ -40,7 +40,7 @@ def _force_fixed_id(monkeypatch: pytest.MonkeyPatch) -> None:
     Every backend module accesses ``records.generate_id()`` through qualified
     module access, so one patch at the source binds all call sites.
     """
-    monkeypatch.setattr("lore.repositories.records.generate_id", lambda: _FIXED_ID)
+    monkeypatch.setattr("lore.repositories._records.generate_id", lambda: _FIXED_ID)
 
 
 class TestTransactionPropagatesNonDbExceptions:

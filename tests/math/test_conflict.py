@@ -12,12 +12,12 @@ base-rate-independent and matches Jøsang exactly.
 
 from hypothesis import given
 
-from lore.math.conflict import (
+from lore.math._conflict import (
     compute_conjunctive_certainty,
     compute_degree_of_conflict,
     compute_projected_distance,
 )
-from lore.math.opinion import EPSILON, VACUOUS, Opinion
+from lore.math._opinion import EPSILON, VACUOUS, Opinion
 from tests.math.conftest import PROP_TOL, opinion_strategy
 
 

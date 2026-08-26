@@ -17,8 +17,8 @@ from pydantic import ValidationError
 
 from lore.config import load_settings
 from lore.domain import AttestationComputed, EvidenceInput, TrustSignal
-from lore.math.opinion import EPSILON
-from lore.math.service import MathService, build_math
+from lore.math._opinion import EPSILON
+from lore.math._service import MathService, build_math
 from tests.math.conftest import PROP_TOL
 from tests.repositories.conftest import NO_DECAY_TRUST_HL as _NO_DECAY_HL
 

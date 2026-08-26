@@ -13,7 +13,7 @@ from lore.config import load_settings
 from lore.domain import ConsultLoreRequest, ConsultLoreResponse
 from lore.math import EpistemicsConfig
 from lore.orchestrator import Orchestrator
-from lore.repositories.sqlite.pool import SqlitePool
+from lore.repositories._sqlite.pool import SqlitePool
 from tests.conftest import configure_trace_sink
 from tests.e2e.fixtures.golden import golden_copy
 

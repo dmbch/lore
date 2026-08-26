@@ -18,11 +18,11 @@ import pytest
 
 from lore.domain import StorageError
 from lore.repositories import RepositoryPool, check_health, connect, make_probe, run_migrations
-from lore.repositories.postgres.hypotheses import PostgresHypothesisRepository
-from lore.repositories.postgres.pool import PostgresPool
-from lore.repositories.protocols import Repositories
-from lore.repositories.records import RequestRecord
-from lore.repositories.sqlite.pool import SqlitePool
+from lore.repositories._postgres.hypotheses import PostgresHypothesisRepository
+from lore.repositories._postgres.pool import PostgresPool
+from lore.repositories._protocols import Repositories
+from lore.repositories._records import RequestRecord
+from lore.repositories._sqlite.pool import SqlitePool
 from tests.repositories.conftest import SCHEMA_DIM, make_settings
 
 _EMBEDDING = [1.0 / SCHEMA_DIM] * SCHEMA_DIM
@@ -224,7 +224,7 @@ class TestConnectFailure:
     async def test_postgres_pool_failure_wraps_as_storage_error(self, pg_dsn: str) -> None:
         with (
             patch(
-                "lore.repositories.postgres.pool.create_pool",
+                "lore.repositories._postgres.pool.create_pool",
                 side_effect=OSError("connection refused"),
             ),
             pytest.raises(StorageError, match="connection refused"),
@@ -234,7 +234,7 @@ class TestConnectFailure:
     async def test_sqlite_connect_failure_wraps_as_storage_error(self) -> None:
         with (
             patch(
-                "lore.repositories.sqlite.pool.sqlite_connect",
+                "lore.repositories._sqlite.pool.sqlite_connect",
                 side_effect=sqlite3.OperationalError("unable to open database file"),
             ),
             pytest.raises(StorageError, match="unable to open database file"),
@@ -347,7 +347,7 @@ class TestPostgresPoolCheckCallback:
         from psycopg_pool import AsyncConnectionPool
 
         from lore.repositories import PostgresConfig
-        from lore.repositories.postgres.connection import create_pool
+        from lore.repositories._postgres.connection import create_pool
 
         config = PostgresConfig(min_size=1, max_size=2, timeout=1.0, max_waiting=0)
         with patch.object(AsyncConnectionPool, "open", new=AsyncMock()):

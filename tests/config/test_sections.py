@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from lore.config import ConfigurationError, load_settings
-from lore.config.loader import (
+from lore.config._loader import (
     _resolve_prompts,  # pyright: ignore[reportPrivateUsage]
 )
 

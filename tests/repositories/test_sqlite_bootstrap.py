@@ -9,7 +9,7 @@ under WAL rather than the default rollback journal. Closes audit S1.5.
 import tempfile
 from pathlib import Path
 
-from lore.repositories.sqlite.bootstrap import _connect  # pyright: ignore[reportPrivateUsage]
+from lore.repositories._sqlite.bootstrap import _connect  # pyright: ignore[reportPrivateUsage]
 
 
 class TestConnectJournalMode:

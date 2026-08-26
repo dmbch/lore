@@ -2,7 +2,7 @@
 # Smoke-test the built image: sqlite floor, boots, serves /health + /ready, stops.
 set -euo pipefail
 IMAGE="${1:?usage: $0 <image>}"
-# Runtime floor: vec0 KNN needs SQLite >= 3.41 (see repositories/sqlite).
+# Runtime floor: vec0 KNN needs SQLite >= 3.41 (see repositories/_sqlite).
 docker run --rm --entrypoint python "$IMAGE" -c \
   'import sqlite3; assert sqlite3.sqlite_version_info >= (3, 41), sqlite3.sqlite_version'
 echo "OK: runtime sqlite >= 3.41"

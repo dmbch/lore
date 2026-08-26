@@ -37,8 +37,8 @@ from lore.domain import ConsultLoreRequest, InterpreterOutput
 # Orchestrator, and the eval must run the production stages, not a copy.
 # Measurement tooling rides the internal stage seam; the commit gate reds
 # if that seam moves.
-from lore.orchestrator.interpret import interpret
-from lore.orchestrator.retrieve import embed_sources, search_candidates
+from lore.orchestrator._interpret import interpret
+from lore.orchestrator._retrieve import embed_sources, search_candidates
 from lore.providers import Providers, build_providers, resolve_dimensions
 from lore.repositories import (
     HypothesisRepository,

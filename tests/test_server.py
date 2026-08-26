@@ -287,7 +287,7 @@ def test_server_factory_wires_oauth_storage_into_auth(
     }
     with (
         patch.dict(os.environ, env, clear=True),
-        patch("lore.adapter.mcp.OIDCProxy") as mock_proxy,
+        patch("lore.adapter._mcp.OIDCProxy") as mock_proxy,
     ):
         server()
     assert isinstance(mock_proxy.call_args.kwargs["client_storage"], FernetEncryptionWrapper)

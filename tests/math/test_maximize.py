@@ -1,7 +1,7 @@
 from hypothesis import given
 
-from lore.math.maximize import maximize_uncertainty
-from lore.math.opinion import EPSILON, VACUOUS, Opinion
+from lore.math._maximize import maximize_uncertainty
+from lore.math._opinion import EPSILON, VACUOUS, Opinion
 from tests.math.conftest import PROP_TOL, opinion_strategy
 
 

@@ -8,9 +8,9 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from lore.math.confidence import to_confidence, to_opinion
-from lore.math.discount import discount
-from lore.math.opinion import EPSILON, Opinion
+from lore.math._confidence import to_confidence, to_opinion
+from lore.math._discount import discount
+from lore.math._opinion import EPSILON, Opinion
 
 from .conftest import PROP_TOL
 

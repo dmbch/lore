@@ -2,7 +2,7 @@
 
 import pytest
 
-from lore.prompts.parser import parse
+from lore.prompts._parser import parse
 
 
 def test_parse_empty_text_yields_empty_mapping() -> None:

@@ -1,4 +1,4 @@
-"""Tests for lore.adapter.middleware: oracle identity resolution."""
+"""Tests for lore.adapter._middleware: oracle identity resolution."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,7 +6,7 @@ import pytest
 import structlog
 from fastmcp.exceptions import ToolError
 
-from lore.adapter.middleware import OracleIdentityMiddleware
+from lore.adapter._middleware import OracleIdentityMiddleware
 from lore.domain import LOCAL_ORACLE
 
 _AUTH_FAILED = "authentication failed: access token has no usable 'sub' claim"
@@ -30,7 +30,7 @@ async def test_token_sub_becomes_oracle_id() -> None:
     context = _context()
     call_next = AsyncMock(return_value="downstream result")
     with patch(
-        "lore.adapter.middleware.get_access_token",
+        "lore.adapter._middleware.get_access_token",
         return_value=_token({"sub": "oracle-42"}),
     ):
         result = await OracleIdentityMiddleware().on_call_tool(context, call_next)
@@ -45,7 +45,7 @@ async def test_no_token_falls_back_to_local_oracle() -> None:
     """Unauthenticated (stdio mode) resolves to the trusted local synthetic."""
     context = _context()
     call_next = AsyncMock()
-    with patch("lore.adapter.middleware.get_access_token", return_value=None):
+    with patch("lore.adapter._middleware.get_access_token", return_value=None):
         await OracleIdentityMiddleware().on_call_tool(context, call_next)
     context.fastmcp_context.set_state.assert_awaited_once_with(
         "oracle_id", LOCAL_ORACLE, serializable=False
@@ -69,7 +69,7 @@ async def test_unusable_sub_rejected_with_constant_message(claims: dict[str, obj
     context = _context()
     call_next = AsyncMock()
     with (
-        patch("lore.adapter.middleware.get_access_token", return_value=_token(claims)),
+        patch("lore.adapter._middleware.get_access_token", return_value=_token(claims)),
         pytest.raises(ToolError) as exc_info,
     ):
         await OracleIdentityMiddleware().on_call_tool(context, call_next)
@@ -87,7 +87,7 @@ async def test_rejected_sub_leaves_operator_log_record() -> None:
     call_next = AsyncMock()
     with (
         patch(
-            "lore.adapter.middleware.get_access_token", return_value=_token({"sub": "_transfer"})
+            "lore.adapter._middleware.get_access_token", return_value=_token({"sub": "_transfer"})
         ),
         structlog.testing.capture_logs() as cap,
         pytest.raises(ToolError),

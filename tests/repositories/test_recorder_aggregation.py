@@ -20,7 +20,7 @@ from lore.domain import (
 from lore.orchestrator import Orchestrator
 from lore.providers import Providers
 from lore.repositories import AttestationRecord
-from lore.repositories.records import generate_id
+from lore.repositories._records import generate_id
 from tests.repositories._orchestrator_fixtures import (
     FixedEmbedder,
     StubCompletion,

@@ -1,6 +1,6 @@
 """Property tests for the ECBF underflow fallback path.
 
-Audit S3.1: ``_acbf_pair``'s underflow guard at ``fusion.py:61-62``
+Audit S3.1: ``_acbf_pair``'s underflow guard at ``_fusion.py:61-62``
 falls back to a γ=0.5 dogmatic average when ``u_A * u_B`` underflows
 to zero in IEEE 754. ``fuse`` uses ``functools.reduce`` for the
 non-all-dogmatic case, so for a borderline mix like
@@ -25,9 +25,9 @@ projected probability: that's what every downstream consumer sees.
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from lore.math.fusion import fuse
-from lore.math.maximize import maximize_uncertainty
-from lore.math.opinion import Opinion
+from lore.math._fusion import fuse
+from lore.math._maximize import maximize_uncertainty
+from lore.math._opinion import Opinion
 
 
 def _non_dogmatic_opinion(b_share: float, d_share: float, u: float) -> Opinion:
@@ -159,7 +159,7 @@ class TestAcbfPairwiseVsNAryEquivalence:
 class TestUnderflowRegimeRouting:
     """Lock in that ``fuse`` routes by the algebraic underflow predicate.
 
-    Audit S2.8: the IEEE-754 ``u * u == 0.0`` proxy at ``fusion.py:111``
+    Audit S2.8: the IEEE-754 ``u * u == 0.0`` proxy at ``_fusion.py:111``
     is platform-dependent: FTZ/DAZ FP-environment flags and fast-math
     contexts can flush subnormals so that the predicate fires at
     different ``u`` than the algebra predicts. These tests pin the
@@ -173,7 +173,7 @@ class TestUnderflowRegimeRouting:
         # Three asymmetric opinions, all with ``u = 1e-200``, well past
         # the IEEE-754 underflow knee for ``u * u`` (2^-1074). With
         # asymmetric ``(b, d)`` the N-ary equal-weight mean (Case II,
-        # ``fusion.py:112``) and the chained pairwise reduction produce
+        # ``_fusion.py:112``) and the chained pairwise reduction produce
         # observably different projected probabilities, so the chosen
         # path is visible in the output.
         u = 1e-200
@@ -187,7 +187,7 @@ class TestUnderflowRegimeRouting:
         # projected probability lands at the structural mean. A broken
         # router that drove these through chained pairwise reduction
         # would land near 0.8 instead (the pairwise underflow guard at
-        # ``fusion.py:61`` emits an intermediate ``u = 0`` after the
+        # ``_fusion.py:61`` emits an intermediate ``u = 0`` after the
         # first pair, and the third opinion's Case I formula then
         # weights the first-pair belief at full strength, see audit
         # S3.1).

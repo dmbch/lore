@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lore.adapter._contract import (  # pyright: ignore[reportPrivateUsage]
+from lore.adapter._contract import (
     CONSULT_TOOL,
     load_server_contract,
 )

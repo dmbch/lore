@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from lore.domain import InferenceError
 from lore.providers import TaskTypeKey
-from lore.providers.protocols import Completer, Embedder
+from lore.providers._protocols import Completer, Embedder
 
 T = TypeVar("T", bound=BaseModel)
 

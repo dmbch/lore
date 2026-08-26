@@ -3,13 +3,13 @@ import itertools
 from hypothesis import given
 from hypothesis import strategies as st
 
-from lore.math.fusion import (
+from lore.math._fusion import (
     _acbf_pair,  # pyright: ignore[reportPrivateUsage]
     _u_in_underflow_regime,  # pyright: ignore[reportPrivateUsage]
     fuse,
 )
-from lore.math.maximize import maximize_uncertainty
-from lore.math.opinion import EPSILON, VACUOUS, Opinion
+from lore.math._maximize import maximize_uncertainty
+from lore.math._opinion import EPSILON, VACUOUS, Opinion
 from tests.math.conftest import PROP_TOL, opinion_strategy
 
 

@@ -37,7 +37,7 @@ from lore.domain import (
 )
 from lore.math import EpistemicsConfig, MathService
 from lore.orchestrator import Orchestrator
-from lore.orchestrator.retrieve import embed_novels, embed_sources, enrich, search_candidates
+from lore.orchestrator._retrieve import embed_novels, embed_sources, enrich, search_candidates
 from lore.prompts import PromptsConfig
 from lore.providers import EmbeddingModelConfig, ModelConfig, Providers, TaskTypeKey
 from lore.repositories import (

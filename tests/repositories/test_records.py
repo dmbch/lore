@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from lore.repositories.records import (
+from lore.repositories._records import (
     AttestationRecord,
     CacheEntry,
     HypothesisRecord,

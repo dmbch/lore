@@ -19,7 +19,7 @@ from lore.domain import (
     RetryableTransactionError,
 )
 from lore.orchestrator import Orchestrator
-from lore.orchestrator.orchestrator import RECORD_MAX_ATTEMPTS
+from lore.orchestrator._orchestrator import RECORD_MAX_ATTEMPTS
 from lore.providers import Providers
 from lore.repositories import Repositories
 from tests.orchestrator.conftest import (
@@ -108,7 +108,7 @@ class TestOrchestratorRecordRetry:
         async def fake_sleep(delay: float) -> None:
             sleeps.append(delay)
 
-        with patch("lore.orchestrator.orchestrator.asyncio.sleep", fake_sleep):
+        with patch("lore.orchestrator._orchestrator.asyncio.sleep", fake_sleep):
             await orchestrator.consult(
                 oracle_id="oracle-1", request=write_request(), correlation_id="corr-retry"
             )
@@ -141,7 +141,7 @@ class TestOrchestratorRecordRetry:
         async def fake_sleep(delay: float) -> None:
             sleeps.append(delay)
 
-        with patch("lore.orchestrator.orchestrator.asyncio.sleep", fake_sleep):
+        with patch("lore.orchestrator._orchestrator.asyncio.sleep", fake_sleep):
             await orchestrator.consult(
                 oracle_id="oracle-1", request=write_request(), correlation_id="corr-retry2"
             )
@@ -171,7 +171,7 @@ class TestOrchestratorRecordRetry:
             pass
 
         with (
-            patch("lore.orchestrator.orchestrator.asyncio.sleep", fake_sleep),
+            patch("lore.orchestrator._orchestrator.asyncio.sleep", fake_sleep),
             pytest.raises(RetryableTransactionError),
         ):
             await orchestrator.consult(

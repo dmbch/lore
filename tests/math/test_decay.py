@@ -9,7 +9,7 @@ Structurally this is Jøsang's trust-discounting operator (Def. 14.6) with
 a time-varying discount P = e^(−λΔt): b and d scale by P, uncertainty
 absorbs the rest, the base rate is preserved. What differs from Ch. 16.2.2
 is the object, not the operator: the book ages evidence counters, Lore
-ages opinions directly (see decay.py module docstring, and logic.md's
+ages opinions directly (see _decay.py module docstring, and logic.md's
 Temporal Decay section for the correspondence). Cross-checked against
 reference implementation single-step erosion.
 """
@@ -20,8 +20,8 @@ import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from lore.math.decay import decay
-from lore.math.opinion import EPSILON, VACUOUS, Opinion
+from lore.math._decay import decay
+from lore.math._opinion import EPSILON, VACUOUS, Opinion
 
 from .conftest import PROP_TOL, opinion_strategy
 

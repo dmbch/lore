@@ -24,7 +24,7 @@ import pytest
 
 from lore.domain import ConsultLoreRequest, InterpreterOutput
 from lore.orchestrator import Orchestrator
-from lore.orchestrator.interpret import interpret
+from lore.orchestrator._interpret import interpret
 from tests.e2e.conftest import judge
 
 pytestmark = [pytest.mark.e2e, pytest.mark.asyncio(loop_scope="session")]

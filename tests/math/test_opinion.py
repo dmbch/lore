@@ -1,7 +1,7 @@
 import pytest
 from hypothesis import given
 
-from lore.math.opinion import BASE_RATE, EPSILON, VACUOUS, Opinion
+from lore.math._opinion import BASE_RATE, EPSILON, VACUOUS, Opinion
 from tests.math.conftest import opinion_strategy
 
 

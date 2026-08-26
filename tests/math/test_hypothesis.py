@@ -13,10 +13,10 @@ See docs/logic.md, "Hypothesis State Computation."
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from lore.math.decay import decay
-from lore.math.fusion import fuse
-from lore.math.hypothesis import OpinionAtTime, compute_hypothesis_state
-from lore.math.opinion import EPSILON, Opinion
+from lore.math._decay import decay
+from lore.math._fusion import fuse
+from lore.math._hypothesis import OpinionAtTime, compute_hypothesis_state
+from lore.math._opinion import EPSILON, Opinion
 from tests.math.conftest import PROP_TOL, opinion_strategy
 
 
