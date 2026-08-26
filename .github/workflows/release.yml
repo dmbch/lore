@@ -52,11 +52,9 @@ jobs:
             echo "released=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # Real LLM + SQLite, xdist with the knowledge arc pinned to one worker.
-  # --no-cov: the suite's fail_under=100 gate would fail on the e2e subset.
-  # The job timeout is the backstop against the deadlock class that got this
-  # gate removed in 2026-07. The run line mirrors mise.toml [tasks.e2e];
-  # keep the flags in sync.
+  # Real LLM + SQLite. The job timeout is the backstop against the deadlock
+  # class that got this gate removed in 2026-07. Flags and their reasons live
+  # in scripts/e2e.sh, shared with `mise run e2e`.
   e2e:
     needs: plan
     if: needs.plan.outputs.released == 'true'
@@ -69,7 +67,7 @@ jobs:
           version: "0.12.5"
           enable-cache: true
       - run: uv sync
-      - run: uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20
+      - run: scripts/e2e.sh
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 

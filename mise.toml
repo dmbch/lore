@@ -45,9 +45,10 @@ run = "uv run tach check"
 [tasks.check]
 depends = ["test", "types", "lint", "check:pins", "tach"]
 
-# Mirrored by the e2e job in .github/workflows/release.yml; keep the flags in sync.
+# Flags and their reasons live in scripts/e2e.sh, shared with the release.yml
+# e2e job.
 [tasks.e2e]
-run = "uv run pytest -m e2e --no-cov -n auto --dist loadgroup --durations=20"
+run = "scripts/e2e.sh"
 
 # Pass-rate measurement for the stochastic e2e suites; the protocol is k >= 5
 # (docs/testing.md). Everything after -- passes through to pytest for
