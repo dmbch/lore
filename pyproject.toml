@@ -24,7 +24,7 @@ dependencies = [
     # Since 1.92.0 litellm bundles a Rust extension with linux and windows
     # wheels only; on macOS the sdist builds against the mise-provisioned
     # Rust toolchain until upstream ships macOS wheels (BerriAI/litellm#31261).
-    "litellm>=1.97.0",
+    "litellm>=1.98.0",
     # SOCKS extra so HTTPS_PROXY=socks5://... works under the Claude sandbox (no direct import).
     "httpx[socks]>=0.28.1",
     # No [litellm] extra: litellm is a direct dependency above, and the extra
@@ -32,7 +32,7 @@ dependencies = [
     # the whole stack behind seven proxy-only security advisories. Those stay
     # unreachable only while Lore consumes litellm as an SDK client; starting
     # the litellm proxy re-exposes all seven.
-    "instructor>=1.15.4",
+    "instructor>=1.16.0",
     "aiosqlite>=0.22.1",
     "pydantic>=2.13.4,<3",
     "fastmcp[apps]>=3.4.7",
