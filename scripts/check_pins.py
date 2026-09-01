@@ -17,8 +17,30 @@ during the image build on the release path, after the e2e spend. This static
 check moves that failure to PR CI and `mise run check`. The range (not an
 exact pin) exists so Dependabot's older bundled uv can still resolve the
 lockfile.
+
+Dependabot only ever bumps the Dockerfile, the one ecosystem it watches, so
+mise.toml, the workflow setup-uv pins, and the workflow python image ref all
+drift out from under it every time. `--fix` treats the Dockerfile as
+authoritative and rewrites the other three back into agreement. It does not
+touch the Dockerfile, and for uv it does not preflight whether the target
+version has reached mise's install backend or setup-uv's checksum manifest:
+astral publishes the docker image, GitHub release, and setup-uv manifest
+from the same pipeline, and Dependabot's own scan cadence already trails
+that by days in practice. The extraordinary case where an upstream channel
+still lags is left to fail loudly at `mise install` or the CI setup-uv step,
+same as any other pin drift.
+
+For python, `--fix` only ever rewrites the workflow image ref to match the
+Dockerfile's tag and digest exactly, a digest-only rebuild (a Debian
+security patch, same python version) is always safe to sync mechanically.
+It never touches .python-version, requires-python, ruff's target-version, or
+pyright's pythonVersion: a real version bump changes those deliberately, and
+that is a human call, not a mechanical one. If the Dockerfile's version
+number itself moved, the self-check after `--fix` still fails and names
+exactly which of those pins is now behind.
 """
 
+import argparse
 import re
 import sys
 import tomllib
@@ -120,6 +142,53 @@ def check_uv_pins() -> None:
         sys.exit(f"uv pin {mise} is outside pyproject required-version {allowed}")
 
 
+def fix_uv_pins() -> None:
+    docker = dockerfile_pin()
+    allowed = pyproject_range()
+    if not allowed.contains(docker):
+        sys.exit(
+            f"Dockerfile uv pin {docker} is outside pyproject required-version {allowed}; "
+            "refusing to propagate it"
+        )
+
+    mise_path = ROOT / "mise.toml"
+    fixed_mise, count = re.subn(
+        r'^uv = "[^"]+"$', f'uv = "{docker}"', mise_path.read_text(), count=1, flags=re.MULTILINE
+    )
+    if count == 0:
+        sys.exit('mise.toml has no uv = "..." line to fix')
+    mise_path.write_text(fixed_mise)
+
+    pattern = re.compile(r'(astral-sh/setup-uv@[^\n]*\n\s*with:\n\s*version: )"[^"]+"')
+    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+        text = workflow.read_text()
+        fixed, changed = pattern.subn(rf'\1"{docker}"', text)
+        if changed:
+            workflow.write_text(fixed)
+
+    check_uv_pins()
+    print(f"uv pins synced to {docker}")
+
+
+def fix_python_pins() -> None:
+    docker = dockerfile_python_ref()
+    expected_image = f"python:{docker}"
+
+    pattern = re.compile(r"^(\s*image:\s*(?:&\S+\s+)?)python:\S+", flags=re.MULTILINE)
+    changed: list[str] = []
+    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+        text = workflow.read_text()
+        fixed, count = pattern.subn(rf"\1{expected_image}", text)
+        if count:
+            workflow.write_text(fixed)
+            changed.append(workflow.name)
+    if not changed:
+        sys.exit("no workflow carries a python container image; nothing to fix")
+
+    check_python_pins()
+    print(f"python image pins synced to {expected_image}")
+
+
 def check_python_pins() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text())
     docker = dockerfile_python_ref()
@@ -154,6 +223,22 @@ def check_python_pins() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Check the toolchain pins agree, or sync them with --fix."
+    )
+    parser.add_argument(
+        "--fix",
+        action="store_true",
+        help=(
+            "rewrite mise.toml, workflow setup-uv pins, and the workflow python image "
+            "ref to match the Dockerfile"
+        ),
+    )
+    args = parser.parse_args()
+    if args.fix:
+        fix_uv_pins()
+        fix_python_pins()
+        return
     check_uv_pins()
     check_python_pins()
 
