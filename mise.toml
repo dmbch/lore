@@ -1,6 +1,6 @@
 [tools]
 # Must satisfy required-version in pyproject.toml [tool.uv]; bump together.
-uv = "0.12.5"
+uv = "0.12.7"
 # Only for litellm's sdist build: since 1.92.0 litellm bundles a Rust
 # extension but ships no macOS wheels yet (BerriAI/litellm#31261); drop
 # this tool when prebuilt macOS wheels land.

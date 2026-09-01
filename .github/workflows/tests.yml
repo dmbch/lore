@@ -22,7 +22,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     container:
-      image: &python-image python:3.14.7-slim-trixie@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
+      image: &python-image python:3.14.7-slim-trixie@sha256:cae66f2ef0ec51a9891263eeee7f987dacf0a9879e8aa9353d5606e0530619a5
     env:
       UV_PYTHON_PREFERENCE: only-system
       UV_PYTHON_DOWNLOADS: never
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
-          version: "0.12.5"
+          version: "0.12.7"
           enable-cache: true
       - run: uv python find | grep '^/usr/local/bin/'
       - run: uv sync
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
-          version: "0.12.5"
+          version: "0.12.7"
           enable-cache: true
       - run: uv python find | grep '^/usr/local/bin/'
       - run: uv sync
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
-          version: "0.12.5"
+          version: "0.12.7"
           enable-cache: true
       - run: uv python find | grep '^/usr/local/bin/'
       - run: uv sync
