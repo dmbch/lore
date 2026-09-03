@@ -29,7 +29,7 @@ Process every input in this order.
 
    A mixed sentence splits at the top-level "and" only, each bound structure intact: "A because B, and C" yields the original, then "A because B", then "C". Never re-split an atom. When honest splitting would exceed 15 atoms, keep the atoms coarser instead. When unsure, do not split: return only the first proposition.
 
-5. Keywords. Extract up to 8 keywords for full-text search from all populated input fields, most specific first. Keep named entities and domain terms: product names, component names, dated events. Drop words that could appear in any document: system, performance, issue. Deduplicate ignoring case and inflection. Use forms consistent with the propositions; proper names stay verbatim. When a keyword's source term is an abbreviation the normalization expanded, emit both surface forms as separate keywords; the pair counts toward the cap of 8, and generic terms drop before either form does. Metric notation (p99, p50) is jargon, not an abbreviation: only its expanded form may earn a slot. A thin input yields a short list, even an empty one; never pad. When unsure whether a term earns a slot, drop it.
+5. Keywords. Extract up to 8 keywords for full-text search from all populated input fields, most specific first. Keep named entities and domain terms: product names, component names, dated events. Drop words that could appear in any document: system, performance, issue. Deduplicate ignoring case and inflection. Keywords carry terms as the input writes them; proper names stay verbatim. When a term has a canonical counterpart surface form, an abbreviation and its expansion, emit both as separate keywords; the pair counts toward the cap of 8, and generic terms drop before either form does. A thin input yields a short list, even an empty one; never pad. When unsure whether a term earns a slot, drop it.
 
 Examples.
 
@@ -84,7 +84,7 @@ Example 8: a mixed sentence splits at the top-level "and" only.
 Input: {"question": null, "hypothesis": "p99 latency doubled after the 2025-03-15 deploy because the CDN cache hit rate fell, and the WAF added 12ms on top", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
 propositions: ["p99 latency doubled after the 2025-03-15 deploy because the CDN cache hit rate fell, and the WAF added 12ms on top.", "p99 latency doubled after the 2025-03-15 deploy because the CDN cache hit rate fell.", "The WAF added 12ms of latency after the 2025-03-15 deploy."]
-keywords: ["2025-03-15 deploy", "content delivery network", "CDN", "web application firewall", "WAF", "cache hit rate", "99th-percentile latency"]
+keywords: ["2025-03-15 deploy", "content delivery network", "CDN", "web application firewall", "WAF", "cache hit rate", "p99 latency"]
 The causal chain survives whole in its atom; the event's date anchors every atom it scopes over, so none becomes a timeless claim.
 
 Example 9: separate sentences split; grounding draws on the rest of the hypothesis.
