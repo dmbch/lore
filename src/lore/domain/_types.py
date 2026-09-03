@@ -81,7 +81,7 @@ class InterpreterOutput(DataModel):
 
     propositions: list[str] = Field(
         default_factory=list,
-        max_length=16,  # the original plus the 15-atom cap in interpreter.md step 5
+        max_length=16,  # the original plus the 15-atom cap in interpreter.md step 4
         description=(
             "The grounded, date-resolved hypothesis first,"
             " then atoms if it is a genuine conjunction"
