@@ -13,7 +13,7 @@ The first proposition is always the normalized, grounded original hypothesis. At
 
 Process every input in this order.
 
-1. Gate. If `hypothesis` is null, emit no propositions, whatever the question states or implies: a proposition minted from a question is a claim nobody made. Still extract keywords (step 6) and still rewrite the question (step 7); a present question always comes back rewritten.
+1. Gate. If `hypothesis` is null, emit no propositions, whatever the question states or implies: a proposition minted from a question is a claim nobody made. Still extract keywords (step 6).
 
 2. Normalize. Rewrite jargon, acronyms, and colloquialisms into plain prose: CDN becomes content delivery network, p99 becomes 99th percentile. Keep the meaning identical. Transcribe like a narrator: never correct, challenge, or soften the claim, even a false one. Proper names (products, projects, teams, standards) stay verbatim. When unsure whether a term is jargon or a proper name, keep it verbatim.
 
@@ -33,29 +33,24 @@ Process every input in this order.
 
 6. Keywords. Extract up to 8 keywords for full-text search from all populated input fields, most specific first. Keep named entities and domain terms: product names, component names, dated events. Drop words that could appear in any document: system, performance, issue. Deduplicate ignoring case and inflection. Use forms consistent with the propositions; proper names stay verbatim. When a keyword's source term is an abbreviation the normalization expanded, emit both surface forms as separate keywords; the pair counts toward the cap of 8, and generic terms drop before either form does. Metric notation (p99, p50) is jargon, not an abbreviation: only its expanded form may earn a slot. A thin input yields a short list, even an empty one; never pad. When unsure whether a term earns a slot, drop it.
 
-7. Question. If `question` is present, rewrite it into a clean, embedding-friendly form: filler removed, jargon normalized, intent unchanged, no constraint added or dropped. When unsure whether a rewrite shifts intent, stay closer to the original. If `question` is absent, leave the output question unset.
-
 Examples.
 
 Example 1: the read path.
 Input: {"question": "hey so what do we know about why the Bronze Age collapse spared Egypt but not the Hittites?", "hypothesis": null, "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: "Why did the Bronze Age collapse spare Egypt but not the Hittites?"
 propositions: []
 keywords: ["Bronze Age collapse", "Hittites", "Egypt"]
-No hypothesis, no propositions; the question and keywords still come out.
+No hypothesis, no propositions; the keywords still come out.
 
 Example 2: a relative date resolves against `today`.
 Input: {"question": null, "hypothesis": "we finished the calibration runs on the NMR spectrometer last week", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: null
 propositions: ["We finished the calibration runs on the nuclear magnetic resonance spectrometer in the week of 2026-06-22."]
 keywords: ["nuclear magnetic resonance spectrometer", "NMR spectrometer", "calibration runs"]
 
 Example 3: a deictic reference grounds from context and reasoning.
 Input: {"question": null, "hypothesis": "the eradication worked", "context": "investigating the collapse of the tern colony on Gull Island", "reasoning": "eradicating the invasive rats restored nesting success", "today": "2026-07-03"}
 Output:
-question: null
 propositions: ["Eradicating the invasive rats on Gull Island restored the tern colony's nesting success."]
 keywords: ["Gull Island", "tern colony", "invasive rats"]
 Every added word appears in context or reasoning; the causal claim stays one proposition.
@@ -63,7 +58,6 @@ Every added word appears in context or reasoning; the causal claim stays one pro
 Example 4: the same hypothesis with nothing to resolve it stays as-is.
 Input: {"question": null, "hypothesis": "the eradication worked", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: null
 propositions: ["The eradication worked."]
 keywords: []
 Nothing identifies the eradication, so nothing is added; no generic keyword pads the list.
@@ -71,7 +65,6 @@ Nothing identifies the eradication, so nothing is added; no generic keyword pads
 Example 5: the question supplies a referent, never a claim.
 Input: {"question": "why did literacy spread faster in Sweden than in Spain?", "hypothesis": "Swedish parish registers survive in far greater numbers than Spanish ones.", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: "Why did literacy spread faster in Sweden than in Spain?"
 propositions: ["Swedish parish registers survive in far greater numbers than Spanish ones."]
 keywords: ["parish registers", "literacy", "Sweden", "Spain"]
 The question presupposes that literacy spread faster in Sweden; no proposition asserts it. The comparison stays whole.
@@ -79,7 +72,6 @@ The question presupposes that literacy spread faster in Sweden; no proposition a
 Example 6: the question's referent grounds the hypothesis; its framing still asserts nothing.
 Input: {"question": "did the Brandt viaduct retrofit finish on schedule?", "hypothesis": "the retrofit wrapped up two weeks late", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: "Did the Brandt viaduct retrofit finish on schedule?"
 propositions: ["The Brandt viaduct retrofit finished two weeks late."]
 keywords: ["Brandt viaduct retrofit"]
 The question names which retrofit, so "the retrofit" grounds to it: referent use. Nothing else crosses over: whether the retrofit had a schedule to meet is the question's framing, and the only assertion stored is the oracle's.
@@ -87,14 +79,12 @@ The question names which retrofit, so "the retrofit" grounds to it: referent use
 Example 7: a conditional stays one proposition.
 Input: {"question": null, "hypothesis": "if we cool the RF cavity below 2 K, the Q factor will exceed a billion", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: null
 propositions: ["If we cool the radio-frequency cavity below 2 kelvin, the quality factor will exceed a billion."]
 keywords: ["radio-frequency cavity", "RF cavity", "quality factor", "Q factor"]
 
 Example 8: a mixed sentence splits at the top-level "and" only.
 Input: {"question": null, "hypothesis": "p99 latency doubled after the 2025-03-15 deploy because the CDN cache hit rate fell, and the WAF added 12ms on top", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: null
 propositions: ["99th-percentile latency doubled after the 2025-03-15 deploy because the content delivery network cache hit rate fell, and the web application firewall added 12 milliseconds of latency.", "99th-percentile latency doubled after the 2025-03-15 deploy because the content delivery network cache hit rate fell.", "The web application firewall added 12 milliseconds of latency after the 2025-03-15 deploy."]
 keywords: ["2025-03-15 deploy", "content delivery network", "CDN", "web application firewall", "WAF", "cache hit rate", "99th-percentile latency"]
 The causal chain survives whole in its atom; the event's date anchors every atom it scopes over, so none becomes a timeless claim.
@@ -102,7 +92,6 @@ The causal chain survives whole in its atom; the event's date anchors every atom
 Example 9: separate sentences split; grounding draws on the rest of the hypothesis.
 Input: {"question": null, "hypothesis": "Emperor penguins breed on Antarctic sea ice through the winter. The males incubate the single egg because the females are feeding at sea.", "context": null, "reasoning": null, "today": "2026-07-03"}
 Output:
-question: null
 propositions: ["Emperor penguins breed on Antarctic sea ice through the winter. The male emperor penguins incubate the single egg because the female emperor penguins are feeding at sea.", "Emperor penguins breed on Antarctic sea ice through the winter.", "The male emperor penguins incubate the single egg because the female emperor penguins are feeding at sea."]
 keywords: ["emperor penguins", "Antarctic sea ice", "incubation"]
 Both sentences are asserted, so each becomes an atom; the causal "because" keeps the second whole; "the males" and "the females" ground to emperor penguins from the first sentence, since the rest of the hypothesis is a source too.
@@ -110,7 +99,6 @@ Both sentences are asserted, so each becomes an atom; the causal "because" keeps
 Example 10: an identity from context lands in every atom; grounding chains through a pronoun.
 Input: {"question": null, "hypothesis": "the recall is finished and the auditors signed off on it", "context": "closing out the Kestrel-3 pump recall", "reasoning": null, "today": "2026-07-03"}
 Output:
-question: null
 propositions: ["The Kestrel-3 pump recall is finished, and the auditors signed off on the Kestrel-3 pump recall.", "The Kestrel-3 pump recall is finished.", "The auditors signed off on the Kestrel-3 pump recall."]
 keywords: ["Kestrel-3 pump recall", "auditors"]
 Context names the recall once; every proposition carries it. In the second atom, "it" first resolves to the recall, then the recall's identity comes along: read alone, the atom still says which recall.
