@@ -43,9 +43,10 @@ QUERIES: tuple[LabeledQuery, ...] = (
         context=None,
         expected=("agg-scen2-seed-a", "agg-scen2-seed-b"),
     ),
-    # The stored scen3 hypotheses spell "HTTP" and "RPC" out (the seeding
-    # normalizer expanded them, "gRPC" stays verbatim). The short-form pair
-    # below retrieves only if keyword extraction bridges to the expansions.
+    # Storage is verbatim: the scen3 seeds write "HTTP", "RPC", and "gRPC"
+    # as short forms and the archive keeps them, so the pair below matches
+    # the stored forms directly. The keyword pair rule is what would bridge
+    # an archive that stored the expansions instead.
     LabeledQuery(
         id="abbrev-bridge-question",
         question="Which protocol carries internal RPC traffic in the HTTP service?",

@@ -158,7 +158,7 @@ Vendor-neutral inference facades. Define and own their Protocols, implement them
 | Role | Actor | Purpose | Profile |
 |---|---|---|---|
 | `embedding_model` | Vector space | Embed hypotheses and queries | Fast, cheap, high-throughput |
-| `fast_model` | Interpreter | Normalize jargon, extract retrieval keywords, decompose composites | Fast and cheap; narrow text transformation |
+| `fast_model` | Interpreter | Ground references, extract retrieval keywords, decompose composites | Fast and cheap; narrow text transformation |
 | `reasoning_model` | Archivist | Semantic resolution, classify relationships | Slow and expensive; genuine reasoning |
 
 Model strings come from config (`LoreSettings`), injected at construction.

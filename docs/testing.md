@@ -50,14 +50,13 @@ mutants by name.
 `tests/e2e/corpus.py`, and it bakes write-time ledger math. Rebuild triggers:
 corpus, prompt, model, or epistemics and trust-math changes.
 
-A rebuild redraws content, not only ids and embeddings. Seeding runs the real
-Interpreter, whose acronym normalization is unreliable, so which rows keep a
-short form is sampled fresh each time: the 2026-08-21 rebuild flipped one row
-from "Hypertext Transfer Protocol ... Transport Layer Security" to "HTTP ...
-TLS" and left the rest alone. The archive is a sampled artifact used as a
-fixture. Treat a rebuild as a new baseline rather than a refresh of the old
-one, and read `manifest.json` in a rate dir to tell which archive a number was
-taken against.
+A rebuild redraws content, not only ids and embeddings. Storage is verbatim,
+so wording no longer resamples; decomposition still does. Seeding runs the
+real Interpreter, and its splitting is stochastic: the same composite flapped
+2 atoms vs 1 across same-day rebuilds (2026-08-10), both passing e2e. The
+archive is a sampled artifact used as a fixture. Treat a rebuild as a new
+baseline rather than a refresh of the old one, and read `manifest.json` in a
+rate dir to tell which archive a number was taken against.
 
 ```bash
 mise run golden-rebuild
