@@ -198,7 +198,6 @@ async def test_recorder_failure_rolls_back_attestations(
 
     interpreter = StubCompletion(
         InterpreterOutput(
-            question="normalized question",
             propositions=["an existing claim", novel_content],
             keywords=["kw"],
         )

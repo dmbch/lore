@@ -363,9 +363,10 @@ async def _score_query(
     interpreted = await interpret(
         providers=providers, request=request, settings=settings, t_now=t_now
     )
-    # Mirrors Orchestrator.consult's fallback; a change there must land here
-    # too, or the eval measures a different pipeline than production runs.
-    question = interpreted.question or request.question or ""
+    # Mirrors Orchestrator.consult's verbatim-question line; a change there
+    # must land here too, or the eval measures a different pipeline than
+    # production runs.
+    question = request.question or ""
     source_embeddings = await embed_sources(
         providers=providers, interpreted=interpreted, question=question
     )

@@ -289,26 +289,23 @@ class TestInterpreterInput:
 
 
 class TestInterpreterOutput:
-    """InterpreterOutput: normalized question, decomposed propositions, keywords."""
+    """InterpreterOutput: decomposed propositions and keywords."""
 
     def test_defaults_to_empty_lists(self) -> None:
         o = InterpreterOutput()
-        assert o.question is None
         assert o.propositions == []
         assert o.keywords == []
 
     def test_is_frozen(self) -> None:
         o = InterpreterOutput()
         with pytest.raises(ValidationError, match="frozen"):
-            o.question = "changed"  # pyright: ignore[reportAttributeAccessIssue]
+            o.keywords = ["changed"]  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_accepts_populated_fields(self) -> None:
         o = InterpreterOutput(
-            question="normalized question",
             propositions=["Service X switched to gRPC"],
             keywords=["gRPC", "Service X"],
         )
-        assert o.question == "normalized question"
         assert o.propositions == ["Service X switched to gRPC"]
         assert o.keywords == ["gRPC", "Service X"]
 

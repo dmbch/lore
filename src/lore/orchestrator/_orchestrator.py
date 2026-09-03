@@ -112,12 +112,11 @@ class Orchestrator:
                 log.info("consult.interpreted", propositions=len(interpreted.propositions))
                 log.debug(
                     "consult.interpret.result",
-                    question=interpreted.question,
                     propositions=interpreted.propositions,
                     keywords=interpreted.keywords,
                 )
 
-                question = interpreted.question or request.question or ""
+                question = request.question or ""
                 source_embeddings = await embed_sources(
                     providers=self._providers, interpreted=interpreted, question=question
                 )
