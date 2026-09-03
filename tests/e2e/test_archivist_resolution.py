@@ -16,7 +16,8 @@ would land one opinion on the ledger twice. Third: a `contributes` string
 stays within the consult inputs; the Archivist's only minting channel adds
 no detail from its own knowledge (the reason-stage twin of the Interpreter's
 no-invention probe). Fourth: a `contributes` keeps the input's surface
-forms, expanding or contracting nothing.
+forms, expanding or contracting nothing. Fifth: a configured deployment
+glossary supplies the canonical form for a term the input uses.
 
 Stage-only probe: `reason()` is called directly with a synthetic
 `InterpreterOutput`, mirroring how `test_interpreter_decomposition.py` calls
@@ -37,9 +38,11 @@ tests/e2e/conftest.py).
 """
 
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 import pytest
 
+from lore.config import LoreSettings
 from lore.domain import ArchivistOutput, ConsultLoreRequest, InterpreterOutput, SearchResult
 from lore.orchestrator import Orchestrator
 from lore.orchestrator._reason import reason
@@ -88,6 +91,7 @@ async def _reason(
     propositions: list[str],
     question: str | None = None,
     retrieved: list[SearchResult] | None = None,
+    settings: LoreSettings | None = None,
 ) -> ArchivistOutput:
     """Run the Archivist stage alone on a synthetic Interpreter output.
 
@@ -102,7 +106,7 @@ async def _reason(
         request=request,
         interpreted=interpreted,
         enriched=retrieved or [],
-        settings=system._settings,
+        settings=settings or system._settings,
         t_now=T_NOW,
     )
 
@@ -355,4 +359,38 @@ async def test_novel_contribution_keeps_the_inputs_surface_forms(
         )
         assert "transport layer security" not in lowered, (
             f"Expected TLS left unexpanded. contributes: {minted!r}"
+        )
+
+
+async def test_glossary_supplies_the_canonical_form(
+    system: Orchestrator,
+    tmp_path: Path,
+) -> None:
+    """The deployment glossary supplies the canonical form for a term the
+    input uses: the glossary names PostgreSQL canonical, so the stored
+    statement writes PostgreSQL where the input wrote Postgres. Preservation
+    alone would keep Postgres. String asserts only, no judge."""
+    glossary = tmp_path / "glossary.md"
+    glossary.write_text('PostgreSQL is the canonical name; the input may write it as "Postgres".')
+    prompts = system._settings.prompts.model_copy(update={"glossary": glossary})
+    settings = system._settings.model_copy(update={"prompts": prompts})
+
+    novel = "The team migrated the billing database to Postgres 17."
+    out = await _reason(
+        system,
+        hypothesis=novel,
+        propositions=[novel],
+        settings=settings,
+    )
+
+    contributed = [r.contributes for r in out.resolutions if r.contributes is not None]
+    assert contributed, (
+        f"Expected the novel hypothesis to contribute. "
+        f"resolutions: {out.resolutions!r}\nreasoning:\n{out.reasoning}"
+    )
+
+    for minted in contributed:
+        assert "PostgreSQL" in minted, (
+            f"Expected the glossary's canonical form PostgreSQL in the stored "
+            f"statement. contributes: {minted!r}"
         )
