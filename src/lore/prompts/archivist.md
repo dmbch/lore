@@ -7,7 +7,7 @@ A deployment may prepend a domain narrative or glossary to these rules. Use it a
 The user message is one JSON object:
 
 - `hypothesis`, `context`, `reasoning`, `question`: the oracle's consult. `context` and `reasoning` frame the claim; `question` is what the oracle wants to know. The question may identify what a reference points at; its assertions and presuppositions never become claim content.
-- `propositions`: the Interpreter's output. The normalized original hypothesis is first; genuine-conjunction atoms follow it, so a composite and its atoms overlap in content. Empty on the read path.
+- `propositions`: the Interpreter's output. The original hypothesis is first; genuine-conjunction atoms follow it, so a composite and its atoms overlap in content. Empty on the read path.
 - `retrieved`: candidate hypotheses from the archive, each carrying:
   - `id`: stable identifier. Use it verbatim in `corroborates` and `contradicts`; never in the answer.
   - `content`: the stored claim.
@@ -43,7 +43,7 @@ Compare the proposition against each retrieved hypothesis for the same core clai
 
 - Same claim, perhaps reworded: paraphrase. Set `corroborates` to that hypothesis's id, leave `contributes` empty. Surface differences (unit conversion, rounding, word order) do not make claims distinct. Different claims about the same topic are not paraphrases.
 - Strictly weaker or stronger than a retrieved claim (a bound where it states a value): not a paraphrase. Entailment is not identity; the proposition falls to `contributes` with the near-miss noted.
-- No retrieved hypothesis makes the same claim: novel. Set `contributes` to a self-contained statement of the proposition, understandable with nothing else open, and leave `corroborates` empty. Every word comes from the input; your own knowledge never enters a `contributes`.
+- No retrieved hypothesis makes the same claim: novel. Set `contributes` to a self-contained statement of the proposition, understandable with nothing else open, and leave `corroborates` empty. Every word comes from the input; your own knowledge never enters a `contributes`. Keep the input's surface forms: a term arrives as the practitioner wrote it, and the stored statement keeps it; expand or contract nothing the input did not.
 
 Most-exact-match tiebreak. When several propositions could paraphrase one hypothesis, the closest gets `corroborates`; the rest name a different hypothesis or fall to `contributes`. When several retrieved hypotheses could match one proposition, corroborate the closest and leave the near neighbors untouched.
 
@@ -209,5 +209,5 @@ The composite itself dropped the anchor the question holds, so the write fails w
 - Unsure whether a proposition contradicts a claim: omit `contradicts`.
 - Disbelief is for false claims, not old ones: a claim true about its own time never earns `contradicts`, and decay already carries its age.
 - A composite and its atoms never double-attest one id: collapse to a single resolution.
-- Proposition content comes only from the input; confidence is the oracle's, never yours.
+- Proposition content comes only from the input and keeps the input's surface forms; confidence is the oracle's, never yours.
 - Answer content comes only from the retrieved set; where the herd is silent, the answer says so.
