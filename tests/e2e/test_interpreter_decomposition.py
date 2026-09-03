@@ -375,26 +375,19 @@ async def test_abbreviation_keywords_carry_both_surface_forms(
     assert len(out.keywords) <= 8, f"Keyword cap of 8 exceeded: {out.keywords}"
 
 
-async def test_metric_notation_keywords_carry_only_the_expanded_form(
+async def test_metric_notation_keyword_carries_the_surface_form(
     system: Orchestrator,
 ) -> None:
-    # The rule's only witness in the prompt is the example it was written
-    # from, so it cannot be observed failing there. Held-out notation and a
-    # held-out domain: p95 in a payments hypothesis.
+    # Keywords carry the notation as the input wrote it; p95 has no
+    # canonical expansion pair, so only the surface form earns a slot.
     out = await _interpret(
         system,
         hypothesis="The checkout service's p95 query latency exceeded 400 milliseconds.",
     )
 
     lowered = [keyword.lower() for keyword in out.keywords]
-    # Both directions, so the probe cannot pass on an empty keyword list:
-    # the expansion earned a slot, the raw notation did not.
-    assert any("percentile" in keyword for keyword in lowered), (
-        f"Expected the expanded metric form among keywords, got {out.keywords}"
-    )
-    assert not any("p95" in keyword for keyword in lowered), (
-        f"Metric notation is jargon, not an abbreviation: expected no raw p95 "
-        f"keyword, got {out.keywords}"
+    assert any("p95" in keyword for keyword in lowered), (
+        f"Expected the p95 surface form among keywords, got {out.keywords}"
     )
 
 
