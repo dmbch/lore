@@ -17,7 +17,8 @@ stays within the consult inputs; the Archivist's only minting channel adds
 no detail from its own knowledge (the reason-stage twin of the Interpreter's
 no-invention probe). Fourth: a `contributes` keeps the input's surface
 forms, expanding or contracting nothing. Fifth: a configured deployment
-glossary supplies the canonical form for a term the input uses.
+glossary supplies the canonical form for a term the input uses. Sixth:
+expletives never enter a `contributes`; the claim's content words survive.
 
 Stage-only probe: `reason()` is called directly with a synthetic
 `InterpreterOutput`, mirroring how `test_interpreter_decomposition.py` calls
@@ -393,4 +394,39 @@ async def test_glossary_supplies_the_canonical_form(
         assert "PostgreSQL" in minted, (
             f"Expected the glossary's canonical form PostgreSQL in the stored "
             f"statement. contributes: {minted!r}"
+        )
+
+
+async def test_novel_contribution_drops_expletives_but_keeps_the_claim(
+    system: Orchestrator,
+) -> None:
+    """The register floor drops the expletive while the claim content
+    survives: the intensity it carried lives in the oracle's confidence
+    scalar, not the ledger. String asserts only, no judge."""
+    novel = "The staging cluster is fucking broken after the 2026-08-25 kernel patch."
+    out = await _reason(
+        system,
+        hypothesis=novel,
+        propositions=[novel],
+    )
+
+    contributed = [r.contributes for r in out.resolutions if r.contributes is not None]
+    assert contributed, (
+        f"Expected the novel hypothesis to contribute. "
+        f"resolutions: {out.resolutions!r}\nreasoning:\n{out.reasoning}"
+    )
+
+    for minted in contributed:
+        lowered = minted.lower()
+        assert "fucking" not in lowered, (
+            f"Expected the expletive dropped from the stored statement. contributes: {minted!r}"
+        )
+        assert "staging cluster" in lowered, (
+            f"Expected the claim's subject in the stored statement. contributes: {minted!r}"
+        )
+        assert "2026-08-25" in lowered, (
+            f"Expected the patch date in the stored statement. contributes: {minted!r}"
+        )
+        assert "kernel patch" in lowered, (
+            f"Expected the kernel patch in the stored statement. contributes: {minted!r}"
         )
