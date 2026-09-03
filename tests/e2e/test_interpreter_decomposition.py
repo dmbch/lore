@@ -109,7 +109,7 @@ async def test_conjunction_yields_original_first_plus_two_atoms(
     assert verdict.passed, verdict.reasoning
 
 
-async def test_jargon_composite_normalizes_acronyms_and_decomposes(
+async def test_jargon_composite_keeps_acronyms_verbatim_and_decomposes(
     system: Orchestrator,
 ) -> None:
     out = await _interpret(
@@ -125,9 +125,10 @@ async def test_jargon_composite_normalizes_acronyms_and_decomposes(
         system,
         answer=out.propositions[0],
         criterion=(
-            "The statement is plain prose with the acronyms expanded: ITT as "
-            "intention-to-treat, LDL as low-density lipoprotein, NNT as number "
-            "needed to treat. Keeping the bare acronyms unexpanded fails."
+            "The statement keeps the acronyms as written: ITT, LDL, and NNT "
+            "appear as bare acronyms. Expanding any of them, to "
+            "intention-to-treat, low-density lipoprotein, or number needed to "
+            "treat, fails."
         ),
     )
     assert verdict.passed, verdict.reasoning
@@ -591,13 +592,14 @@ async def test_axes_compose_on_hard_input(
         system,
         answer=out.propositions[0],
         criterion=(
-            "The statement satisfies all four parts: (1) the acronyms are "
-            "expanded, TER as total expense ratio and ETF as exchange-traded fund; "
+            "The statement satisfies all four parts: (1) the acronyms stay as "
+            "written, TER and ETF; expanding either to total expense ratio or "
+            "exchange-traded fund fails; "
             "(2) the rebalance is dated with an absolute month or date range "
             "within October 2026, not 'last month'; (3) the fund is named as the "
             "Alderbrook Global Equity Fund, with no unresolved 'the fund' or "
-            "'that rebalance'; (4) the comparison stays whole: the fund's total "
-            "expense ratio being below the benchmark's is one comparative claim, "
+            "'that rebalance'; (4) the comparison stays whole: the fund's TER "
+            "being below the benchmark ETF's is one comparative claim, "
             "not separate absolute claims. Missing any one part fails."
         ),
     )
