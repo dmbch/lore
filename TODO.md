@@ -31,14 +31,12 @@ they do not predict the next one.
   rather than distractors per cluster. "Database B is built on PostgreSQL" and
   "Database B serves a read replica from Frankfurt" share an entity and compete
   for nothing. Near-paraphrase distractors are what would move a rank.
-- **The short-form-archive edge.** The surface-form keyword rule protects
-  archives that store abbreviations verbatim. The corpus does hold one
-  ("Internal remote procedure call traffic in the HTTP service is gRPC over
-  HTTP/2"), but by accident: the seeding normalizer expands acronyms
-  unreliably, so which rows keep a short form is drawn fresh on every rebuild.
-  A coincidence is not a pin. A direct-write fixture would pin it, at the cost
-  of content that never passes through the normalizer, which is the loop this
-  eval exists to measure.
+- **The short-form-archive edge.** Short forms are now the stored norm:
+  storage is verbatim, so the scen3 seeds' "HTTP", "RPC", and "gRPC" land as
+  written on the next golden rebuild, and the keyword pair rule is the pin
+  that bridges to an archive storing either form. `mise run recall` plus the
+  recall protocol against main is the instrument for whether abbreviation
+  recall survives the verbatim pipeline (metered close-out, pending).
 
 **Fixture candidates** for growing the prompt suites, each a behavior already
 observed and none yet pinned:
@@ -67,110 +65,6 @@ accepted rather than unstated.
 
 **Status:** harness landed 2026-08-12; the crowding axis, the
 short-form-archive edge, and the fixture candidates stay open.
-
----
-
-## Interpreter: does proposition normalization earn its place?
-
-**Found:** 2026-08-21, following the archive drift below to its cause.
-
-**What.** Step 2 of interpreter.md rewrites "jargon, acronyms, and
-colloquialisms into plain prose". It is the proposition rule; the question has
-its own at step 7 ("filler removed, jargon normalized, intent unchanged"),
-which is tested and free because a question is never stored. Propositions land
-on an append-only ledger, so step 2 is an edit to the oracle's words that
-nothing can undo, and it may be buying nothing.
-
-The bridging job it is presumed to do is already done on the query side, and
-done better. `test_abbreviation_keywords_carry_both_surface_forms` requires ECG
-and electrocardiogram as separate keywords, so the authority lane hits an
-archive storing either form. Content normalization adds nothing there, and it
-is the unreliable half: it missed 1 in 5 on the shapes fixture at k=5 while the
-keyword rule passed 5/5. In that same run an un-normalized proposition
-retrieved and correctly corroborated the stored expanded row, which is the
-experiment, run by accident.
-
-The apparent counter-example does not survive.
-`test_metric_notation_keywords_carry_only_the_expanded_form` asserts keywords
-carry the expansion and *not* the raw p95, which makes content normalization
-load-bearing for notation. That is the two rules being coupled, not either
-being necessary: a symmetric both-forms keyword rule bridges in either
-direction whatever is stored. And notation is where expanding is most
-dangerous, not least. "p95" is a percentile to an SRE and a part number
-elsewhere; expanding it commits to a reading permanently, which is the judgment
-IDEA.md forbids the Interpreter, "a lens, not a judge".
-
-**Why it matters.** The prompt already carves step 2 out of its own input-only
-rule: step 3 reads "your own knowledge never enters a proposition ... the
-jargon rewriting of step 2 and the date arithmetic of step 4 are the sole
-exceptions." Step 2 also says "transcribe like a narrator: never correct,
-challenge, or soften the claim" one sentence from the instruction to rewrite.
-Dropping the proposition half removes one of two exceptions and one internal
-contradiction, and it removes the mechanism behind the drift entry below.
-
-**Options.** Drop step 2 and make the keyword rule carry both surface forms
-wherever a canonical pair exists; step 7 keeps the question path, which is
-where the only tested normalization lives. Or keep the status quo and own an
-unreliable edit to the oracle's words as deliberate.
-
-Colloquialisms look like a separate call and mostly are not. "The thing fell
-over" has no canonical pair to emit both of, so the bridging argument does not
-transfer: it can only be rewritten, never bridged. But step 2's colloquialism
-clause is unwitnessed on propositions. No test exercises it, and the nearest
-one, `test_vague_hypothesis_without_context_stays_uninvented`, pins the
-opposite posture: a vague claim stays vague and any invented detail fails. The
-server-side net against a client that ignores scribe.md is grounding (step 3)
-and the Archivist's Step 0, not this clause. What survives is a
-fidelity-versus-legibility preference with no observed behavior behind it, so
-decide it on the doctrine rather than on what it would cost to lose.
-
-**Before it ships.** Price the keyword cap first: it is 8, and the abbreviation
-test already notes a surface-form pair "spends two slots, so this is where the
-cap is under the most pressure", so a symmetric notation rule spends more. Then
-`mise run recall` is the instrument for whether abbreviation recall survives
-without content normalization. IDEA.md's Interpreter paragraph names jargon
-normalization, so the change is approval-gated, and it triggers a golden
-rebuild plus a rate pass.
-
-**Status:** open; the evidence is in, the decision is not. Colloquialisms
-unresolved by design.
-
----
-
-## The golden archive is sampled, not fixed
-
-**Found:** 2026-08-21, comparing the committed archive against an uncommitted
-rebuild while auditing the recall entry.
-
-**What.** The two differed in exactly one row of 28: "The Hypertext Transfer
-Protocol service authenticates inbound requests with mutual Transport Layer
-Security" became "The HTTP service authenticates inbound requests with mutual
-TLS". Seeding runs the real Interpreter, and its acronym normalization misses
-at a measurable rate (1 in 5 on the shapes fixture, same run). So a rebuild
-resamples what the corpus asserts, and every downstream number is quoted
-against whichever sample happened to land.
-
-**Why it matters.** The archive is treated as a fixture and behaves as a draw.
-Recall ranks are already known to be a property of the archive; this says the
-archive is not stable under its own rebuild command, which is the mechanism
-behind measurements.md's rule that numbers compare only within one entry. It
-also means a fixture can silently acquire or lose the property a test relies
-on: the short-form-archive edge in the recall entry exists today only because
-one row kept its acronym.
-
-**Options.** Accept and fingerprint, which is the status quo now that rate dirs
-carry `manifest.json`: cheap, and it matches the argument that the eval should
-measure the real loop rather than a frozen one. Or pin the archive: seed
-through a deterministic path for the rows a test depends on, keeping live
-seeding for the rest, which buys stability at the cost of content that never
-passes through the normalizer.
-
-Settle the entry above first. This drift is a symptom of proposition
-normalization, so dropping that rule removes the cause and leaves nothing here
-to decide; keeping it makes the accept-or-pin call live.
-
-**Status:** open; the fingerprint half landed 2026-08-21, the accept-or-pin
-call is not made.
 
 ---
 
@@ -532,7 +426,9 @@ live at their sites: logic.md for the formalism, the prompts for the rest.
   rewording of 2026-08-21. Pair the fixture with LOG-11's,
   which wants the same shape: a settled claim beside a thinly attested one,
   judge asserts the answer separates them by count as well as by confidence.
-  Metered: e2e lane.
+  The register floor (2026-09-01) names two more fixture candidates for the
+  same suite: answer tonality under profane source material, and the
+  use/mention quotation case for `contributes`. Metered: e2e lane.
 - **LOG-11.** "Surfaces uncertainty clusters" (IDEA.md Stage 3, read path) has
   no test or judge criterion, and no e2e test mentions the frontier at all. One
   e2e case: a settled plus a contested hypothesis, judge asserts the contested
