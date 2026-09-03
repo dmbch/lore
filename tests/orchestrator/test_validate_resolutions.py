@@ -237,7 +237,6 @@ def _make_orchestrator(
         embedder=_StubEmbedder(),
         interpreter=_StubCompletion(
             InterpreterOutput(
-                question="normalized question",
                 propositions=["prop A"] if propositions is None else propositions,
                 keywords=["kw1"],
             )

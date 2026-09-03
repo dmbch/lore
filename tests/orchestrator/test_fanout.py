@@ -65,7 +65,6 @@ class TestFanOutEmbedsAllPropositionsInParallel:
     async def test_fan_out_embeds_all_propositions_in_parallel(self) -> None:
         fixture = make_orchestrator(
             interpreter_output=InterpreterOutput(
-                question="normalized question",
                 propositions=["prop A", "prop B", "prop C"],
                 keywords=["kw1"],
             ),
@@ -78,14 +77,14 @@ class TestFanOutEmbedsAllPropositionsInParallel:
         )
 
         # question + 3 propositions = 4 embed calls
-        # question text → "question"; propositions → "verification"
+        # verbatim request question → "question"; propositions → "verification"
         question_embeds = [(text, key) for text, key in fixture.embedder.calls if key == "question"]
         verification_embeds = [
             (text, key) for text, key in fixture.embedder.calls if key == "verification"
         ]
         assert len(question_embeds) == 1
         assert len(verification_embeds) == 3
-        assert question_embeds[0][0] == "normalized question"
+        assert question_embeds[0][0] == "What is X?"
         verification_texts = {text for text, _ in verification_embeds}
         assert verification_texts == {"prop A", "prop B", "prop C"}
 
@@ -96,7 +95,6 @@ class TestRetrieveTaskTypeBySource:
     ) -> None:
         fixture = make_orchestrator(
             interpreter_output=InterpreterOutput(
-                question="normalized question text",
                 propositions=["proposition alpha", "proposition beta"],
                 keywords=["kw1"],
             ),
@@ -114,7 +112,7 @@ class TestRetrieveTaskTypeBySource:
             (text, key) for text, key in fixture.embedder.calls if key == "verification"
         ]
 
-        assert question_calls == [("normalized question text", "question")]
+        assert question_calls == [("What is X?", "question")]
         assert sorted(verification_calls) == [
             ("proposition alpha", "verification"),
             ("proposition beta", "verification"),
@@ -142,7 +140,6 @@ class TestFanOutDeduplicatesByHypothesisId:
         embedder = StubEmbedder()
         interpreter = StubCompletion(
             InterpreterOutput(
-                question="normalized question",
                 propositions=["prop A"],
                 keywords=["kw1"],
             )
@@ -213,7 +210,6 @@ class TestFanOutEmbeddingFailureFailsEntireRequest:
         embedder = _FailingEmbedder()
         interpreter = StubCompletion(
             InterpreterOutput(
-                question="normalized question",
                 propositions=["prop A"],
                 keywords=["kw1"],
             )
@@ -254,7 +250,6 @@ class TestFanOutSearchPerEmbedding:
         embedder = StubEmbedder()
         interpreter = StubCompletion(
             InterpreterOutput(
-                question="normalized question",
                 propositions=["prop A", "prop B"],
                 keywords=["kw1"],
             )
@@ -298,7 +293,6 @@ class TestMaxKeywordsTruncation:
         embedder = StubEmbedder()
         interpreter = StubCompletion(
             InterpreterOutput(
-                question="normalized question",
                 keywords=["kw1", "kw2", "kw3", "kw4", "kw5"],
             )
         )
@@ -353,7 +347,6 @@ class TestOrchestratorForwardsFanOutToSearch:
         embedder = StubEmbedder()
         interpreter = StubCompletion(
             InterpreterOutput(
-                question="normalized question",
                 propositions=["prop A", "prop B"],
                 keywords=["kw1"],
             )

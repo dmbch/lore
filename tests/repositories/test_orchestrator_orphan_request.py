@@ -189,7 +189,6 @@ async def test_write_path_attestation_failure_inside_transaction_preserves_reque
 
     interpreter = StubCompletion(
         InterpreterOutput(
-            question="normalized question",
             propositions=["the original proposition"],
             keywords=["kw"],
         )
