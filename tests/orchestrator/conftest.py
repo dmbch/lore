@@ -325,7 +325,6 @@ def make_math() -> MathService:
 
 
 def make_interpreter_output(
-    question: str = "normalized question",
     keywords: list[str] | None = None,
     propositions: list[str] | None = None,
 ) -> InterpreterOutput:
@@ -334,7 +333,6 @@ def make_interpreter_output(
     # the bound itself live in test_validate_resolutions.py and pass
     # propositions explicitly.
     return InterpreterOutput(
-        question=question,
         propositions=propositions if propositions is not None else [f"prop {i}" for i in range(16)],
         keywords=keywords or ["keyword1", "keyword2"],
     )

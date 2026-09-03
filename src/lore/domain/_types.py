@@ -77,16 +77,13 @@ class InterpreterInput(DataModel):
 
 
 class InterpreterOutput(DataModel):
-    """Interpreter result: normalized question, decomposed propositions, keywords."""
+    """Interpreter result: decomposed propositions and keywords."""
 
-    question: str | None = Field(
-        default=None, description="Normalized question text for consistent embedding"
-    )
     propositions: list[str] = Field(
         default_factory=list,
         max_length=16,  # the original plus the 15-atom cap in interpreter.md step 5
         description=(
-            "The normalized, grounded, date-resolved hypothesis first,"
+            "The grounded, date-resolved hypothesis first,"
             " then atoms if it is a genuine conjunction"
         ),
     )

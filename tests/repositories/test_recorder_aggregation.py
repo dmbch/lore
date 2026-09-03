@@ -93,7 +93,6 @@ async def test_recorder_passes_full_prior_history_to_prepare_attestation(
 
     interpreter = StubCompletion(
         InterpreterOutput(
-            question="normalized question",
             propositions=["the original proposition"],
             keywords=["kw"],
         )

@@ -293,7 +293,6 @@ def _make_orchestrator(
         embedder=_StubEmbedder(),
         interpreter=_StubCompletion(
             InterpreterOutput(
-                question="normalized question",
                 propositions=propositions,
                 keywords=["kw1"],
             )
@@ -378,7 +377,6 @@ class TestSearchCandidatesForwardsKeywordList:
     async def test_search_candidates_passes_keyword_list(self) -> None:
         hypotheses = _KeywordRecordingHypotheses()
         interpreted = InterpreterOutput(
-            question="normalized question",
             propositions=["prop A"],
             keywords=["content delivery network", "latency"],
         )
@@ -425,7 +423,6 @@ class TestEmbedBatchesPerTaskType:
     async def test_embed_sources_issues_one_call_per_task_type(self) -> None:
         embedder = _BatchRecordingEmbedder()
         interpreted = InterpreterOutput(
-            question="normalized question",
             propositions=["prop A", "prop B", "prop C"],
             keywords=["kw1"],
         )
@@ -454,7 +451,6 @@ class TestEmbedBatchesPerTaskType:
     async def test_source_embedding_order_matches_source_order(self) -> None:
         embedder = _BatchRecordingEmbedder()
         interpreted = InterpreterOutput(
-            question="normalized question",
             propositions=["prop A", "prop B"],
             keywords=["kw1"],
         )

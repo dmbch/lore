@@ -125,10 +125,10 @@ class TestInterpreterInputCarriesConsultDate:
         assert payload["today"] == expected
 
 
-class TestReadPathEmbedsNormalizedQuestion:
-    async def test_read_path_embeds_normalized_question(self) -> None:
+class TestReadPathEmbedsTheVerbatimQuestion:
+    async def test_read_path_embeds_the_verbatim_question(self) -> None:
         fixture = make_orchestrator(
-            interpreter_output=make_interpreter_output(question="normalized question text"),
+            interpreter_output=make_interpreter_output(),
         )
 
         await fixture.orchestrator.consult(
@@ -139,7 +139,7 @@ class TestReadPathEmbedsNormalizedQuestion:
 
         assert len(fixture.embedder.calls) >= 1
         text, task_type_key = fixture.embedder.calls[0]
-        assert text == "normalized question text"
+        assert text == "raw question"
         assert task_type_key == "question"
 
 
