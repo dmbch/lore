@@ -32,7 +32,7 @@ The rest of this document is how it works.
 
 **The Scribe** (frontend LLM). The user-facing model, consulting with Lore Core via MCP. Translates the oracle's intent into structured arguments: extracts hypotheses, chains reasoning, captures directional confidence. Expresses the oracle's concluded judgment about the evidence, not a tally of sources. When the oracle corrects course mid-conversation, the Scribe captures the correction in the reasoning field.
 
-**The Interpreter** (fast LLM in Lore Core). The pre-processing step before the Archivist. Normalizes jargon, extracts retrieval keywords for the authority lane, and decomposes composite hypotheses into atomic propositions: single-issue statements that stand alone. Inputs already atomic pass through unchanged. The Interpreter is a lens, not a judge.
+**The Interpreter** (fast LLM in Lore Core). The pre-processing step before the Archivist. Extracts retrieval keywords for the authority lane and decomposes composite hypotheses into atomic propositions: single-issue statements that stand alone. Inputs already atomic pass through unchanged. The Interpreter is a lens, not a judge.
 
 **The Archivist** (reasoning LLM in Lore Core). Retrieves the semantic neighborhood and reasons over it: paraphrase, contradiction, or orthogonal-novel. The only entity in the system that makes semantic judgments.
 
@@ -158,13 +158,13 @@ When `consult` is called:
 
 ### Stage 1: Decomposition (The Interpreter)
 
-**On write** (hypothesis provided). The Interpreter normalizes jargon, extracts retrieval keywords for the authority lane, and decomposes the hypothesis into atomic propositions if it is composite. Output: the normalized original hypothesis, retrieval keywords, and zero or more atomic propositions. If the hypothesis is already atomic, the Interpreter returns only the normalized original.
+**On write** (hypothesis provided). The Interpreter extracts retrieval keywords for the authority lane and decomposes the hypothesis into atomic propositions if it is composite. Output: the grounded original hypothesis, retrieval keywords, and zero or more atomic propositions. If the hypothesis is already atomic, the Interpreter returns only the grounded original.
 
-**On read** (no hypothesis). The Interpreter normalizes the question text for consistent embedding and extracts retrieval keywords for the authority lane. No decomposition needed.
+**On read** (no hypothesis). The Interpreter extracts retrieval keywords for the authority lane; the question is embedded verbatim. No decomposition needed.
 
 ### Stage 2: Retrieval (Two-Lane Search)
 
-Each output from the Interpreter gets its own vector embedding. Retrieval uses two lanes, solved in a single SQL query:
+The question and each proposition get their own vector embedding. Retrieval uses two lanes, solved in a single SQL query:
 
 - **Lane 1, Proximity:** vector cosine similarity on hypothesis embeddings. Fetches 2x the configured limit.
 - **Lane 2, Authority:** full-text search on hypothesis content, queried with the Interpreter's extracted keywords. Fetches 2x the configured limit.
@@ -179,12 +179,12 @@ Before reasoning, the orchestrator enriches each retrieved hypothesis with its c
 
 **On read** (no hypothesis). The Archivist calculates the current epistemic state of each retrieved hypothesis (fusing the ledger, applying decay) and synthesizes the herd's beliefs. It surfaces uncertainty clusters: the frontier where the centaur's work would have the most impact. Surfacing the frontier is the instrument steering herd attention; the steering is designed, not incidental.
 
-**On write** (hypothesis provided). The Archivist receives the normalized original, its atomic propositions (if any), and all retrieved hypotheses with their current epistemic states and per-lane retrieval scores. Per-lane scores inform the Archivist's judgment about the relationship. It can see which atomic propositions already have epistemic history, which premises the herd has opinions on, and reasons about the composite hypothesis with grounded inputs.
+**On write** (hypothesis provided). The Archivist receives the grounded original, its atomic propositions (if any), and all retrieved hypotheses with their current epistemic states and per-lane retrieval scores. Per-lane scores inform the Archivist's judgment about the relationship. It can see which atomic propositions already have epistemic history, which premises the herd has opinions on, and reasons about the composite hypothesis with grounded inputs.
 
 The Archivist thinks proposition by proposition: the original hypothesis and every atom the Interpreter produced. Each becomes a resolution naming exactly one primary relationship, optionally paired with a list of contradicted hypotheses:
 
 - **Paraphrase.** The proposition IS an existing hypothesis: the same claim, perhaps rephrased. The resolution sets `corroborates` to that hypothesis's ID. Action: attestation on the corroborated hypothesis at `+c`. No new node.
-- **Orthogonal-novel.** The proposition is genuinely new and does not paraphrase anything in the archive. The resolution sets `contributes` to a self-contained, atomic statement of the new content. Action: store the novel and attest it at `+c`.
+- **Orthogonal-novel.** The proposition is genuinely new and does not paraphrase anything in the archive. The resolution sets `contributes` to a self-contained, atomic statement of the new content. The stored statement keeps the input's surface forms; a configured deployment glossary supplies canonical terms. Action: store the novel and attest it at `+c`.
 - **Contradicts.** Either form may additionally list `contradicts: [HypothesisId, ...]`, existing hypotheses the proposition is mutually exclusive with. Action: attestation at `−c` on each contradicted hypothesis. For an orthogonal-novel paired with contradicts, the herd's dampened contrary position transfers onto the novel as a single consolidated transfer attestation (see [logic.md](docs/logic.md)). A contradicts attestation records the Archivist's mutual-exclusivity inference under the oracle's identity; `correlation_id` and verbatim provenance keep the delegation auditable.
 
 Across all resolutions in one consult, each existing hypothesis ID appears at most once, whether in `corroborates` or in any `contradicts` list. An oracle attests on each existing hypothesis at most once per consult call.
