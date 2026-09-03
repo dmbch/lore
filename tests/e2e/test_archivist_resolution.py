@@ -1,7 +1,7 @@
 # pyright: reportPrivateUsage=false
 """Archivist fitness: resolution promises, probed at the reason stage.
 
-Three product claims. First: an atom that decomposition made broader or vaguer
+The product claims: First: an atom that decomposition made broader or vaguer
 than its composite (an anchor the composite still holds) must not enter the
 archive as a free-floating novel. The Archivist never lets it `contributes`; it
 corroborates a retrieved claim its anchor-restored reading plainly matches, and
@@ -15,7 +15,8 @@ consult carries the oracle's vote through the full pipeline; a salvage now
 would land one opinion on the ledger twice. Third: a `contributes` string
 stays within the consult inputs; the Archivist's only minting channel adds
 no detail from its own knowledge (the reason-stage twin of the Interpreter's
-no-invention probe).
+no-invention probe). Fourth: a `contributes` keeps the input's surface
+forms, expanding or contracting nothing.
 
 Stage-only probe: `reason()` is called directly with a synthetic
 `InterpreterOutput`, mirroring how `test_interpreter_decomposition.py` calls
@@ -319,3 +320,39 @@ async def test_contributes_stays_within_the_consult_inputs(
         ),
     )
     assert grounded.passed, grounded.reasoning
+
+
+async def test_novel_contribution_keeps_the_inputs_surface_forms(
+    system: Orchestrator,
+) -> None:
+    """The minted statement preserves the input's surface forms: HTTP and TLS
+    stay as the practitioner wrote them, neither expanded nor contracted.
+    Pins the golden-archive drift row that stored both expanded. String
+    asserts only, no judge."""
+    novel = "The HTTP service authenticates inbound requests with mutual TLS."
+    out = await _reason(
+        system,
+        hypothesis=novel,
+        propositions=[novel],
+    )
+
+    contributed = [r.contributes for r in out.resolutions if r.contributes is not None]
+    assert contributed, (
+        f"Expected the novel hypothesis to contribute. "
+        f"resolutions: {out.resolutions!r}\nreasoning:\n{out.reasoning}"
+    )
+
+    for minted in contributed:
+        lowered = minted.lower()
+        assert "HTTP" in minted, (
+            f"Expected the surface form HTTP in the stored statement. contributes: {minted!r}"
+        )
+        assert "TLS" in minted, (
+            f"Expected the surface form TLS in the stored statement. contributes: {minted!r}"
+        )
+        assert "hypertext transfer protocol" not in lowered, (
+            f"Expected HTTP left unexpanded. contributes: {minted!r}"
+        )
+        assert "transport layer security" not in lowered, (
+            f"Expected TLS left unexpanded. contributes: {minted!r}"
+        )
