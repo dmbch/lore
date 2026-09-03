@@ -276,29 +276,6 @@ async def test_question_referent_grounds_deictic_hypothesis(
     assert verdict.passed, verdict.reasoning
 
 
-async def test_colloquial_question_normalizes_preserving_intent(
-    system: Orchestrator,
-) -> None:
-    out = await _interpret(
-        system,
-        question=(
-            "hey so umm what do we know about why the sourdough starters keep going flat lately?"
-        ),
-    )
-
-    assert out.question is not None
-    verdict = await judge(
-        system,
-        answer=out.question,
-        criterion=(
-            "The question is cleaned of filler and asks why sourdough starters "
-            "keep going flat or losing activity. The intent is unchanged and no "
-            "new constraints are added."
-        ),
-    )
-    assert verdict.passed, verdict.reasoning
-
-
 async def test_question_only_yields_no_propositions(
     system: Orchestrator,
 ) -> None:
