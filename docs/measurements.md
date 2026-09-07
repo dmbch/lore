@@ -6,6 +6,70 @@ prints own the raw receipts; this file owns the interpreted result. Newest
 first. Numbers compare only within one entry unless the entry says
 otherwise: archives, metrics, and prompts drift between sessions.
 
+## 2026-09-07: the verbatim pipeline batch
+
+The full protocol around the verbatim-pipeline branch: `golden-rebuild`,
+`mise run rate -- tests/e2e/test_interpreter_decomposition.py
+tests/e2e/test_consult_shapes.py tests/e2e/test_archivist_resolution.py`,
+`mise run recall`, `mise run recall-protocol -- --rebuild --old-ref main`,
+`mise run e2e`. Ten commits rode it: the `feat(prompts)` set from "drop the
+interpreter question rewrite" through "hold the archivist voices to a plain
+register", "refactor(orchestrator): embed the question verbatim", and the
+archive rebuild, against main's pre-batch revision. The batch deletes the
+Interpreter's normalize step and question rewrite, pins surface-form
+preservation in the Archivist's `contributes`, makes the deployment glossary
+the canonicalization authority, and adds the register floor.
+
+The first rate attempt (2026-09-03, `lore-rate-tbe1v7n9`) is an incident
+record, not a measurement. Run 1 came back 33/33 in seven and a half
+minutes; API throttling then stretched run 2 to twenty-nine hours and run 3
+past sixty-five before the operator killed it. The failures in runs 2-3
+cluster on long-context fixtures and tests the batch never touched, the
+signature of degraded serving, and they are discarded. The retake
+(2026-09-07, `lore-rate-_cy1oxhg`, same prompt and archive fingerprints):
+33 tests, 5 runs, 165 executions, zero failures, every probe 5/5. That
+covers the batch's six new or flipped pins: acronyms stay as written
+(ITT/LDL/NNT and TER/ETF), the p95 keyword carries the surface form, a
+`contributes` keeps HTTP and TLS unexpanded, the glossary turns Postgres
+into PostgreSQL, and the expletive drops while the claim content survives.
+
+No old-prompt rate delta was taken. What makes that acceptable: the flipped
+criteria fail under the old prompts by construction (they assert the exact
+wording the old normalize step was instructed to rewrite), and both prior
+entries already price the old behavior from the other side: the 2026-08-13
+delta measured 0/5 with keywords carrying "electrocardiogram", never "ECG",
+and 2026-08-21 measured the normalize step missing at 1-in-5. The delta
+would re-derive a mechanism the record already holds.
+
+Recall on the committed archive (`lore-recall-rb7v23xg`): **recall@10 =
+1.000**, MRR 1.000, interlopers 4. The load-bearing cells are the two
+abbrev-bridge queries at rank 1 in all three lanes: short-form queries
+against rows that now store short forms as the norm, so the
+short-form-archive edge is pinned by design rather than by the accident the
+TODO entry used to describe. The protocol run
+(`lore-recall-protocol-kj71wfg8`) reseeded a fresh archive under the
+candidate pipeline and scored both query pipelines against that frozen
+copy: identical headlines both sides (recall@10 1.000, MRR 1.000,
+interlopers 5). 4/20 entries regressed by one to three ranks, all inside
+the crowded `abbrev-cap-composite` cluster plus one authority cell at 1 to
+2, while the largest mover improved: the gRPC-over-HTTP/2 row took rank 1
+in composite and authority on the cap query, short-form query terms hitting
+stored short forms directly. Within the 2026-08-16 noise-floor caveat
+(stale for this archive), that is churn, not regression. The seeding
+receipts double as production evidence: rows stored verbatim, and the
+keyword pair rule firing in both directions (HTTP with its expansion, RPC
+with its expansion, mutual TLS with mTLS).
+
+`mise run e2e`: 47/47 in 101 seconds against the committed archive.
+
+Two operational notes. `recall-protocol --rebuild` wrote its measurement
+archive over the committed fixture path as a side effect; the fixture was
+restored to the rate-fingerprinted draw for receipt coherence, both draws
+being legitimate under the sampled-artifact doctrine. And the answer
+register remains unobserved: this selection still reads no answer, and the
+register-floor fixtures named in TODO.md (answer tonality under profane
+source, the use/mention quotation case) are not built.
+
 ## 2026-08-21: the audit-residual prompt batch
 
 `mise run rate -- tests/e2e/test_interpreter_decomposition.py
