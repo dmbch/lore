@@ -48,8 +48,8 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
-    "hypothesis>=6.167.1",
-    "ruff>=0.16.5",
+    "hypothesis>=6.168.0",
+    "ruff>=0.16.7",
     "pyright[nodejs]>=1.1.411",
     "testcontainers[postgres]>=4.15.0",
     "python-semantic-release>=10.6.1",
@@ -59,7 +59,7 @@ dev = [
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
     "tach>=0.35.0",
-    "mutmut>=3.7.0",
+    "mutmut>=3.8.0",
     "packaging>=26.3",
 ]
 
