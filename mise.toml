@@ -1,21 +1,8 @@
 [tools]
 # Must satisfy required-version in pyproject.toml [tool.uv]; bump together.
 uv = "0.13.9"
-# Only for litellm's sdist build: since 1.92.0 litellm bundles a Rust
-# extension but ships no macOS wheels yet (BerriAI/litellm#31261); drop
-# this tool when prebuilt macOS wheels land.
-rust = { version = "1.97.1", os = ["macos"] }
 
 [env]
-# Cargo home at the repo root, gitignored: litellm's sdist build writes its
-# registry cache there, writable on any machine, sandboxed sessions included;
-# inert off macos, where litellm ships wheels. Rustup proxies resolve from
-# either bin entry: fresh machines get them under the project cargo home
-# (rustup installs proxies to $CARGO_HOME/bin), machines with a default
-# rustup keep ~/.cargo/bin.
-CARGO_HOME = "{{config_root}}/.cargo"
-_.path = ["{{config_root}}/.cargo/bin", "{{env.HOME}}/.cargo/bin"]
-
 DATABASE_URL = "sqlite:///lore.db"
 FASTMCP_LOG_ENABLED = "false"
 FASTMCP_SHOW_SERVER_BANNER = "false"
