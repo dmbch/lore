@@ -22,7 +22,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     container:
-      image: &python-image python:3.14.7-slim-trixie@sha256:cae66f2ef0ec51a9891263eeee7f987dacf0a9879e8aa9353d5606e0530619a5
+      image: &python-image python:3.14.10-slim-trixie@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
     env:
       UV_PYTHON_PREFERENCE: only-system
       UV_PYTHON_DOWNLOADS: never
