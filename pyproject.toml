@@ -64,13 +64,14 @@ dev = [
 ]
 
 [tool.uv]
-# uv compatibility range, not an exact pin: Dependabot reads this field and
-# runs its own (older) bundled uv, refusing on mismatch, so the floor stays
-# below it. mise.toml, the Dockerfile, and the workflows' setup-uv steps
-# carry the exact pin; scripts/check_pins.py keeps them equal and inside
-# this range. Bump the ceiling in lockstep when the exact pin crosses a
-# minor.
-required-version = ">=0.11,<0.13"
+# uv compatibility range, not an exact pin. Dependabot reads this field and
+# refuses to run its own bundled uv outside it; that uv moves on its own
+# schedule, ahead of or behind ours, so a Dependabot uv run failing with
+# tool_version_not_supported means the range has to follow. mise.toml, the
+# Dockerfile, and the workflows' setup-uv steps carry the exact pin;
+# scripts/check_pins.py keeps them equal and inside this range. Move floor
+# and ceiling together when the exact pin crosses a minor.
+required-version = ">=0.13,<0.14"
 # System, homebrew, and mise interpreters on PATH must not satisfy the
 # python pin; only uv-managed pbs builds do. Containerized CI jobs and the
 # image build override with UV_PYTHON_PREFERENCE=only-system to use the

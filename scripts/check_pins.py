@@ -15,8 +15,8 @@ anchor. Registry-qualified refs (docker.io/library/python) would slip past.
 uv enforces required-version at runtime, but the Dockerfile stage only hits it
 during the image build on the release path, after the e2e spend. This static
 check moves that failure to PR CI and `mise run check`. The range (not an
-exact pin) exists so Dependabot's older bundled uv can still resolve the
-lockfile.
+exact pin) exists so Dependabot's bundled uv, which moves independently of
+ours, can still resolve the lockfile.
 
 Dependabot only ever bumps the Dockerfile, the one ecosystem it watches, so
 mise.toml, the workflow setup-uv pins, and the workflow python image ref all
