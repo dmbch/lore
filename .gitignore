@@ -17,9 +17,6 @@ htmlcov/
 .coverage
 .coverage.*
 
-# Cargo home (the mise CARGO_HOME redirect writes ./.cargo)
-.cargo/
-
 # Local databases (the mise DATABASE_URL default writes ./lore.db)
 *.db
 *.db-wal
