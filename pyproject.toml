@@ -46,7 +46,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest>=9.2.0",
+    # Capped below 9.2: pytest 9.2.0 silently breaks pytest-xdist 3.8.0's
+    # --dist loadgroup, which keeps the e2e knowledge arc on one worker
+    # (pytest-dev/pytest-xdist#1407). Lift once an xdist release carries the
+    # fix; tests/scripts/test_e2e_distribution.py confirms it.
+    "pytest>=9.1.1,<9.2",
     "pytest-cov>=7.1.0",
     "hypothesis>=6.170.15",
     "ruff>=0.17.5",
