@@ -142,6 +142,13 @@ asyncio_default_fixture_loop_scope = "function"
 # stack dump instead of hanging forever; inert for the seconds-long unit suite.
 timeout = 300
 markers = ["e2e: end-to-end tests requiring real LLM and database"]
+# litellm's TypedDicts use ReadOnly, which pydantic validates but cannot
+# enforce, and says so on every schema build. pydantic warns from its own
+# module, so the filter cannot name litellm; Lore declares no ReadOnly items,
+# so today only litellm's are silenced. Revisit if Lore ever adopts ReadOnly.
+filterwarnings = [
+    "ignore:Items? .* on TypedDict class .* using the `ReadOnly` qualifier:UserWarning:pydantic._internal._generate_schema",
+]
 
 [tool.coverage.run]
 source = ["lore"]
