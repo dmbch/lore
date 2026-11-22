@@ -409,7 +409,7 @@ The ledger and provenance tables always store the raw value; redaction applies o
 
 ### Prerequisites
 
-- Python 3.14+
+- Python 3.15+
 - [uv](https://docs.astral.sh/uv/)
 - [mise](https://mise.jdx.dev/) (optional): pins uv, loads env defaults, runs the tasks below
 
