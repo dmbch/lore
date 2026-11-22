@@ -31,7 +31,7 @@ dependencies = [
     # the litellm proxy re-exposes all seven.
     "instructor>=1.17.0",
     "aiosqlite>=0.22.1",
-    "pydantic>=2.14.3,<3",
+    "pydantic>=2.14.4,<3",
     # Capped below 4: 4.x reworks app visibility and state storage, both of
     # which the adapter relies on, so crossing it is a migration (#140), not
     # a lock refresh. 3.x still receives patch releases.
