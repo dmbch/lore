@@ -58,7 +58,7 @@ dev = [
     "ruff>=0.17.6",
     "pyright[nodejs]>=1.1.414",
     "testcontainers[postgres]>=4.15.0",
-    "python-semantic-release>=10.6.1",
+    "python-semantic-release>=10.7.0",
     "pytest-asyncio>=1.5.0",
     "commitizen>=4.19.4",
     "httpx2>=2.16.2",
@@ -83,6 +83,12 @@ required-version = ">=0.13,<0.14"
 # image build override with UV_PYTHON_PREFERENCE=only-system to use the
 # container's Debian CPython (env beats project config in uv's precedence).
 python-preference = "only-managed"
+# instructor 1.17.0 caps jiter below 0.15 and rich below 15. The jiter cap
+# holds openai 54 minors back and blocks Python 3.15 (no cp315 wheel before
+# jiter 0.17); the rich cap blocks python-semantic-release 10.7. Overridden
+# on the strength of the e2e suite, since instructor's maintainers have not
+# vouched for these versions. Remove once instructor lifts the caps.
+override-dependencies = ["jiter>=0.17", "rich>=15"]
 
 [tool.ruff]
 line-length = 100
