@@ -21,7 +21,7 @@ dependencies = [
     "opentelemetry-distro>=0.66b2",
     "opentelemetry-exporter-otlp>=1.45.2",
     "opentelemetry-instrumentation-psycopg>=0.66b2",
-    "litellm>=1.109.1",
+    "litellm>=1.110.2",
     # SOCKS extra so HTTPS_PROXY=socks5://... works under the Claude sandbox (no direct import).
     "httpx[socks]>=0.28.1",
     # No [litellm] extra: litellm is a direct dependency above, and the extra
