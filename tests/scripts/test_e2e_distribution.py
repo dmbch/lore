@@ -1,10 +1,12 @@
-"""scripts/e2e.sh pins the knowledge arc to one xdist worker.
+"""The locked pytest and pytest-xdist pair honors --dist loadgroup.
 
-The arc's steps share one archive, and each worker owns its own, so a split
-arc reads an empty archive and fails in a metered run. pytest 9.2.0 with
+scripts/e2e.sh relies on it to keep the knowledge arc on one worker: the
+arc's steps share one archive, and each worker owns its own, so a split arc
+reads an empty archive and fails in a metered run. pytest 9.2.0 with
 pytest-xdist 3.8.0 dropped the grouping without a warning
 (pytest-dev/pytest-xdist#1407); this keyless run catches that class of
-breakage in the commit gate instead.
+breakage in the commit gate instead. It does not check that e2e.sh passes
+the flag or that the arc carries the mark.
 """
 
 import subprocess
