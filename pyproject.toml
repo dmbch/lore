@@ -8,7 +8,7 @@ name = "lore"
 # The git tag is the authoritative version (see [tool.semantic_release]).
 version = "0.0.0"
 description = "Shared knowledge engine for centaur teams"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 license = "MIT"
 dependencies = [
     "sqlite-vec>=0.1.9",
@@ -92,7 +92,7 @@ override-dependencies = ["jiter>=0.17", "rich>=15"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py315"
 # extend-, not plain exclude: the default list (.venv, site-packages, ...) must
 # survive. gitignore does not cover CI: the container checkout has no .git.
 extend-exclude = [".claude/worktrees", "references"]
@@ -134,7 +134,7 @@ max-args = 8
 [tool.pyright]
 include = ["conftest.py", "scripts", "src", "tests"]
 stubPath = "typings"
-pythonVersion = "3.14"
+pythonVersion = "3.15"
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
