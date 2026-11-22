@@ -22,6 +22,12 @@ updates:
     # scrutiny; a short patch window would invert the defense.
     cooldown:
       default-days: 5
+    # Mirrors the pytest cap in pyproject.toml (pytest-dev/pytest-xdist#1407):
+    # without it the development group proposes 9.2 and goes red on the
+    # loadgroup canary, blocking every other dev bump. Remove with the cap.
+    ignore:
+      - dependency-name: pytest
+        versions: [">=9.2"]
     groups:
       production:
         dependency-type: production
