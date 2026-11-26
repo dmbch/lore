@@ -19,14 +19,12 @@ from scripts.recall import (
     artifact_layout,
     collapse_outcomes,
     format_table,
-    interlopers,
     lane_variants,
     mean_reciprocal_rank,
     measured_depth,
     rank_of,
     recall_at_depth,
     resolve_expected,
-    total_interlopers,
     with_interpreter_prompt,
 )
 from tests.e2e.queries import LabeledQuery
@@ -135,41 +133,19 @@ def test_recall_at_depth_counts_only_hypotheses_inside_the_pool() -> None:
     assert recall_at_depth([], depth=3) == 0.0
 
 
-def test_interlopers_count_non_expected_hypotheses_outranking_the_expected() -> None:
-    # The live metric on a census archive: retrieval degrades by crowding
-    # before it drops anything from the pool.
-    clean = QueryScore(
-        query_id="clean",
-        outcomes=(_outcome("hyp-a", composite=1), _outcome("hyp-b", composite=2)),
-    )
-    crowded = QueryScore(
-        query_id="crowded",
-        outcomes=(_outcome("hyp-a", composite=1), _outcome("hyp-b", composite=5)),
-    )
-    missed = QueryScore(query_id="missed", outcomes=(_outcome("hyp-c"),))
-
-    assert interlopers(clean) == 0
-    assert interlopers(crowded) == 3
-    assert interlopers(missed) is None
-    assert total_interlopers([clean, crowded, missed]) == 3
-
-
-def test_format_table_sorts_misses_first_then_the_most_crowded() -> None:
+def test_format_table_lists_misses_before_hits() -> None:
     table = format_table(
         [
-            QueryScore(query_id="clean", outcomes=(_outcome("hyp-a", composite=1),)),
-            QueryScore(query_id="crowded", outcomes=(_outcome("hyp-b", composite=4),)),
+            QueryScore(query_id="b-hit", outcomes=(_outcome("hyp-a", composite=1),)),
+            QueryScore(query_id="a-hit", outcomes=(_outcome("hyp-b", composite=4),)),
             QueryScore(query_id="missed", outcomes=(_outcome("hyp-c"),)),
         ]
     )
 
     rows = table.splitlines()
-    assert "missed" in rows[0]
-    assert rows[0].startswith("miss")
-    assert "crowded" in rows[1]
-    assert rows[1].startswith("+3")
-    assert "clean" in rows[2]
-    assert rows[2].startswith("+0")
+    assert rows[0].startswith("miss  missed")
+    assert rows[1].startswith("hit   a-hit")
+    assert rows[2].startswith("hit   b-hit")
 
 
 def test_collapsed_correlation_ids_count_their_hypothesis_once() -> None:

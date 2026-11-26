@@ -146,10 +146,10 @@ a corpus too small to contest the pool, not the intended state; the corpus
 carries distractors precisely so the real limit binds. Reporting 1.000 at a
 depth nothing can fall out of promises nothing at all.
 
-Alongside it, `interlopers` counts non-expected hypotheses ranked above a
-query's worst expected hit: finer-grained than recall, and the only signal
-that catches a non-expected hypothesis wedged *between* two expected ones.
-MRR is live but saturated: it can fall, never rise.
+MRR is printed alongside as an alarm for a slipped first hit: saturated, so
+it can fall, never rise. Rank order among several expected hypotheses moves
+with the interpreter's keyword draw and says nothing while the archive is
+this small.
 
 Every recall run is paid; its artifacts are the receipts and always persist:
 one JSONL row per query at `recall.jsonl`, in a fresh `lore-recall-*` tempdir
