@@ -35,7 +35,7 @@ dependencies = [
     # Capped below 4: 4.x reworks app visibility and state storage, both of
     # which the adapter relies on, so crossing it is a migration (#140), not
     # a lock refresh. 3.x still receives patch releases.
-    "fastmcp[apps]>=3.4.11,<4",
+    "fastmcp[apps]>=4.2.4,<5",
     # Direct dependency (fastmcp already ships it transitively): LoreCacheStore
     # subclasses its BaseStore, and the encryption extra provides the Fernet
     # wrapper for OAuth state at rest. Capped below 0.5: the store imports
