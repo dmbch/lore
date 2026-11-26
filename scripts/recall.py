@@ -1,7 +1,7 @@
 """Score two-lane retrieval against the labeled query set in tests/e2e/queries.py.
 
-The scoring core is pure: per-expected-hypothesis ranks in, recall, crowding
-and MRR aggregates and a worst-first table out. Recall is reported at a pool
+The scoring core is pure: per-expected-hypothesis ranks in, recall
+and MRR aggregates and a misses-first table out. Recall is reported at a pool
 depth the archive can actually overflow, so it measures the guard it exists
 for (did the expected hypothesis reach the Archivist) rather than printing
 1.000 by construction. ``main()`` is the live, metered
@@ -133,24 +133,6 @@ def measured_depth(*, archive_size: int, limit: int) -> int:
     return max(1, archive_size // 3)
 
 
-def interlopers(score: QueryScore) -> int | None:
-    """Non-expected hypotheses ranked above the query's worst expected hit.
-
-    The metric with headroom while the archive fits the pool: retrieval
-    degrades by letting other hypotheses crowd in above the expected ones
-    long before it drops them. None when an expected hypothesis is missing,
-    which is a miss and outranks any amount of crowding.
-    """
-    ranks = [o.composite for o in score.outcomes if o.composite is not None]
-    if not score.outcomes or len(ranks) != len(score.outcomes):
-        return None
-    return max(ranks) - len(ranks)
-
-
-def total_interlopers(scores: Sequence[QueryScore]) -> int:
-    return sum(count for score in scores if (count := interlopers(score)) is not None)
-
-
 def _best_reciprocal(score: QueryScore) -> float:
     found = [o.composite for o in score.outcomes if o.composite is not None]
     return 1 / min(found) if found else 0.0
@@ -178,20 +160,15 @@ def _ranks(outcome: ExpectedEntry) -> str:
     )
 
 
-def _worst_first(score: QueryScore) -> tuple[int, int, str]:
-    # Misses first, then the most crowded. Both keys move on this archive;
-    # a found-fraction key would not, since every hypothesis reaches every
-    # pool while the archive fits the limit.
-    crowding = interlopers(score)
-    return (0, 0, score.query_id) if crowding is None else (1, -crowding, score.query_id)
+def _missed(score: QueryScore) -> bool:
+    return not score.outcomes or any(o.composite is None for o in score.outcomes)
 
 
 def format_table(scores: Sequence[QueryScore]) -> str:
     rows: list[str] = []
-    for score in sorted(scores, key=_worst_first):
+    for score in sorted(scores, key=lambda s: (not _missed(s), s.query_id)):
         details = "  ".join(_ranks(outcome) for outcome in score.outcomes)
-        crowding = interlopers(score)
-        lead = "miss" if crowding is None else f"+{crowding}"
+        lead = "miss" if _missed(score) else "hit "
         rows.append(f"{lead}  {score.query_id}  {details}")
     return "\n".join(rows)
 
@@ -503,7 +480,6 @@ def main() -> None:
     )
     print(format_table(scores))
     print(f"recall@{depth}: {recall_at_depth(scores, depth=depth):.3f}{squeezed}")
-    print(f"interlopers: {total_interlopers(scores)}")
     print(f"mrr: {mean_reciprocal_rank(scores):.3f}")
     print(f"artifacts: {root}")
 
