@@ -179,9 +179,18 @@ rode `-latest` until 2026-08-15, when the alias flipped to Gemini 3.7 flash
 mid-acceptance: live behavior shifted and the deixis shapes probe went 0/5,
 back to 5/5 under the pin. A rolling alias runs someone else's release
 schedule against a calibrated system; frontier dogfooding was not worth
-that. Model adoption is deliberate: bump the pin on a branch, run
-`recall-protocol -- --rebuild --old-ref`, e2e, and the shapes and
-decomposition rates, and re-probe the model tuning facts before landing.
+that. Model adoption is deliberate: bump the pin on a branch, rebuild and
+re-baseline recall with `recall-protocol -- --rebuild -k 3`, run e2e and the
+shapes and decomposition rates, and re-probe the model tuning facts before
+landing.
+
+`--old-ref` is no model delta: it swaps the interpreter prompt and nothing
+else, so on a bump that leaves the prompts alone both runs measure the same
+system. The rebuild already makes the recall numbers a new baseline rather
+than a comparison. To isolate the model on one archive, run `mise run recall`
+a second time with a local `lore.toml` whose `[fast]` section names the old
+model: recall reads the ambient config, and keyword extraction is its only
+model step.
 
 After any alias flip, run e2e deliberately and re-probe tuning. The 2026-07-21
 flip to Gemini 3 made the inherited fast-role `temperature = 0.0` pin toxic and
