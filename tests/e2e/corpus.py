@@ -71,7 +71,7 @@ SEEDS: tuple[Seed, ...] = (
         correlation_id="reftime-mixed-event",
         oracle="oracle-seeder-e",
         hypothesis=(
-            "The 1789 ratification of the Bill of Rights established the first ten amendments "
+            "The 1791 ratification of the Bill of Rights established the first ten amendments "
             "to the United States Constitution."
         ),
         confidence=0.8,

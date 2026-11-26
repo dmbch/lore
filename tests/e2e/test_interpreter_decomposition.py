@@ -11,8 +11,8 @@ prompt baselined red on deictic grounding and relative-date resolution.
 
 Measurement protocol: pass rate at k >= 5 via `mise run rate --
 tests/e2e/test_interpreter_decomposition.py`, not single-run green; the stage
-is stochastic (Gemini 3 runs at default temperature; LiteLLM warns against
-setting it lower).
+is stochastic (the vendor ignores sampling parameters, so no temperature
+pin can steady it).
 
 Marked @pytest.mark.e2e, skipped without GEMINI_API_KEY (autouse fixture in
 tests/e2e/conftest.py).
