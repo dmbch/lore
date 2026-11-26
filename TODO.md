@@ -68,39 +68,42 @@ short-form-archive edge, and the fixture candidates stay open.
 
 ---
 
-## Gemini 3.7 and the err-toward-novel boundary
+## The err-toward-novel boundary under a rule-faithful model
 
-**Found:** 2026-08-15. The `-latest` alias flipped to Gemini 3.7 flash
-(released 2026-08-13) mid-acceptance: live behavior shifted and the deixis
-shapes probe went 0/5 with identical reasoning each run. Pinned both roles
-to `gemini-3.6-flash`; the probe returned to 5/5. Contained, not resolved.
+**Found:** 2026-08-15, when the `-latest` alias flipped to Gemini 3.7 flash
+and the deixis shapes probe went 0/5. The roles sat on `gemini-3.6-flash`
+until 2026-11-22 and now run `gemini-4-hydrogen`; docs/measurements.md has
+the adoption record.
 
-**What.** Two coupled questions, doctrine first.
+**What.** The doctrine question the adoption did not settle.
 
-3.7 applies archivist.md's err-toward-novel rule more faithfully than 3.6.
-Adjudicated on the deixis case: "Database B is built on PostgreSQL" and
-"Database B uses PostgreSQL as its storage engine" are distinct claims
-(Aurora: built on PostgreSQL, custom storage engine), so 3.7's
-novel-with-note was correct under Step 1 and 3.6's corroboration was lax.
-The doctrine was priced under a lax model. A rule-faithful one splits more
-evidence: uncertainty stays higher, the herd converges slower, near-misses
-accumulate as separate nodes rejoined only by retrieval. Is err-toward-novel
-still right when the model stops erring? The asymmetry argument stands (a
-false paraphrase writes onto the wrong claim irreversibly; a false novel
-splits evidence retrieval can rejoin), but the fragmentation cost is now
-real. Options: keep the rule and accept fragmentation; soften the boundary
-(same-subject role refinements corroborate); or restate it two-sided,
-naming both error costs.
+3.7 applied archivist.md's err-toward-novel rule more faithfully than 3.6,
+and Hydrogen does the same. Adjudicated on the old deixis case: "Database B
+is built on PostgreSQL" and "Database B uses PostgreSQL as its storage
+engine" are distinct claims (Aurora: built on PostgreSQL, custom storage
+engine), so novel-with-note is correct under Step 1 and 3.6's corroboration
+was lax. Hydrogen's golden seeding shows the same reading: the Mars seed
+and the "gRPC over HTTP/2" seed each entered as novel with a near-miss
+note. The doctrine was priced under a lax model. A rule-faithful one splits
+more evidence: uncertainty stays higher, the herd converges slower,
+near-misses accumulate as separate nodes rejoined only by retrieval. Is
+err-toward-novel still right when the model stops erring? The asymmetry
+argument stands (a false paraphrase writes onto the wrong claim
+irreversibly; a false novel splits evidence retrieval can rejoin), but the
+fragmentation cost is now real. Options: keep the rule and accept
+fragmentation; soften the boundary (same-subject role refinements
+corroborate); or restate it two-sided, naming both error costs.
 
-Then 3.7 adoption, blocked on the doctrine call: bump the pin,
-`recall-protocol -- --rebuild --old-ref`, e2e, shapes and decomposition
-rates, and re-probe the Gemini 3 tuning facts (temperature, thinking,
-compound splitting). The deixis test example rides the boundary and passes
-only under 3.6; whichever way doctrine lands, re-choose the example (a true
-paraphrase of the seed) or respec the assertion to the grounding observable
-before the pin moves.
+The adoption kept the rule as written and moved the fixtures that leaned on
+the lax reading onto true paraphrases. That is a default, not a decision.
 
-**Status:** open; pin landed 2026-08-15; doctrine decision blocks adoption.
+**Left from the adoption protocol.** The archivist resolution rate at
+k >= 5 under Hydrogen; a `recall-protocol -k 3` repeat to confirm or clear
+the `academy-language` MRR cell; a re-probe of the fast-role tuning facts
+beyond what the decomposition rate covers (effort level, very large
+compounds).
+
+**Status:** open; Hydrogen pinned 2026-11-22; doctrine undecided.
 
 ---
 

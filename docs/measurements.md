@@ -6,6 +6,50 @@ prints own the raw receipts; this file owns the interpreted result. Newest
 first. Numbers compare only within one entry unless the entry says
 otherwise: archives, metrics, and prompts drift between sessions.
 
+## 2026-11-22: Gemini 4 Hydrogen adoption
+
+Both roles moved from `gemini-3.6-flash` to `gemini-4-hydrogen`, effort
+levels unchanged (fast `medium`, reasoning `high`), embedding unchanged.
+Prompts did not move, so the delta is the model plus five fixture repairs
+made in the same change; the numbers below do not separate the two.
+
+`mise run golden-rebuild`: 28 seeds, each one proposition, each its own
+hypothesis; no collapse, no split, no contradiction. 12,730,368 raw bytes,
+363,159 compressed. Two notes, both near-misses classified novel under
+err-toward-novel: the Mars seed against "All planets" (narrower), and "gRPC
+over HTTP/2" against "uses gRPC" (strictly stronger).
+
+`mise run recall` (`lore-recall-xjb5vf7z`, k = 1): **recall@10 = 1.000**,
+interlopers 6 (was 5), **MRR 0.955** (was 1.000). The MRR cell is
+`academy-language`: the keywords came back as `Valletta`, `maritime
+academy`, `exchange-program`, with nothing for the language of instruction,
+and the cadets distractor took composite rank 1 (target: proximity 1,
+authority 2). Hydrogen's keyword lists run short (two each for
+`database-engine` and `tallest-building`). The interpreter noise floor was
+measured at zero under the old model only, so this cell is unconfirmed
+until a `-k 3` repeat.
+
+`mise run e2e`: 46 of 47. The red was a fixture defect introduced the same
+day: the deixis probe's context named "the storage layer of Database B",
+the Interpreter resolved "It" to the storage layer, and the Archivist
+correctly stored the narrower claim as novel. The context now names
+Database B alone. The closing run after that repair (2026-11-26) came back
+47 of 47.
+
+Rates, every probe at full marks on valid runs:
+
+- `tests/e2e/test_consult_shapes.py` (`lore-rate-hv3khjsh`): 4 tests, 5
+  runs, 20 of 20. The deixis probe, 0/5 under Gemini 3.7 in August, is 5/5.
+- `tests/e2e/test_interpreter_decomposition.py`: 22 tests, 110 of 110 over
+  five valid runs taken as 4 + 1. In `lore-rate-2_ren15q` runs 1 to 4 came
+  back 22/22; the machine slept during run 5, which is discarded: 12
+  failures, all `Connection reset by peer`, no assertion among them. The
+  top-up (2026-11-26, `lore-rate-pjkss597`, `--runs 1`) came back 22/22.
+
+Not measured: the archivist resolution rate, and the recall delta against
+the old model on one archive (`recall-protocol --old-ref` compares prompts,
+not models).
+
 ## 2026-09-07: the verbatim pipeline batch
 
 The full protocol around the verbatim-pipeline branch: `golden-rebuild`,
@@ -213,7 +257,7 @@ The gemini `-latest` alias flipped to 3.7 flash mid-acceptance. The deixis
 shapes probe went 0/5 with identical reasoning each run, back to 5/5 under
 the `gemini-3.6-flash` pin, confirming causation; e2e ran 43/44 with the
 single failure adjudicated to the flip. Doctrine follow-up in TODO.md
-("Gemini 3.7 and the err-toward-novel boundary").
+("The err-toward-novel boundary under a rule-faithful model").
 
 ## 2026-08-13: surface-form re-baseline
 
