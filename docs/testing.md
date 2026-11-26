@@ -3,8 +3,9 @@
 The three checks in [CLAUDE.md](../CLAUDE.md) gate every commit. This document
 covers the lanes that run outside them: mutation, end-to-end, the golden
 archive, and retrieval recall. Standing constraints, not open work; intended
-work lives in [TODO.md](../TODO.md), and the record of measurements taken
-lives in [measurements.md](measurements.md).
+work lives in [TODO.md](../TODO.md). Measurement results live in the commit
+bodies and PR descriptions of the changes they justified; what the last
+model adoption measured is in [Current baselines](#current-baselines).
 
 **An instrument must be able to fail.** A metric pinned by its fixture, an
 assertion a validator already guarantees, or a scan over a surface that is
@@ -33,12 +34,9 @@ is a suppression or a dead line.
 | `_acbf_pair` | 1, 16, 19, 20, 21, 22 | routing unreachable via `to_opinion`, or agreeing within noise |
 | `fuse` | 12 | dogmatic subsets are pre-partitioned, so the guard is dead by architecture |
 
-Pragma suppression of the 14 was built and reverted on principle: mutmut
-registers trailing pragmas at statement level and blocks by line range, so every
-available scope also swallowed killable mutants beside the equivalent one (the
-clamp line carries the live division; the maximize block took 36 mutants for 3
-equivalents). Scope is measured in silenced signal, so a suppression that cannot
-isolate the false positive is no suppression at all.
+The 14 carry no pragma: mutmut blocks by statement and line range, so every
+available scope also swallows killable mutants beside the equivalent one. A
+suppression that cannot isolate the false positive is no suppression at all.
 
 Cached verdicts stand across reruns. Source edits invalidate via function
 hashes; test-only edits do not. After changing tests, wipe `mutants/` or rerun
@@ -51,12 +49,11 @@ mutants by name.
 corpus, prompt, model, or epistemics and trust-math changes.
 
 A rebuild redraws content, not only ids and embeddings. Storage is verbatim,
-so wording no longer resamples; decomposition still does. Seeding runs the
-real Interpreter, and its splitting is stochastic: the same composite flapped
-2 atoms vs 1 across same-day rebuilds (2026-08-10), both passing e2e. The
-archive is a sampled artifact used as a fixture. Treat a rebuild as a new
-baseline rather than a refresh of the old one, and read `manifest.json` in a
-rate dir to tell which archive a number was taken against.
+so wording does not resample; decomposition does, because seeding runs the
+real Interpreter and its splitting is stochastic. The archive is a sampled
+artifact used as a fixture. Treat a rebuild as a new baseline rather than a
+refresh of the old one, and read `manifest.json` in a rate dir to tell which
+archive a number was taken against.
 
 ```bash
 mise run golden-rebuild
@@ -76,10 +73,19 @@ The decay test keeps its one live seed, because it runs different epistemics.
 suite is gemini-coupled: `require_gemini` autouse-skips without a key, and the
 golden bakes gemini embeddings, so any other vendor needs a way past both.
 
-Flake posture: the deixis probe is a known stochastic class, and a flake blocks
-the release tag until a workflow re-run. `pytest-rerunfailures` was tried and
-dropped (2026-08-02); it broke mutmut's runner and masks a genuinely degrading
-probe. Re-running the workflow is the accepted remedy.
+Flake posture: the suite is stochastic, and a flake blocks the release tag
+until a workflow re-run. That is the accepted remedy; `pytest-rerunfailures`
+breaks mutmut's runner and masks a genuinely degrading probe.
+
+Gate fixtures sit clear of the doctrine boundaries. The prompts tell the
+model to hold back when a paraphrase or a contradiction is not plain, so a
+single-shot fixture that needs the bold reading fails at the model's
+discretion. A borderline case belongs in a rate run, where a pass rate can
+describe it.
+
+Local runs use a uv-managed interpreter that bundles newer SQLite and OpenSSL
+than the image. The commit-gate lanes in CI run inside the image base; e2e
+runs on the runner's interpreter, at version parity only.
 
 Rate runs: one green pass on an optional-output behavior proves nothing, since
 it passes at base rate. Pin prompt-behavior claims at k >= 5 with `mise run
@@ -100,14 +106,20 @@ self-describing: commit, working-tree cleanliness, model pin per vendor role,
 and a digest of every prompt, config, and the golden archive. It is written
 before the first run, so an interrupted measurement still says what produced
 it. Two artifact dirs whose fingerprints differ are not a delta on the thing
-you changed; they are a delta on everything that moved. They land in a fresh `lore-rate-*` tempdir whose path the
-runner prints; `--artifacts DIR` places them deliberately instead. Trace
-files carry hypothesis texts and the answers built from them, so mind which
-machine that tempdir is on. The split is by level, not by field: INFO
-counts and hashes content (`resolution.contribute`), DEBUG carries it, and
-the trace sink runs at DEBUG. The
-`/rate-analyze` skill is the consumer: the offline sniff test over atom
-counts, classification kinds, and divergent outputs across runs.
+you changed; they are a delta on everything that moved. They land in a
+fresh `lore-rate-*` tempdir whose path the runner prints; `--artifacts DIR`
+places them deliberately instead. Trace files carry hypothesis texts and the
+answers built from them, so mind which machine that tempdir is on. The split
+is by level, not by field: INFO counts and hashes content
+(`resolution.contribute`), DEBUG carries it, and the trace sink runs at
+DEBUG. The `/rate-analyze` skill is the consumer: the offline sniff test
+over atom counts, classification kinds, and divergent outputs across runs.
+
+Discard a run that shows transport errors or a ballooned wall clock: it
+measured the network or a sleeping machine, and its failures cluster on
+whatever happened to be in flight. Top up with `--runs 1` into a fresh
+artifacts dir (the runner refuses a used one); the two pool only when their
+manifests match.
 
 ## Retrieval recall
 
@@ -157,13 +169,16 @@ mise run recall-protocol -- --rebuild --old-ref <pre-change-ref> --artifacts <di
 trigger, and a baseline against an archive seeded under another prompt
 measures a mixed system; rebuilding first puts the archive and the query
 pipeline on the same prompt. Omit it when the committed archive already
-matches the working tree's prompt.
+matches the working tree's prompt. It writes over the committed fixture
+path, so decide afterwards which draw the branch keeps.
 
 `-k N` repeats the candidate run; every repeat is a full paid run. Cells
 that move between identical runs are the interpreter's noise floor, printed
 before the delta: a movement within the floor is noise, not evidence. The
 one licence for reading a k=1 delta as signal is a floor already measured
-at zero.
+at zero. The floor belongs to one archive and one model, within one session:
+re-measure it after either moves, and compare receipts only inside a
+protocol session.
 
 Both recall runs then share that frozen archive: the candidate prompt from
 the working tree and, with `--old-ref`, the old prompt extracted from git.
@@ -174,15 +189,15 @@ re-baseline.
 
 ## Model versions
 
-Both gemini roles pin a stable version in `src/lore/config/vendors/gemini.toml`. They
-rode `-latest` until 2026-08-15, when the alias flipped to Gemini 3.7 flash
-mid-acceptance: live behavior shifted and the deixis shapes probe went 0/5,
-back to 5/5 under the pin. A rolling alias runs someone else's release
-schedule against a calibrated system; frontier dogfooding was not worth
-that. Model adoption is deliberate: bump the pin on a branch, rebuild and
-re-baseline recall with `recall-protocol -- --rebuild -k 3`, run e2e and the
-shapes and decomposition rates, and re-probe the model tuning facts before
-landing.
+Both gemini roles pin a stable version in
+`src/lore/config/vendors/gemini.toml`. A rolling `-latest` alias runs someone
+else's release schedule against a calibrated system: it flipped under us
+twice and shifted live behavior both times. Model adoption is deliberate:
+bump the pin on a branch, rebuild and re-baseline recall with
+`recall-protocol -- --rebuild -k 3`, run e2e and the shapes and decomposition
+rates, and re-probe the effort levels before landing. Vendor files own every
+sampling and effort parameter: an inherited `temperature = 0.0` broke
+interpreter grounding on Gemini 3.
 
 `--old-ref` is no model delta: it swaps the interpreter prompt and nothing
 else, so on a bump that leaves the prompts alone both runs measure the same
@@ -192,8 +207,15 @@ a second time with a local `lore.toml` whose `[fast]` section names the old
 model: recall reads the ambient config, and keyword extraction is its only
 model step.
 
-After any alias flip, run e2e deliberately and re-probe tuning. The 2026-07-21
-flip to Gemini 3 made the inherited fast-role `temperature = 0.0` pin toxic and
-produced interpreter grounding failures; vendor files own temperature now.
-Flash also declines to split very large compound hypotheses, which is resolution
-loss rather than corruption.
+## Current baselines
+
+Replaced in place when a rebuild or a model bump moves them; never appended.
+Taken 2026-11-22 to 2026-11-26 on `gemini-4-hydrogen`, against the archive
+of 9ca8060. A
+sanity anchor for the next adoption, not a delta baseline: a rebuild starts
+over.
+
+| Instrument | Value |
+|---|---|
+| Golden archive | 28 seeds, 28 hypotheses, 363,159 bytes compressed |
+| recall@10 | 1.000 in each of three runs |

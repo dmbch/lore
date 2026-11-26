@@ -252,7 +252,7 @@ fulltext_config = "porter unicode61"
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `model` | string | vendor default | LiteLLM model string |
-| `temperature` | float or omit | `0.0` | Sampling temperature. The Interpreter is a mechanical stage; it runs cold by default |
+| `temperature` | float or omit | none | Sampling temperature |
 | `max_tokens` | int or omit | none | Max output tokens |
 | `reasoning_effort` | string or omit | vendor default | Reasoning effort level |
 

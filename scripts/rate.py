@@ -24,8 +24,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import NamedTuple, cast
 
-# Every input whose drift makes two receipts incomparable. docs/measurements.md
-# compares numbers only within one entry precisely because these move between
+# Every input whose drift makes two receipts incomparable. These move between
 # sessions; fingerprinting them is what lets a later delta check rather than
 # trust that it is comparing like with like.
 FINGERPRINTED = (
