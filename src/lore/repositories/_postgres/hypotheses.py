@@ -148,7 +148,11 @@ class PostgresHypothesisRepository:
             " JOIN hypotheses h ON h.id = p.hypothesis_id"
             " LEFT JOIN l1_ranked l1 ON p.hypothesis_id = l1.hypothesis_id"
             " LEFT JOIN l2_ranked l2 ON p.hypothesis_id = l2.hypothesis_id"
-            " ORDER BY score DESC"
+            # Equal weights tie whenever the lanes disagree symmetrically
+            # (ranks 1,2 against 2,1). Proximity settles it: that lane is
+            # always present and does not move with the keyword draw. The
+            # id makes the order total.
+            " ORDER BY score DESC, l1.rank ASC NULLS LAST, h.id ASC"
             " LIMIT %(lim)s"
         )
 
