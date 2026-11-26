@@ -84,7 +84,7 @@ async def test_paraphrase_aggregation_yields_exactly_one_positive_per_seed(
     await consult(
         golden_system,
         hypothesis=(
-            "Database B uses PostgreSQL as its storage engine, "
+            "Database B is built on top of PostgreSQL, "
             "Database B is backed by PostgreSQL, and "
             "PostgreSQL powers Database B."
         ),
@@ -118,7 +118,7 @@ async def test_multi_contradict_writes_consolidated_transfer(
     await consult(
         golden_system,
         hypothesis=(
-            "Planets in the solar system orbit counter-clockwise as seen from "
+            "All planets in the solar system orbit counter-clockwise as seen from "
             "above the northern celestial hemisphere."
         ),
         confidence=0.85,
@@ -227,7 +227,7 @@ async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
     golden_system: Orchestrator,
 ) -> None:
     # Complexity tier: one paragraph-scale consult mixing a dated historical event with a
-    # differently-referenced value update. The 1789 event and the 2015 tax reading are
+    # differently-referenced value update. The 1791 event and the 2015 tax reading are
     # both anchored in the past; the prober's 2018 reading is a different reference again.
     # No two of these share a reference time, so no false contradiction lands on either
     # seed. The expensive error is over-contradicting; this case tests restraint.
@@ -238,7 +238,7 @@ async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
         golden_system,
         hypothesis=(
             "Building on the framework the Bill of Rights established when it was ratified "
-            "in 1789, tax policy has since changed: as of 2018 the federal corporate tax "
+            "in 1791, tax policy has since changed: as of 2018 the federal corporate tax "
             "rate is 21 percent, down from the earlier 35 percent."
         ),
         confidence=0.75,
@@ -252,7 +252,7 @@ async def test_paragraph_scale_mixed_references_avoid_false_contradiction(
         r for r in _by_seed(rows, event_id, oracle="oracle-prober") if float(r["c_oracle_raw"]) < 0
     ]
     assert not event_neg, (
-        "The 1789 ratification event shares no reference time with a present tax reading: "
+        "The 1791 ratification event shares no reference time with a present tax reading: "
         f"expected no disbelief on the historical event, got {event_neg}"
     )
 

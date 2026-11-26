@@ -94,8 +94,8 @@ async def test_deictic_consult_grounds_from_context_and_corroborates_the_seed(
     corr_id = "shapes-deixis"
     await consult(
         golden_system,
-        hypothesis="It uses PostgreSQL as its storage engine.",
-        context="Reviewing the storage layer of Database B.",
+        hypothesis="It is built on PostgreSQL.",
+        context="Reviewing Database B.",
         confidence=0.8,
         oracle=oracle,
         correlation_id=corr_id,
