@@ -156,6 +156,13 @@ markers = ["e2e: end-to-end tests requiring real LLM and database"]
 # so today only litellm's are silenced. Revisit if Lore ever adopts ReadOnly.
 filterwarnings = [
     "ignore:Items? .* on TypedDict class .* using the `ReadOnly` qualifier:UserWarning:pydantic._internal._generate_schema",
+    # py-key-value-aio's AsyncKeyValue subclasses a runtime-checkable protocol
+    # without the decorator, and its own beartype-wrapped constructors
+    # isinstance against it. Python 3.15 deprecates that (TypeError in 3.20).
+    # The warning fires from beartype-generated code, so the filter matches on
+    # the class named in the message. Drop it once the dependency decorates
+    # the protocol.
+    "ignore:<class 'key_value.aio.protocols.key_value.AsyncKeyValue'> isn't explicitly decorated with @runtime_checkable:DeprecationWarning",
 ]
 
 [tool.coverage.run]
