@@ -68,6 +68,12 @@ updates:
   # graph that exempts security updates, so any delay is a straight delay on
   # the fix. The risk it would buy down (a poisoned Docker Official Image) is
   # remote, and CI runs against the new base on the PR either way.
+  #
+  # The workflow container images in tests.yml are bumped by hand: the docker
+  # updater reads no workflow YAML (dependabot/dependabot-core#5819). If that
+  # ships, use one entry with `directories: ["/", "/.github/workflows"]` and a
+  # cross-directory group, so both files move in one PR and check:pins stays
+  # green.
   - package-ecosystem: docker
     directory: /
     schedule:
