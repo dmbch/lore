@@ -199,7 +199,7 @@ Lore auto-detects the LLM vendor from API keys in the environment, for vendors t
 
 | Vendor | Embedding | Fast | Reasoning |
 |--------|-----------|------|-----------|
-| Gemini | `gemini-embedding-001` | `gemini-3.6-flash` | `gemini-3.6-flash` |
+| Gemini | `gemini-embedding-001` | `gemini-4-hydrogen` | `gemini-4-hydrogen` |
 
 Both completion roles pin a stable version rather than riding a rolling
 alias: a `-latest` flip mid-acceptance shifted live classification behavior
