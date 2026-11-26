@@ -429,6 +429,29 @@ class TestSearch:
         assert one.id in order
         assert order.index(three.id) < order.index(one.id)
 
+    async def test_search_tied_scores_rank_the_closer_embedding_first(
+        self, hypothesis_repo: HypothesisRepository
+    ) -> None:
+        """Lanes that disagree symmetrically tie under equal weights: ranks
+        (1, 2) and (2, 1) sum to the same RRF score. Proximity settles it."""
+        closer = await hypothesis_repo.store(
+            content="alfa", embedding=_embedding(seed=1), created_at=1000
+        )
+        better_keywords = await hypothesis_repo.store(
+            content="alfa bravo", embedding=_embedding(seed=2), created_at=2000
+        )
+
+        first, second = await hypothesis_repo.search(
+            embedding=_embedding(seed=1),
+            keywords=["alfa", "bravo"],
+            weights=(0.5, 0.5),
+            limit=10,
+            fan_out=2,
+        )
+
+        assert first.score == second.score
+        assert (first.id, second.id) == (closer.id, better_keywords.id)
+
     async def test_search_respects_limit(self, hypothesis_repo: HypothesisRepository) -> None:
         for seed in range(1, 6):
             await hypothesis_repo.store(
