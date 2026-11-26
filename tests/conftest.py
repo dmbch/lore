@@ -19,6 +19,7 @@ import json
 import logging
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TextIO
 
 import litellm
 import pytest
@@ -57,14 +58,19 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
         sink.write(line + "\n")
 
 
-def configure_trace_sink(log: Path) -> None:
+def configure_trace_sink(log: Path) -> TextIO:
     """Point structlog at a JSONL trace file, debug level, contextvars merged.
 
     Test-lane only; production telemetry (``configure_telemetry``) is
     untouched. Tests calling this must opt into ``reset_telemetry``: the
     helper never sets ``_telemetry._configured``, so the autouse tripwire
     cannot catch the structlog leak.
+
+    Returns the open sink: structlog never closes the file it writes to, so
+    a caller that outlives the trace closes it. A session-long caller lets
+    process exit do that.
     """
+    sink = log.open("a", encoding="utf-8")
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -73,8 +79,9 @@ def configure_trace_sink(log: Path) -> None:
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
-        logger_factory=structlog.WriteLoggerFactory(file=log.open("a", encoding="utf-8")),
+        logger_factory=structlog.WriteLoggerFactory(file=sink),
     )
+    return sink
 
 
 def _reset_telemetry_state() -> None:
