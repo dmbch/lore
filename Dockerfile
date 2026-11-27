@@ -4,7 +4,7 @@
 # Python tag: must match .python-version, policed by scripts/check_pins.py.
 # Pinned uv binary: must satisfy required-version (pyproject [tool.uv]), which
 # hard-errors this build on mismatch; bump both and mise.toml together.
-FROM ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d AS uv
+FROM ghcr.io/astral-sh/uv:0.13.10@sha256:a3ea1357342c1a4bf9a0c53a3deb1b55379aefa037338d8113d5771efa01774f AS uv
 
 FROM python:3.15.2-slim-trixie@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928 AS builder
 COPY --from=uv /uv /usr/local/bin/uv
